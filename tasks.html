@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="nala-ui2.css?v=9">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
-  /* Built 29 Sep with Guest Contact, from mock-guest-contact.html frame 4.
+  /* Built 29 Sep with Chat, from mock-guest-contact.html frame 4.
      The owner, that day: guests' messages are mostly requests - drinks by
      the pool, an umbrella to the room - and each team closes its own, on
      its own login. This page is that: the open tasks of the teams this
@@ -69,6 +69,25 @@
   .task.done .tm { color:var(--law-green); }
   #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
 
+  /* The check before a card's reply goes (the owner, 30 Sep): a person
+     answering a task with the desk's note on it could take the box for a
+     message back to Reception. The sheet the boards use, from the foot. */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
+              align-items:flex-end; z-index:50; }
+  .backdrop.show { display:flex; }
+  .sheet { background:var(--surface, #fff); width:100%; max-width:var(--appw); margin:0 auto;
+           border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+           max-height:88vh; overflow-y:auto; }
+  .sheet .st { font-size:var(--t3); font-weight:600; margin-bottom:6px; }
+  .sheet .sub { font-size:var(--t2); color:var(--mid); line-height:1.45; margin-bottom:14px; }
+  .sheet .sub b { color:var(--ink); font-weight:600; }
+  .sheet .said { margin:0 0 16px auto; max-width:85%; width:fit-content; padding:8px 13px;
+                 border-radius:18px; background:#0A84FF linear-gradient(#2A9DFC, #0A84FF);
+                 color:#fff; font-size:var(--t3); line-height:1.36; overflow-wrap:anywhere;
+                 white-space:pre-wrap; }
+  .sheet .btn { margin-top:8px; }
+  .sheet .err { font-size:var(--t2); color:var(--law-red); line-height:1.45; margin-top:10px; }
+
 /* ── paper: every card solid and lifted, its tint over the white ── */
 body.paper .task { box-shadow:var(--lift); }
 </style>
@@ -89,13 +108,15 @@ body.paper .task { box-shadow:var(--lift); }
   <div id="doneList"></div></details>
 <div id="errBar"></div>
 <div style="height:24px"></div>
+<div class="backdrop" id="backdrop"><div class="sheet" id="sheet" role="dialog" aria-modal="true"
+     aria-labelledby="sheetTitle"></div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=5"></script>
+<script src="contact-demo.js?v=6"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=92"></script>
+<script src="nala-shared.js?v=93"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -239,9 +260,9 @@ function cardHTML(team, id, t, done){
     reply = '<div class="reply"><div class="rwin">This guest texted STOP. Nothing can be sent until ' +
             'they text START.</div></div>';
   else if (writing)
-    reply = '<div class="reply"><div class="rwin">' + (route.ch === 'wa' ? 'Goes on <b>WhatsApp</b>'
-              : route.ch === 'watpl' ? 'WhatsApp\u2019s 24 hours have passed, so this goes by <b>SMS</b>'
-              : 'Goes by <b>SMS</b>') + '</div>' +
+    reply = '<div class="reply"><div class="rwin">To the guest, ' + (route.ch === 'wa' ? 'on <b>WhatsApp</b>'
+              : route.ch === 'watpl' ? 'by <b>SMS</b>: WhatsApp\u2019s 24 hours have passed'
+              : 'by <b>SMS</b>') + '</div>' +
       '<textarea id="rb-' + tag + '" data-key="' + esc(key) + '" aria-label="Reply to ' +
         esc(t.name || 'the guest') + '" placeholder="Reply to ' + esc((t.name || 'the guest').split(' ')[0]) +
         '">' + esc(DRAFT[key] || '') + '</textarea>' +
@@ -344,6 +365,34 @@ function replyAct(btn){
   if (!text){ saveFailSay(fail, 'Write the reply first.'); return; }
   var req = { idToken: window.__idToken, kind:'send', team: team, t: id, ck: t.ck || '', text: text };
   if (route.ch === 'watpl') req.via = 'sms';
+  confirmToGuest(t, route, text, function(go, err){ sendReply(go, err, req, key); });
+}
+/* Before a reply leaves the card: whose phone it goes to, and that it is
+   not Reception's. Nothing is sent until Send to guest; Back keeps the
+   words in the box. */
+function confirmToGuest(t, route, text, send){
+  var name = t.name || 'the guest';
+  var how = route.ch === 'wa' ? 'on WhatsApp' : 'by SMS';
+  document.getElementById('sheet').innerHTML =
+    '<div class="st" id="sheetTitle">Send this to ' + esc(name) + '?</div>' +
+    '<div class="sub">It goes straight to the guest' + (t.villa ? ' in villa ' + esc(t.villa) : '') +
+    ', ' + how + '. <b>It is not a message to Reception</b>: for them, use the phone or a word ' +
+    'at the desk.</div>' +
+    '<div class="said">' + esc(text) + '</div>' +
+    '<button class="btn solid" id="toGuest">Send to guest</button>' +
+    '<button class="btn" id="toBack">Back</button>' +
+    '<div class="err" id="toErr"></div>';
+  document.getElementById('backdrop').className = 'backdrop show';
+  document.getElementById('toBack').onclick = closeConfirm;
+  document.getElementById('toGuest').onclick = function(){
+    send(this, document.getElementById('toErr'));
+  };
+}
+function closeConfirm(){ document.getElementById('backdrop').className = 'backdrop'; }
+document.getElementById('backdrop').onclick = function(e){
+  if (e.target.id === 'backdrop') closeConfirm();
+};
+function sendReply(btn, fail, req, key){
   saveFeedback(btn, function(){
     return fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
                                 body: JSON.stringify(req) })
@@ -356,7 +405,7 @@ function replyAct(btn){
         }
       });
   }, { busy:'Sending', done:'Sent', hold:400, fail: fail,
-       then: function(){ delete DRAFT[key]; REPLY = null; load(); } });
+       then: function(){ closeConfirm(); delete DRAFT[key]; REPLY = null; load(); } });
 }
 document.getElementById('board').addEventListener('input', function(e){
   var k = e.target.getAttribute && e.target.getAttribute('data-key');

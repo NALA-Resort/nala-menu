@@ -251,7 +251,7 @@ reservation number staff read out).
 Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 (`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
 
-**Guest Contact** (`guest-contact.html` and `tasks.html`, 29 Sep): the
+**Chat** (`guest-contact.html` and `tasks.html`, 29 Sep): the
 guests' messages, SMS and WhatsApp through Twilio, to replace Guest Touch.
 Every guest by booking on Upcoming, In-house and Past; one conversation
 each; every message a guest sends sorted into no task or a team's task,
@@ -702,7 +702,7 @@ None of these can move without him.
     The same paste as item 16's `rules.json` - one paste of the current
     file clears both, and any earlier item still waiting on one.
 
-18. **Guest Contact setup, 29 Sep.** Built and tested against stubs, and
+18. **Chat setup, 29 Sep.** Built and tested against stubs, and
     published the same day as the admin's alone, with its demo at
     `guest-contact.html?demo`; made to run in test mode on the live app:
     nothing can reach a guest while `TEST_NUMBERS` is set on its Worker.

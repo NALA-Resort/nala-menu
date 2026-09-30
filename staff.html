@@ -261,7 +261,7 @@
     <div class="panel" id="tTeams" role="tabpanel">
       <div class="evrow"><span>Open to the staff</span>
         <button class="sw" id="gcOpen" role="switch" aria-checked="false"
-                aria-label="Open Guest Contact and Tasks to the staff"></button></div>
+                aria-label="Open Chat and Tasks to the staff"></button></div>
       <div class="note" id="gcOpenNote"></div>
       <div class="err" id="gcOpenErr"></div>
       <div class="seclabel">Teams</div>
@@ -396,7 +396,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=92"></script>
+<script src="nala-shared.js?v=93"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -412,7 +412,7 @@ var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* encoder is the desk PC's card helper, 8 Sep: sync's pattern exactly - a
    machine account with no phone, assignable here, absent from the matrix,
    and confined by the rules to /cardjobs. */
-/* contact is the Guest Contact Worker's login, 29 Sep: sync's pattern. */
+/* contact is the Chat Worker's login, 29 Sep: sync's pattern. */
 var ROLES_ASSIGN = ROLES.concat(['spa','sync','encoder','contact']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
@@ -424,7 +424,7 @@ var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['spaBooked','Massage booked'],
               ['spaCancelled','Massage cancelled'],
               ['spaStay','Stay changed under a massage'],
-              /* Guest Contact, 29 Sep: a guest's message has arrived. */
+              /* Chat, 29 Sep: a guest's message has arrived. */
               ['guestMessage','Guest message']];
 var STAFF = {}, CFG = null;
 
@@ -632,7 +632,7 @@ function teamMembers(key){
   return Object.keys(m).filter(function(k){ return m[k] === true && STAFF[k]; })
     .map(function(k){ return STAFF[k].name || codeOf(k); }).sort();
 }
-/* Guest Contact's preview (PREVIEW_PAGES, nala-shared.js): off, it and
+/* Chat's preview (PREVIEW_PAGES, nala-shared.js): off, it and
    Tasks are the admin's alone; on, they open to the staff as their
    permissions say. One switch for both pages, because they are one module.
    /permissions/open/<page>, written into PERMS as well as the database:
@@ -647,8 +647,8 @@ function drawOpen(){
   sw.className = 'sw' + (on ? ' on' : '');
   sw.setAttribute('aria-checked', on);
   document.getElementById('gcOpenNote').textContent = on
-    ? 'Guest Contact and Tasks are open: the staff see them as their permissions say.'
-    : 'Only you see Guest Contact and Tasks, in the menu and on the Dashboard, ' +
+    ? 'Chat and Tasks are open: the staff see them as their permissions say.'
+    : 'Only you see Chat and Tasks, in the menu and on the Dashboard, ' +
       'while they are tried. On opens them to the staff as their permissions say.';
 }
 document.getElementById('gcOpen').onclick = function(){

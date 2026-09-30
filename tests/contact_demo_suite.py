@@ -1,4 +1,4 @@
-"""The Guest Contact demo (contact-demo.js): the real Guest Contact and Tasks
+"""The Chat demo (contact-demo.js): the real Chat and Tasks
 pages with made-up guests, entered as ?demo, before Twilio exists.
 
 The owner, 29 Sep: "Maybe a demo environment is better?" Pinned down:
@@ -130,10 +130,10 @@ with sync_playwright() as p:
     pg.click('.task[data-t="%s"] .sbtn' % tid); pg.wait_for_timeout(1500)
     ck("Done closes it in Ray's name", "Done today" in pg.text_content("#doneSum"))
     go("guest-contact.html")
-    ck("and Ray, who may not open Guest Contact, is sent to Tasks, still in the demo",
+    ck("and Ray, who may not open Chat, is sent to Tasks, still in the demo",
        pg.url.split("?")[0].endswith("tasks.html") and pg.is_visible("#demoBar"), pg.url)
     pg.select_option("#demoWho", "desk@demo"); pg.wait_for_timeout(1800)
-    ck("back as Reception, Guest Contact again", pg.url.split("?")[0].endswith("guest-contact.html"))
+    ck("back as Reception, Chat again", pg.url.split("?")[0].endswith("guest-contact.html"))
     # the owner's own example: drinks by the pool, then which ones
     pg.select_option("#demoWho", "anna@demo"); pg.wait_for_timeout(2000)
     gin = pg.evaluate("""()=>{const c=document.querySelector('.task[data-t="t2gandt"]');
@@ -145,7 +145,10 @@ with sync_playwright() as p:
     # Reply to guests, switched on for housekeeping as Settings would (30 Sep)
     pg.click("#rp-bar-t2gandt"); pg.wait_for_timeout(200)
     pg.fill("#rb-bar-t2gandt", "Two Tanqueray and tonics on their way to the pool.")
-    pg.click("#rs-bar-t2gandt"); pg.wait_for_timeout(2500)
+    pg.click("#rs-bar-t2gandt"); pg.wait_for_timeout(300)
+    ck("Send asks first: straight to Priya, not to Reception",
+       pg.is_visible("#sheet") and "Send this to Priya Sharma?" in pg.text_content("#sheet"))
+    pg.click("#toGuest"); pg.wait_for_timeout(2500)
     lg = pg.evaluate("""()=>[...document.querySelectorAll('.task[data-t="t2gandt"] .lg')].map(e=>e.textContent)""")
     ck("and Anna, switched on in Settings, answers from the card; her reply joins it",
        any(x.startswith("Anna") and "on their way to the pool" in x for x in lg) and
@@ -166,7 +169,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>{const a=document.createElement('a');a.href='tally.html';a.id='out';a.textContent='out';document.body.appendChild(a);}")
     pg.click("#out"); pg.wait_for_timeout(400)
     ck("a link out of the demo is stopped, and says why",
-       pg.url.split("?")[0].endswith("guest-contact.html") and "Only Guest Contact and Tasks" in pg.text_content("#demoSay"))
+       pg.url.split("?")[0].endswith("guest-contact.html") and "Only Chat and Tasks" in pg.text_content("#demoSay"))
     pg.click("#demoReset"); pg.wait_for_timeout(1200)
     ck("Start again puts the made-up guests back as they were",
        [r["s"] for r in rows() if r["ck"] == "61411000016"] == ["none"])

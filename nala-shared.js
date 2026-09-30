@@ -1792,7 +1792,7 @@ var ROLE_GRANTS = {
      role that exists in the database and not in the code is what the next
      session trips over.                                                  */
   sync:         [],
-  /* The Guest Contact Worker's machine account, 29 Sep: sync's pattern. It
+  /* The Chat Worker's machine account, 29 Sep: sync's pattern. It
      writes the guests' messages as they arrive and as they go, which the
      rules let it do and nothing else. No screen, so no grants.          */
   contact:      []
@@ -2593,7 +2593,7 @@ var NOTIFY_DEFAULTS = {
     spaBooked:    { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaCancelled: { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
-    /* A guest wrote to Guest Contact (29 Sep): the desk, who answer and
+    /* A guest wrote to Chat (29 Sep): the desk, who answer and
        sort it. Fired by the Worker as the message lands. */
     guestMessage: { spa:false, admin:true, manager:true, housekeeping:false, waiter:true, chef:false }
   }
@@ -2631,7 +2631,7 @@ function ensureNotifySettings(role){
 }
 
 
-/* ── Guest Contact ─────────────────────────────────────────────
+/* ── Chat ─────────────────────────────────────────────
    The staff inbox for guests' messages, SMS and WhatsApp through Twilio.
    Asked for by the owner, 29 Sep, to replace Guest Touch: every guest by
    booking - Upcoming, In-house, Past - and every reply caught here. Built
@@ -2656,7 +2656,7 @@ function ensureNotifySettings(role){
    <ck> is the guest's number in E.164 without its plus, which a Firebase
    key can hold. */
 
-/* The Guest Contact Worker (worker/guest-contact.js), which Guest Contact
+/* The Chat Worker (worker/guest-contact.js), which Chat
    asks to send and Tasks asks for a task's conversation. One address for
    both pages. */
 var CONTACT_URL = 'https://nala-contact.ben-681.workers.dev';
@@ -2717,7 +2717,7 @@ function teamsOf(settings, email){
 }
 
 /* Every open task of the teams named, as { team: { id: task } }: the one
-   reading of "open" (29 Sep), which Guest Contact, Tasks, the menu's Tasks
+   reading of "open" (29 Sep), which Chat, Tasks, the menu's Tasks
    count and the Dashboard all call, so no two of them can disagree about
    what is still to do. Asked of the database by its index on state, then
    checked here, so a record that is not open never passes for one. A team
@@ -2882,12 +2882,12 @@ var NAV = [
      detail behind it is not. */
   { href:'calendar.html',     label:'Calendar',     need:'cleansBoard'  },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
-  /* Guest Contact, 29 Sep: the guests' messages, SMS and WhatsApp, and what
+  /* Chat, 29 Sep: the guests' messages, SMS and WhatsApp, and what
      each one became. editBookings, the SMS pages' own gate - the owner's
      answer to who may read and answer them. Tasks beside it: what the
      messages became, for the team that does them. Every human role may open
      it; each login sees its own teams' tasks, reception every team's. */
-  { href:'guest-contact.html', label:'Guest Contact', need:'editBookings' },
+  { href:'guest-contact.html', label:'Chat', need:'editBookings' },
   { href:'tasks.html',        label:'Tasks',        need:'tasks'        },
   /* The desk's other duty, so the desk's own gate. */
   { href:'keys.html',         label:'Keys',         need:'editBookings' },
@@ -2971,7 +2971,7 @@ function pageKey(href){
 }
 
 /* ── a page the admin tries before the staff see it ─────────────
-   The owner, 29 Sep: Guest Contact published before Twilio is set up, so
+   The owner, 29 Sep: Chat published before Twilio is set up, so
    its screens can be tried on the live app, and the admin's alone until
    the owner opens it. A page listed here opens to the admin only until
    /permissions/open/<page> is true - the switch is in Settings, General,
@@ -3520,7 +3520,7 @@ var NAV_ACTIONS = [
         cb(role === 'spa' ? c.spa : c.desk);
       }).catch(function(){});
   } },
-  /* Guest Contact, 29 Sep: the guests with a message nobody has sorted.
+  /* Chat, 29 Sep: the guests with a message nobody has sorted.
      /contactnew holds exactly those, one child per guest, so the count is
      its keys - asked shallow, because the badge needs no message text. */
   { href: 'guest-contact.html', need: 'editBookings', count: function(role, cb){

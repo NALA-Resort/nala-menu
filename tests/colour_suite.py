@@ -168,7 +168,7 @@ BOARDS = {
   "guest.html?b=b8": [],
   "guest.html?b=b14": [],
   "stats.html": [],
-  # Guest Contact and Tasks, 29 Sep: the list with every state a guest's row
+  # Chat and Tasks, 29 Sep: the list with every state a guest's row
   # can wear, a conversation with every state a message can be in (a task
   # open and done, no task, new, read, a send that failed) and its team
   # picker, and the Tasks page.

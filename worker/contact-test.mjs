@@ -1,4 +1,4 @@
-/* Guest Contact Worker suite. Run: node worker/contact-test.mjs
+/* Chat Worker suite. Run: node worker/contact-test.mjs
  *
  * Firebase, Google's sign-in, Twilio and the push Worker are all stubbed.
  * Green here checks the logic and says nothing about the real services:
@@ -636,7 +636,7 @@ teamWorld(); STORE["/permissions"] = { guestReply: { waiter: false } };
 STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
   lastIn: new Date().toISOString(), lastInCh: "sms" };
 r = await desk({ kind: "send", ck: SARAH, text: "hi" });
-ck("the desk switched off: the waiter still reads Guest Contact, but may not reply",
+ck("the desk switched off: the waiter still reads Chat, but may not reply",
    (await desk({ kind: "hello" })).status === 200 && r.status === 403 && SENT.length === 0);
 STATE.email = "mgr@nala.x";
 ck("the manager always may", (await desk({ kind: "send", ck: SARAH, text: "hi" })).status === 200);

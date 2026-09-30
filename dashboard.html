@@ -226,7 +226,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=92"></script>
+<script src="nala-shared.js?v=93"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -429,10 +429,10 @@ function load(){
   });
 }
 
-/* Guest Contact's two counts (29 Sep), read from their owners: the guests
+/* Chat's two counts (29 Sep), read from their owners: the guests
    with a message nobody has sorted are /contactnew's keys, one per guest -
    the menu badge's own reading - and the tasks still open are
-   contactOpenTasks over contactTeams, every team's, as Guest Contact and
+   contactOpenTasks over contactTeams, every team's, as Chat and
    Tasks read them. Null when either cannot be read: a login the rules keep
    from the guests' messages has no card, and neither does anybody before
    the rules are pasted. */
@@ -810,15 +810,16 @@ function items(t){
     note: !N ? 'none today'
         : ad === N ? 'all ' + N + ' in' : ad + ' in, ' + (N - ad) + ' to come' });
 
-  /* Guest messages, 29 Sep: off the spine like Arrivals, because a guest
+  /* Chat's card, 29 Sep (Guest messages until the module was renamed Chat,
+     30 Sep): off the spine like Arrivals, because a guest
      writes at any hour and it is no step in the day's flow. Today only: the
      counts are the queue as it stands now, and on another day's board they
-     would read as that day's. Shown to whoever may open Guest Contact -
+     would read as that day's. Shown to whoever may open Chat -
      the admin alone while it is tried (PREVIEW_PAGES) - and the door is
      that page's own gate. */
   var gc = DATA.contact;
   if (gc && nav.isToday() && canOpen(ROLE, 'guest-contact.html'))
-    L.push({ k:'contact', lab:'Guest messages', owner:'guests', offSpine:true, units:[],
+    L.push({ k:'contact', lab:'Chat', owner:'guests', offSpine:true, units:[],
       state:'shut',
       note: (gc.fresh ? gc.fresh + (gc.fresh === 1 ? ' guest has a message' : ' guests have messages') +
                         ' to sort' : 'nothing new to sort') + ' · ' +

@@ -1095,7 +1095,7 @@ with sync_playwright() as p:
       return bad; }""", _pa)
     ck("with nothing stored, every page answers as the capability it borrows, "
        + "wrong: " + str(_mism), _mism == [])
-    # Guest Contact's preview (29 Sep): a page still being tried opens to the
+    # Chat's preview (29 Sep): a page still being tried opens to the
     # admin alone until /permissions/open says otherwise, then exactly as the
     # capability it borrows, for every role, the manager and masseuse too.
     _prev = pg.evaluate("""(pa)=>{ const bad=[];
@@ -1489,7 +1489,7 @@ with sync_playwright() as p:
     print("   events fired:", fired)
     ck("finishing a clean announces it as cleaned", "cleaned:11" in fired)
     ck("a departure announces itself", "departed:8" in fired)
-    # guestMessage, 29 Sep: a guest wrote to Guest Contact, fired by its
+    # guestMessage, 29 Sep: a guest wrote to Chat, fired by its
     # Worker to the roles ticked here. guestTask is NOT a default: it goes to
     # the members of one team (/contactsettings), not to a role, so it has
     # no row in this role-by-role table.

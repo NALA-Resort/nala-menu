@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
-<title>Nala &middot; Guest Contact</title>
+<title>Nala &middot; Chat</title>
 <link rel="stylesheet" href="nala-ui2.css?v=9">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
@@ -184,8 +184,8 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <body class="tier-app ui2 paper">
 
 <div class="daterow">
-  <button class="dnav" id="backBtn" aria-label="Back to Guest Contact" style="display:none">&lsaquo;</button>
-  <div class="date" id="title">Guest Contact</div>
+  <button class="dnav" id="backBtn" aria-label="Back to Chat" style="display:none">&lsaquo;</button>
+  <div class="date" id="title">Chat</div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"></div>
@@ -230,9 +230,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=5"></script>
+<script src="contact-demo.js?v=6"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=92"></script>
+<script src="nala-shared.js?v=93"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -1045,7 +1045,7 @@ function showAccess(allowed, e){
     (e ? '<div>Could not check access. This is usually the connection, '
        + 'not your login.</div>'
        + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
-       : 'This login has no access to Guest Contact. See the manager.');
+       : 'This login has no access to Chat. See the manager.');
   if (on && !e){
     var home = homeFor(window.NALA_ROLE);
     if (home && home !== location.pathname.split('/').pop()){

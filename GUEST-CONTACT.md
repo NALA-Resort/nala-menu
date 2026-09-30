@@ -1,7 +1,15 @@
-# Guest Contact: the guests' messages, and the tasks they become
+# Chat: the guests' messages, and the tasks they become
 
 Agreed with the owner in chat on 29 Sep 2026. This file is the brief, the
 record of what was decided, and the setup, which is his.
+
+**Called Chat since 30 Sep** (the owner: "I would like this module to be
+called Chat from now on and in menus and all references"). Until then it
+was Guest Contact, and its files keep that name, so links and the stored
+Settings switch keep working: `guest-contact.html`, the Worker
+`nala-contact` (`worker/guest-contact.js`), this file, and the
+`/permissions/open/guest-contact` switch. The owner's own setup steps, to
+print and tick off, are the doc *Chat: your setup steps*.
 
 **Published 29 Sep as the admin's alone, with a demo at
 `guest-contact.html?demo`** (made-up guests, no sign-in). Nothing here
@@ -11,7 +19,7 @@ reaches a guest until the steps under *Going live* are done, in order.
 
 ## The brief, in his words
 
-> "This would be a completely new module, let's call it Guest Contact. It
+> "This would be a completely new module, let's call it Chat. It
 > would be able to operate just like Guest Touch, whereby guests are
 > filtered by upcoming, in-house and past, based on their booking dates.
 > This makes it easy for us to send the guest a message and for them to
@@ -79,7 +87,7 @@ who texts STOP is shown as opted out and nothing is sent to them.
 
 ## How it works
 
-**Guest Contact** (`guest-contact.html`, top of the menu after Front Desk).
+**Chat** (`guest-contact.html`, top of the menu after Front Desk).
 Every guest by booking, on three tabs by their dates. Each row is the colour
 of where the conversation stands (`contactRowState`, the colour law):
 
@@ -157,7 +165,7 @@ housekeeping.
   nobody else, and only until Done. The approved WhatsApp wording stays
   the desk's.
 - Switched off, a login reads - its tasks, or at the desk the whole
-  conversation - and cannot send. Guest Contact says so where the box
+  conversation - and cannot send. Chat says so where the box
   was.
 - The admin and the manager always may. The masseuse is not on the grid,
   so never may: an outside contractor's reach is a rules decision.
@@ -169,7 +177,7 @@ and sends to the task's guest.
 
 **The Dashboard** has a Guest messages card beside Arrivals, today only: how
 many guests have a message to sort and how many tasks are open, and a door
-to Guest Contact. It reads both counts from the readers the two pages use.
+to Chat. It reads both counts from the readers the two pages use.
 
 **If a guest has no WhatsApp**, WhatsApp says so a few seconds after a send
 (Twilio error 63024 or 63003). The Worker sends the same words by SMS and
@@ -252,7 +260,7 @@ In this order. Steps 1 to 3 wait on Twilio and Meta, so start them first.
    they are the resort's. Then each person, on the Staff tab: switch on the
    teams whose tasks they do.
 9. **Publish** the pages, when asked in as many words. It can come before
-   Twilio, straight after the rules (step 5): Guest Contact and Tasks
+   Twilio, straight after the rules (step 5): Chat and Tasks
    arrive as the admin's alone - their menu entries, the pages and the
    Dashboard card - for every other login, manager and masseuse included.
    Try them with the real bookings: every guest on the three tabs, the
@@ -312,7 +320,7 @@ Only the test phones can be messaged. From them:
 
 ## Going live, and the switch-over
 
-1. **Remove `TEST_NUMBERS`** in Cloudflare. Guest Contact can now message
+1. **Remove `TEST_NUMBERS`** in Cloudflare. Chat can now message
    guests; the everyday texts are still ClickSend's.
 2. **Alerts.** Staff phones buzz once the push Worker (`nala-push`) knows two
    events, and `BUZZ` is set to `1` on `nala-contact`. The push Worker lives
@@ -329,14 +337,14 @@ Only the test phones can be messaged. From them:
      login as a sender.
    Until `BUZZ` is set nothing is sent to it, and the menu counts still work.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
-   *own number* in ClickSend (its code arrives in Guest Contact as a message;
-   if ClickSend sends it from a name rather than a number, Guest Contact has
+   *own number* in ClickSend (its code arrives in Chat as a message;
+   if ClickSend sends it from a name rather than a number, Chat has
    no thread to put it in, so read it in the Twilio console under Monitor,
    Logs, Messaging), then set `CLICKSEND_FROM` on `nala-invites` to it. The
    everyday texts still go through ClickSend, but replies land in Guest
-   Contact. The SMS pages do not check Guest Contact's STOP list meanwhile:
+   Contact. The SMS pages do not check Chat's STOP list meanwhile:
    the owner, 29 Sep, "not required, it will be a short transition". A
-   guest who texts STOP in that window shows as Opted out in Guest Contact.
+   guest who texts STOP in that window shows as Opted out in Chat.
 4. **Guest Touch** can go once guests texted from its number have checked
    out: their replies still go there until then.
 5. **The everyday texts move to Twilio.** Built, behind a switch (29 Sep).

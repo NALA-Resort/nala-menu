@@ -642,7 +642,7 @@ with sync_playwright() as p:
                            ("housekeeping@x", False), ("masseuse@x", False)):
         pg = page(email=email)
         at = pg.url.split("/")[-1].split("?")[0]
-        ck("%s %s Guest Contact" % (email.split("@")[0], "opens" if allowed else "is sent away from"),
+        ck("%s %s Chat" % (email.split("@")[0], "opens" if allowed else "is sent away from"),
            (at == "guest-contact.html") == allowed, at)
         done(pg)
 
@@ -724,7 +724,7 @@ with sync_playwright() as p:
 
     # ── 7. the teams, as Settings names them (29 Sep) ──────────────────
     # contactTeams is the one reading of the list: a renamed team, an added
-    # one, a retired one, as Guest Contact, Tasks and Settings each offer it.
+    # one, a retired one, as Chat, Tasks and Settings each offer it.
     SETTINGS_BAK = json.loads(json.dumps(SETTINGS))
     SETTINGS["teams"]["kitchen"]["label"] = "Kitchen pass"
     SETTINGS["teams"]["frontdesk"] = {"label": "Reception"}
@@ -835,7 +835,7 @@ with sync_playwright() as p:
     SETTINGS.clear(); SETTINGS.update(SETTINGS_BAK)
 
     # ── 8. tried by the admin before the staff see it (29 Sep) ─────────
-    # PREVIEW_PAGES: published before Twilio is set up, Guest Contact and
+    # PREVIEW_PAGES: published before Twilio is set up, Chat and
     # Tasks are the admin's alone until Settings opens them to the staff.
     PERMS_BAK = json.loads(json.dumps(PERMS)); PERMS.clear()
     menu = lambda p: p.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
@@ -852,7 +852,7 @@ with sync_playwright() as p:
        "guest-contact.html" not in m and "tasks.html" not in m and len(m) > 3, m)
     done(pg)
     pg = page(email="staff@x")
-    ck("while the admin opens Guest Contact", pg.url.split("/")[-1].split("?")[0] == "guest-contact.html")
+    ck("while the admin opens Chat", pg.url.split("/")[-1].split("?")[0] == "guest-contact.html")
     m = menu(pg)
     ck("and finds Tasks in the menu", "tasks.html" in m, m)
     done(pg)
@@ -860,7 +860,7 @@ with sync_playwright() as p:
     pg.click('[data-t="tTeams"]'); pg.wait_for_timeout(150)
     ck("Settings says the two are the admin's alone, the switch off",
        pg.get_attribute("#gcOpen", "aria-checked") == "false" and
-       "Only you see Guest Contact and Tasks" in pg.text_content("#gcOpenNote"))
+       "Only you see Chat and Tasks" in pg.text_content("#gcOpenNote"))
     del WRITES[:]
     pg.click("#gcOpen"); pg.wait_for_timeout(400)
     w = [x for x in WRITES if x["p"].startswith("/permissions")]
@@ -927,7 +927,7 @@ with sync_playwright() as p:
        pg.is_visible('.task[data-t="t1umbrella"] [data-act="done"]'))
     pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(150)
     ck("which opens a box, saying which way it goes as the Worker says it",
-       pg.is_visible(RB) and "Goes on WhatsApp" in pg.text_content('.task[data-t="t1umbrella"] .rwin') and
+       pg.is_visible(RB) and "To the guest, on WhatsApp" in pg.text_content('.task[data-t="t1umbrella"] .rwin') and
        pg.evaluate("()=>document.activeElement && document.activeElement.id") == RB[1:])
     ck("the box is the editable white, its Send the one solid on the card",
        pg.evaluate("(s)=>getComputedStyle(document.querySelector(s)).backgroundColor", RB) == "rgb(255, 255, 255)" and
@@ -937,18 +937,31 @@ with sync_playwright() as p:
     ck("an empty reply goes nowhere, and says why",
        not [b for b in SENT if b.get("kind") == "send"] and "Write the reply first" in pg.text_content(RF))
     pg.fill(RB, "On my way with a new one.")
-    pg.click(RS); pg.wait_for_timeout(900)
+    pg.click(RS); pg.wait_for_timeout(200)
+    sheet = pg.text_content("#sheet") if pg.is_visible("#sheet") else ""
+    ck("Send first asks: it goes straight to the guest, by name and villa, not to Reception (the owner, 30 Sep)",
+       "Send this to Sarah Whitfield?" in sheet and "villa 7" in sheet and "on WhatsApp" in sheet and
+       "not a message to Reception" in sheet and "On my way with a new one." in sheet and
+       not [b for b in SENT if b.get("kind") == "send"], sheet)
+    pg.click("#toBack"); pg.wait_for_timeout(150)
+    ck("Back sends nothing and keeps the words",
+       not pg.is_visible("#sheet") and pg.input_value(RB) == "On my way with a new one." and
+       not [b for b in SENT if b.get("kind") == "send"])
+    pg.click(RS); pg.wait_for_timeout(150)
+    pg.click("#toGuest"); pg.wait_for_timeout(900)
     sd = [b for b in SENT if b.get("kind") == "send"]
-    ck("Send hands the Worker the words and the task",
+    ck("Send to guest hands the Worker the words and the task",
        len(sd) == 1 and sd[0]["team"] == "maintenance" and sd[0]["t"] == "t1umbrella" and
        sd[0]["text"] == "On my way with a new one." and "via" not in sd[0] and "template" not in sd[0], sd)
-    ck("and once sent the box closes and the card asks for its conversation again",
-       not pg.query_selector(RB) and len([b for b in SENT if b.get("kind") == "tasklog"]) >= 1)
+    ck("and once sent the pop-up and the box close, and the card asks for its conversation again",
+       not pg.is_visible("#sheet") and not pg.query_selector(RB) and
+       len([b for b in SENT if b.get("kind") == "tasklog"]) >= 1)
     STATE["send"] = (409, {"error": "This guest texted STOP. Nothing can be sent until they text START."})
     pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(100)
-    pg.fill(RB, "Hello again"); pg.click(RS); pg.wait_for_timeout(500)
+    pg.fill(RB, "Hello again"); pg.click(RS); pg.wait_for_timeout(150)
+    pg.click("#toGuest"); pg.wait_for_timeout(500)
     ck("a refusal is said in the Worker's words, and what was typed stays",
-       "texted STOP" in pg.text_content(RF) and pg.input_value(RB) == "Hello again", pg.text_content(RF))
+       "texted STOP" in pg.text_content("#toErr") and pg.input_value(RB) == "Hello again", pg.text_content("#toErr"))
     STATE["send"] = None
     shot(pg, "tasks-reply")
     done(pg)
@@ -957,10 +970,13 @@ with sync_playwright() as p:
     pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)
     pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(100)
     say = pg.text_content('.task[data-t="t1umbrella"] .rwin')
-    pg.fill(RB, "Your umbrella is fixed."); pg.click(RS); pg.wait_for_timeout(700)
+    pg.fill(RB, "Your umbrella is fixed."); pg.click(RS); pg.wait_for_timeout(150)
+    by = pg.text_content("#sheet")
+    pg.click("#toGuest"); pg.wait_for_timeout(700)
     sd = [b for b in SENT if b.get("kind") == "send"]
     ck("past WhatsApp's 24 hours the card says so, and the reply goes by SMS",
-       "24 hours have passed" in say and "SMS" in say and len(sd) == 1 and sd[0].get("via") == "sms", [say, sd])
+       "24 hours have passed" in say and "SMS" in say and "by SMS" in by and len(sd) == 1 and
+       sd[0].get("via") == "sms", [say, by, sd])
     done(pg)
     STATE["route"] = {"ch": "none", "until": None}
     pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)

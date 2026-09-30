@@ -151,7 +151,7 @@ SPAR_SPA = {BOOKING: {"t1": {"status": "booked", "day": today, "time": "17:00",
 SPAR_BOOKINGS = {BOOKING: dict(BOOKINGS[BOOKING],
                                pms=dict(BOOKINGS[BOOKING]["pms"], phone="+61 400 000 001"))}
 
-# Guest Contact and Tasks (29 Sep) sweep a conversation with something in
+# Chat and Tasks (29 Sep) sweep a conversation with something in
 # it - a message still to sort, one sorted into a Bar task, one of ours -
 # and a task open for every team a sweep role holds, so each login's Done
 # is on screen to press. Served ONLY to those two pages, the spar pattern.
@@ -212,7 +212,7 @@ def fb(route, request):
             route.fulfill(status=200, content_type="application/json", body=json.dumps(g))
             return
     if "/staff" in u: body = json.dumps(STAFF)
-    # Guest Contact and Tasks are swept opened to the staff, the way they
+    # Chat and Tasks are swept opened to the staff, the way they
     # will be used; shut, they are the admin's alone (contact_suite).
     elif "/permissions" in u:
         body = json.dumps({"open": {"guest-contact": True, "tasks": True}}) if gc else "null"
@@ -257,7 +257,7 @@ PAGES = [
     ("templates.html",    ""),
     ("arrivals-sms.html", ""),
     ("spa-reminders.html", ""),
-    #  Guest Contact twice: the list, and one conversation with a message
+    #  Chat twice: the list, and one conversation with a message
     #  to sort, a task open and one of ours.
     ("guest-contact.html", ""),
     ("guest-contact.html", "?c=" + GC_CK + "&b=" + BOOKING),
@@ -468,7 +468,7 @@ with sync_playwright() as p:
         pg.route("**/fonts.googleapis.com/**",
                  lambda r: r.fulfill(status=200, body=""))
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
-        # Guest Contact's Worker, in test mode: hello answers, a send is
+        # Chat's Worker, in test mode: hello answers, a send is
         # refused the way the live one refuses a guest's number.
         def _contact(r):
             k = json.loads(r.request.post_data or "{}").get("kind")

@@ -76,7 +76,7 @@ SUITES = [
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
-    # Guest Contact's Worker, 29 Sep: Twilio, the 24 hours, the test list.
+    # Chat's Worker, 29 Sep: Twilio, the 24 hours, the test list.
     ("contactworker", ["node", "worker/contact-test.mjs"], 120),
     ("cardworker", ["node", "worker/cards-test.mjs"],     120),
     ("cards",      ["python3", "tests/cards_suite.py"],   300),

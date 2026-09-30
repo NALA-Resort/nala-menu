@@ -22,18 +22,18 @@ account is `staff@nalaresort.com.au`, so it maps to this role by name, which
 is convenient but coincidental - the role comes from the record, never from
 the address.
 
-Two more on 29 Sep, with Guest Contact (GUEST-CONTACT.md): the capability
+Two more on 29 Sep, with Chat (GUEST-CONTACT.md): the capability
 `tasks`, held by every human role, which opens the Tasks page - what a login
 SEES there is its teams, set per person in Settings, General, and the rules
-hold the same line - and the machine role `contact`, the Guest Contact
+hold the same line - and the machine role `contact`, the Chat
 Worker's login, which writes the guests' messages and nothing else, sync's
 pattern.
 
 And on 30 Sep, `guestReply`, **Reply to guests** on the Roles grid: a reply
-to a guest's message, from Guest Contact or from a task's card. It ships
+to a guest's message, from Chat or from a task's card. It ships
 with the admin, the manager and the waiter - the desk, which replied before
 it was a switch - and the grid moves it for the chef, the waiter and
-housekeeping. The Guest Contact Worker asks the same question (`mayDo`),
+housekeeping. The Chat Worker asks the same question (`mayDo`),
 held to the page's `can()` by `tests/contact_cases.json`.
 
 `manager` is the admin's grants minus `manageStaff`, and nothing else. That

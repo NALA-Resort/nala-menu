@@ -582,7 +582,7 @@ can('and the handset receipt lands on it', DESK, '/spareminders/b-100/t1',
     Object.assign({}, SPAREM, { delivery: 'delivered', deliveryAt: NOW,
                                 deliveryText: 'Success: Message received on handset.' }));
 /* A text sent again keeps the one it replaced under earlier (30 Sep), so
-   Guest Contact shows every text a guest was sent. */
+   Chat shows every text a guest was sent. */
 const WAS = { sentAt: '2026-09-29T08:00:00.000Z', by: 'manager@nalaresort.com.au', status: 'sent',
               to: '+61411000007', body: 'Good afternoon. Ahead of your stay with us...', providerId: 'mid-0',
               delivery: 'delivered', deliveryAt: '2026-09-29T08:01:00.000Z' };
@@ -1139,7 +1139,7 @@ console.log('--- an external guest, invited by SMS ---');
      !asx(DESK).update(P0, { token: 'NOT A TOKEN' }).allowed);
 })();
 
-/* ── Guest Contact, 29 Sep ───────────────────────────────────────
+/* ── Chat, 29 Sep ───────────────────────────────────────
    The guests' messages and the tasks they become. Three writers, three
    different reaches: the Worker's machine account (role contact) writes
    the messages as they arrive and go; the desk (editBookings, the waiter's
@@ -1147,13 +1147,13 @@ console.log('--- an external guest, invited by SMS ---');
    WhatsApp consent; a team's own login may only close its own team's open
    tasks, in its own name. Each body below is the one the Worker or the
    page sends. */
-console.log('--- Guest Contact: messages and tasks ---');
+console.log('--- Chat: messages and tasks ---');
 (function(){
   const CK = '61412345678', M = 'in-SM0123456789abcdef', OUT = '-Nout0001';
   const KEY = (e) => e.toLowerCase().replace(/\./g, ',');
   const data = JSON.parse(JSON.stringify(SEED));
   Object.assign(data.staff, {
-    '559210@staff,nala':          { name: 'Guest Contact Worker', role: 'contact' },
+    '559210@staff,nala':          { name: 'Chat Worker', role: 'contact' },
     'grounds@nalaresort,com,au':  { name: 'Grounds', role: 'housekeeping' },
     'masseuse@nalaresort,com,au': { name: 'Masseuse', role: 'spa' }
   });
@@ -1235,7 +1235,7 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('the admin sets who does a team\'s tasks',
      asx(ADMIN).write(`/contactsettings/teams/bar/members/${KEY('waiter@nalaresort.com.au')}`, true).allowed);
 
-  console.log('--- Guest Contact: and what each may not ---');
+  console.log('--- Chat: and what each may not ---');
   ck('a team login reads no conversation',
      !asx(CHEF).read('/contact').allowed && !asx(CHEF).read(`/contactmsgs/${CK}`).allowed &&
      !asx(HK).read('/contactnew').allowed && !asx(MASSEUSE).read('/contact').allowed);
@@ -1317,8 +1317,8 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('a team closing its task cannot write the note',
      !asx(GROUNDS).update('/tasks/maintenance/t1abcdef', { state: 'done', doneAt: NOW,
        doneBy: 'grounds@nalaresort.com.au', doneDay: TODAY, note: 'done it my way' }).allowed);
-  /* Guest Contact's preview (29 Sep): the admin opens it to the staff. */
-  ck('the admin opens Guest Contact and Tasks to the staff, and shuts them again',
+  /* Chat's preview (29 Sep): the admin opens it to the staff. */
+  ck('the admin opens Chat and Tasks to the staff, and shuts them again',
      asx(ADMIN).update('/permissions/open', { 'guest-contact': true, tasks: true }).allowed &&
      asx(ADMIN).update('/permissions/open', { 'guest-contact': null, tasks: null }).allowed);
   ck('nobody else may, and open is yes or no',
@@ -1345,7 +1345,7 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('the tasks capability may be switched off per role',
      asx(ADMIN).write('/permissions/tasks/housekeeping', false).allowed);
   ck('the Worker\'s machine role can be assigned',
-     asx(ADMIN).write('/staff/559211@staff,nala', { name: 'Guest Contact Worker', role: 'contact' }).allowed);
+     asx(ADMIN).write('/staff/559211@staff,nala', { name: 'Chat Worker', role: 'contact' }).allowed);
 })();
 
 console.log('RESULT: %d passed, %d failed', P, F);

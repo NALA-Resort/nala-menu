@@ -1627,7 +1627,7 @@ with sync_playwright() as p:
         .filter(a=>getComputedStyle(a).display!=='none')
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     # Nothing stored here, so Tasks is still the admin's alone (PREVIEW_PAGES,
-    # 29 Sep). Once Guest Contact is opened to the staff the masseuse's menu
+    # 29 Sep). Once Chat is opened to the staff the masseuse's menu
     # gains Tasks, where a guest's request tagged Spa lands: cl_suite and
     # contact_suite hold that side.
     ck("and the masseuse's menu offers no other page", links == [])

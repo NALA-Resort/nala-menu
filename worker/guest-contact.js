@@ -1,4 +1,4 @@
-/* NALA Guest Contact Worker
+/* NALA Chat Worker
  *
  * The messenger behind guest-contact.html: Twilio, for SMS and WhatsApp,
  * from one Australian mobile number. Asked for by the owner on 29 Sep to
@@ -153,7 +153,7 @@ export function contactTemplateText(id, first, arrive) {
 
 /* ── who may do what ─────────────────────────────────────────────
    can() as nala-shared.js answers it, for the two things this Worker asks:
-   editBookings, the desk - Guest Contact's own gate, the same line the
+   editBookings, the desk - Chat's own gate, the same line the
    rules draw for the desk's writes - and guestReply, a reply to a guest
    (30 Sep, a switch per role in Settings, Roles). The admin and the
    manager always; an explicit matrix answer; else what the role ships
@@ -451,7 +451,7 @@ async function desk(request, env) {
   const email = look && look.ok && who && who.users && who.users[0] && who.users[0].email;
   if (!email) return reply(401, { error: "sign in again" });
 
-  /* 2. What the role may do: editBookings is the desk, Guest Contact's own
+  /* 2. What the role may do: editBookings is the desk, Chat's own
      gate; guestReply is a reply to a guest, from there or a task's card. */
   let staffRec, permissions;
   try {
@@ -549,7 +549,7 @@ async function desk(request, env) {
       "Cache-Control": "private, max-age=3600", ...CORS } });
   }
 
-  if (!deskOk && kind !== "send") return reply(403, { error: "this login may not use Guest Contact" });
+  if (!deskOk && kind !== "send") return reply(403, { error: "this login may not use Chat" });
   /* Reply to guests, the switch per role in Settings (30 Sep): every send,
      the desk's and a team's, stops here without it. */
   if (kind === "send" && !replyOk) return reply(403, { error: NO_REPLY });
@@ -569,7 +569,7 @@ async function desk(request, env) {
     task = await taskOf(String(body.team || ""), String(body.t || ""));
     if (!task || task.state !== "open")
       return reply(403, { error: "That is not an open task of this login's teams" });
-    if (body.template) return reply(400, { error: "An approved message goes from Guest Contact" });
+    if (body.template) return reply(400, { error: "An approved message goes from Chat" });
   }
   const ck = task ? String(task.ck) : String(body.ck || "");
   if (!/^[1-9]\d{7,14}$/.test(ck)) return reply(400, { error: "bad guest number" });

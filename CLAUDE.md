@@ -94,7 +94,7 @@ Already done this way — follow these:
   `guest_suite` both answer to it. Added 28 Sep, after an opening that read
   later than its completion was taken for the two labels swapped.
 
-- `tests/contact_cases.json` - Guest Contact's rules: WhatsApp's 24 hours
+- `tests/contact_cases.json` - Chat's rules: WhatsApp's 24 hours
   (`waWindow`), which way a message goes (`contactChannel`), the approved
   WhatsApp words (`contactTemplateText`), each a twin in nala-shared.js and
   worker/guest-contact.js, and the colour a guest's row wears
@@ -119,12 +119,12 @@ Two things the generator gets right that you would get wrong pasting: each
 page omits its own link, and the permission keys are `resSheet` and
 `cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
 
-A page can go live to the admin alone first (29 Sep, Guest Contact before
+A page can go live to the admin alone first (29 Sep, Chat before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the
 admin only until `/permissions/open/<page>` is true. `canOpen` answers it,
 so the menu, its count and any Dashboard card follow.
 
-Guest Contact's demo (`guest-contact.html?demo`, contact-demo.js) moves
+Chat's demo (`guest-contact.html?demo`, contact-demo.js) moves
 with the module: a change the owner can see is in the demo in the same
 commit, checked by `contact_demo_suite.py` (the owner, 30 Sep: "Keep
 update the demo as we go").
@@ -149,9 +149,9 @@ not.
 
 The full run waits until the feature is finished and the owner is ready
 to publish, not the end of each step (the owner, 30 Sep, after one was
-started after every change to Guest Contact). A change to nala-shared.js
+started after every change to Chat). A change to nala-shared.js
 makes `--changed` select everything, so while building, name the
-feature's suites instead. And a publish for Guest Contact's demo, while the
+feature's suites instead. And a publish for Chat's demo, while the
 module is the admin's alone, needs the suites that cover the change, not
 the full run (the owner, 30 Sep: "It's just a demo").
 

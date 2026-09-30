@@ -39,7 +39,7 @@
  *                       it moves the texts straight back.
  *   TWILIO_ACCOUNT_SID  the same three nala-contact holds: the account,
  *   TWILIO_AUTH_TOKEN   its Auth Token, and the number, +614XXXXXXXX,
- *   TWILIO_FROM         which Guest Contact answers on
+ *   TWILIO_FROM         which Chat answers on
  *
  * And one step that is not a secret: menu.nalaresort.com has to be registered
  * at dashboard.clicksend.com/sms/website-registration before any message
@@ -139,7 +139,7 @@ const bodyHasUrl = (s) => /(https?:\/\/|www\.)/i.test(s || "");
 
 /* A text sent again replaces the record its page reads, and the text it
    replaces rides along under earlier, newest first, five at most (the
-   owner, 30 Sep: Guest Contact must hold "every outgoing and incoming
+   owner, 30 Sep: Chat must hold "every outgoing and incoming
    message including dinner invitations and pre-arrival form" - the
    pre-arrival nudge used to erase the first text from the conversation).
    Only a text that went is kept: an attempt that failed was never a
@@ -322,10 +322,10 @@ async function clickSend(env, phone, bodyText) {
 
 /* ── the sender: ClickSend, or Twilio once switched ───────────────
    The owner's plan, 29 Sep: ClickSend carries the everyday texts while
-   Guest Contact is built and tested on Twilio, then sends from Twilio's
+   Chat is built and tested on Twilio, then sends from Twilio's
    number, then the texts move to Twilio. SMS_VIA=twilio is that move: every
    kind sends through Twilio's Messages API from TWILIO_FROM, the number
-   Guest Contact answers on. Unset, it is ClickSend exactly as before. Every
+   Chat answers on. Unset, it is ClickSend exactly as before. Every
    kind sends through here and reads the same answer, { ok, id, error,
    shortened }, whichever service it came from.
 

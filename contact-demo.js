@@ -1,4 +1,4 @@
-/* Guest Contact's demo: the real Guest Contact and Tasks pages, with made-up
+/* Chat's demo: the real Chat and Tasks pages, with made-up
    guests, before Twilio exists. The owner, 29 Sep: "Maybe a demo
    environment is better?" - to try the whole flow without the live app.
 
@@ -365,7 +365,7 @@
       var mine = (((TREE.contactsettings || {}).teams || {})[b.team] || {}).members || {};
       var tk = mine[WHO.email] === true && get('/tasks/' + b.team + '/' + b.t);
       if (!tk || tk.state !== 'open') return answer(403, { error:'That is not an open task of this login\u2019s teams' });
-      if (b.template) return answer(400, { error:'An approved message goes from Guest Contact' });
+      if (b.template) return answer(400, { error:'An approved message goes from Chat' });
       ck = String(tk.ck);
     }
     var t = get('/contact/' + ck) || {};
@@ -541,7 +541,7 @@
     var h = (a.getAttribute('href') || '').split('?')[0].split('#')[0];
     if (!h || h === 'guest-contact.html' || h === 'tasks.html') return;
     e.preventDefault(); e.stopPropagation();
-    say('Only Guest Contact and Tasks are in the demo.');
+    say('Only Chat and Tasks are in the demo.');
   }, true);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bar);
   else bar();

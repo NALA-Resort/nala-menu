@@ -693,7 +693,7 @@ ck("and a key in the wrong shape is never looked up",
 
 /* ── SMS_VIA=twilio: the everyday texts move to Twilio ─────────────
    The switch-over's last step (GUEST-CONTACT.md). Every kind sends through
-   Twilio from the number Guest Contact answers on; nothing reaches
+   Twilio from the number Chat answers on; nothing reaches
    ClickSend; a receipt is asked of whichever service sent the text, so the
    ones sent before the switch keep resolving. */
 const TW = { SMS_VIA: " Twilio ", TWILIO_ACCOUNT_SID: "AC123", TWILIO_AUTH_TOKEN: "tok",
@@ -701,7 +701,7 @@ const TW = { SMS_VIA: " Twilio ", TWILIO_ACCOUNT_SID: "AC123", TWILIO_AUTH_TOKEN
 Object.assign(env, TW);
 install();
 r = await post(); j = await r.json();
-ck("switched, tonight's menu goes through Twilio, from Guest Contact's number",
+ck("switched, tonight's menu goes through Twilio, from Chat's number",
    j.results["4"].status === "sent" && SENDS.length === 0 && TSENDS.length === 1 &&
    TSENDS[0].form.From === "+61480000000" && TSENDS[0].form.To === "+61411222333" &&
    TSENDS[0].auth === "Basic " + btoa("AC123:tok"));
@@ -765,7 +765,7 @@ ck("and with SMS_VIA gone, the texts are ClickSend's again",
    SENDS.length === 1 && TSENDS.length === 0);
 
 /* ── a text sent again keeps the one it replaced (30 Sep) ─────────
-   The owner: Guest Contact must hold "every outgoing and incoming message
+   The owner: Chat must hold "every outgoing and incoming message
    including dinner invitations and pre-arrival form". Each page's record
    is its latest send; the one it replaced rides along under earlier. */
 install(); STORE["/menu"] = null;

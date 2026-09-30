@@ -98,7 +98,7 @@ ck("nala-ui2.css gives the paper a ground, and it is not the cards' white",
    PAPER is not None and PAPER != "rgb(255, 255, 255)", GROUND)
 # Nine boards on 27 Sep, then Publish Menu and Dietary the same day, then
 # Spa reminders on 28 Sep: drawn on paper in mock-spa-reminders.html, beside
-# Pre-arrival SMS whose dress it copies, and approved that way. Guest Contact
+# Pre-arrival SMS whose dress it copies, and approved that way. Chat
 # and Tasks, 29 Sep: drawn on paper in mock-guest-contact.html.
 ck("the pages the owner put on paper wear it, and no others",
    WEARS == sorted(["tally.html", "front-desk.html", "dashboard.html", "cleaners.html", "spa.html",

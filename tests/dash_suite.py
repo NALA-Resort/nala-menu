@@ -177,7 +177,7 @@ WPREINV = {"pa-sent2":  {"status": "sent", "sentAt": at(9), "delivery": "deliver
 
 STATE = {"fail": False, "contactfail": False}
 
-# Guest Contact (29 Sep): two guests with a message nobody has sorted, and
+# Chat (29 Sep): two guests with a message nobody has sorted, and
 # the teams' tasks - one open for Maintenance, one done for Bar, and one
 # still open for Pool bar, a team since retired, which must still count.
 CONTACT_NEW = {"61400000011": {"in-SM1": True, "in-SM2": True},
@@ -332,7 +332,7 @@ with sync_playwright() as p:
 
     # ── the page draws at all ───────────────────────────────────
     pg = board()
-    #  Twelve since 29 Sep: Guest messages joined Arrivals off the spine.
+    #  Twelve since 29 Sep: Chat's card joined Arrivals off the spine.
     #  (Eleven when Pre-arrival SMS joined the top of it, 22 Sep; ten when
     #  Key cards joined beside Arrival sheets, 8 Sep.)
     ck("the board renders its cards",
@@ -906,15 +906,15 @@ with sync_playwright() as p:
        not badf)
     pg.close()
 
-    # ── Guest messages (29 Sep) ─────────────────────────────────
+    # ── Chat's card (29 Sep; Guest messages until 30 Sep) ─────────────────────────────────
     #  Two counts, each from its owner: /contactnew's keys, and
     #  contactOpenTasks over contactTeams - a retired team's open task
     #  counted, a done one not.
     pg = board()
     gm = card(pg, "contact")
-    ck("Guest messages counts the guests with a message to sort, and the open tasks",
+    ck("Chat's card counts the guests with a message to sort, and the open tasks",
        gm["note"] == "2 guests have messages to sort · 2 tasks open", gm)
-    ck("off the spine, like Arrivals, a door to Guest Contact for the desk",
+    ck("off the spine, like Arrivals, a door to Chat for the desk",
        gm["pos"] == "off" and gm["door"] and
        pg.evaluate("()=>HREF.contact") == "guest-contact.html", gm)
     pg.close()
@@ -925,7 +925,7 @@ with sync_playwright() as p:
     #  Shut (PREVIEW_PAGES, 29 Sep), the card is the admin's alone, like
     #  the page it counts; opened in Settings, the desk's too.
     pg = board(email="waiter@x")
-    ck("while Guest Contact is the admin's alone, the waiter's board has no card",
+    ck("while Chat is the admin's alone, the waiter's board has no card",
        not [c for c in cards(pg) if c["k"] == "contact"])
     pg.close()
     PERMS["open"] = {"guest-contact": True, "tasks": True}
