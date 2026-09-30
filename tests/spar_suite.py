@@ -531,14 +531,18 @@ with sync_playwright() as p:
 
     # ── the Send footer, and the widths ──────────────────────────
     pg = page()
+    #  The foot of the screen is the tab bar's where one is drawn (30 Sep):
+    #  the footer stands on its top edge, and on the screen's edge without it.
     FOOT = """()=>{const f=document.querySelector('.foot').getBoundingClientRect(),
-      l=document.getElementById('pvArea').getBoundingClientRect();
+      l=document.getElementById('pvArea').getBoundingClientRect(),
+      t=document.getElementById('tabBar');
       return {pos:getComputedStyle(document.querySelector('.foot')).position,
-              top:f.top, bottom:f.bottom, h:innerHeight, last:l.bottom};}"""
+              top:f.top, bottom:f.bottom, h:innerHeight, last:l.bottom,
+              floor:t&&getComputedStyle(t).display!=='none'?t.getBoundingClientRect().top:innerHeight};}"""
     pg.evaluate("()=>scrollTo(0, document.documentElement.scrollHeight)"); pg.wait_for_timeout(150)
     g = pg.evaluate(FOOT)
     ck("the Send footer is fixed to the foot of the screen, Invitations' rule",
-       g["pos"] == "fixed" and abs(g["bottom"] - g["h"]) <= 1, g)
+       g["pos"] == "fixed" and abs(g["bottom"] - g["floor"]) <= 1, g)
     ck("and at the end of the page the preview is not hidden under it",
        g["last"] <= g["top"], g)
     ck("the message box shows the whole template without scrolling",

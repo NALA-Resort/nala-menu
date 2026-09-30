@@ -1098,9 +1098,13 @@ with sync_playwright() as p:
     FOOT = """()=>{const f=document.querySelector('.foot').getBoundingClientRect(),
       b=document.getElementById('sendBtn').getBoundingClientRect(),
       r=document.querySelector('.vrow[data-villa="5"]').getBoundingClientRect(),
-      l=document.querySelector('.linknote').getBoundingClientRect();
+      l=document.querySelector('.linknote').getBoundingClientRect(),
+      t=document.getElementById('tabBar');
+      /* The foot of the screen is the tab bar's where one is drawn (30 Sep):
+         the footer stands on its top edge, and on the screen's without it. */
       return {pos:getComputedStyle(document.querySelector('.foot')).position,
               top:f.top, bottom:f.bottom, h:innerHeight, link:l.bottom,
+              floor:t&&getComputedStyle(t).display!=='none'?t.getBoundingClientRect().top:innerHeight,
               bl:b.left, br:b.right, rl:r.left, rr:r.right};}"""
     pg = board()
     pg.click(".arrivals > summary"); pg.wait_for_timeout(200)
@@ -1112,7 +1116,7 @@ with sync_playwright() as p:
     ck("the Send footer is fixed to the screen, not sticky in the page",
        at["top"]["pos"] == "fixed", at["top"]["pos"])
     ck("with Arrivals opened it stays at the foot of the screen, however far scrolled",
-       all(abs(g["bottom"] - g["h"]) <= 1 for g in at.values()), at)
+       all(abs(g["bottom"] - g["floor"]) <= 1 for g in at.values()), at)
     ck("and at the end of the list nothing is left hidden under it",
        at["end"]["link"] <= at["end"]["top"], at["end"])
     ck("the button keeps to the list's own column on a phone",
