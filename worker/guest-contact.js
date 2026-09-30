@@ -193,7 +193,7 @@ async function machineToken(env) {
   TOKEN = j.idToken; TOKEN_AT = Date.now();
   return TOKEN;
 }
-export function forgetToken() { TOKEN = null; TOKEN_AT = 0; }   /* for the test */
+export function forgetToken() { TOKEN = null; TOKEN_AT = 0; REFUSED = null; }   /* for the test */
 
 async function db(env, path, method, body) {
   const t = await machineToken(env);
@@ -320,9 +320,19 @@ async function villaOf(env, phone) {
 }
 
 /* ── a guest's message arriving ─────────────────────────────────── */
+/* The last text Twilio passed here that was refused, and why, for the
+   setup check (30 Sep). Kept in the Worker's memory only: it holds no
+   message, and a restart forgets it, which costs one more test text. */
+let REFUSED = null;
 async function inbound(request, env, ctx) {
   const p = await formOf(request);
-  if (!(await fromTwilio(request, env, p))) return new Response("not from Twilio", { status: 403 });
+  if (!(await fromTwilio(request, env, p))) {
+    REFUSED = { at: new Date().toISOString(), why: (env.TWILIO_AUTH_TOKEN || "").trim()
+      ? "its signature did not match TWILIO_AUTH_TOKEN. Copy the Auth Token again from the " +
+        "Twilio console's home page, the live one, not a test credential"
+      : "TWILIO_AUTH_TOKEN is not set on the Worker" };
+    return new Response("not from Twilio", { status: 403 });
+  }
   const raw = String(p.From || "");
   const wa = /^whatsapp:/i.test(raw);
   const phone = normalisePhone(raw.replace(/^whatsapp:/i, ""));
@@ -431,6 +441,105 @@ function statusUrl(base, ck, m) {
   return new URL(base).origin + "/twilio/status?ck=" + ck + "&m=" + encodeURIComponent(m);
 }
 
+/* ── the setup check ─────────────────────────────────────────────
+   Each line: ok true (working), false (to fix, and how) or null (only so
+   you know). In the order the setup steps set them. */
+export async function setupCheck(request, env) {
+  const out = [];
+  const add = (key, ok, say, at) => out.push(at ? { key, ok, say, at } : { key, ok, say });
+  const sid = (env.TWILIO_ACCOUNT_SID || "").trim(), tok = (env.TWILIO_AUTH_TOKEN || "").trim();
+  const from = normalisePhone(env.TWILIO_FROM || "");
+  const want = new URL(request.url).origin + "/twilio/in";
+  const tw = (path) => fetch(TWILIO + sid + path, { headers: { "Authorization": twilioAuth(env) } })
+    .catch(() => null);
+
+  /* 1. Twilio's keys, asked of Twilio itself */
+  let acct = null;
+  if (!sid || !tok) {
+    add("twilio", false, (!sid ? "TWILIO_ACCOUNT_SID" : "TWILIO_AUTH_TOKEN") +
+                         " is not set on the Worker (step 5).");
+  } else {
+    const r = await tw(".json");
+    acct = r && r.ok ? await r.json().catch(() => null) : null;
+    if (!r) add("twilio", false, "Twilio could not be reached just now. Check again in a minute.");
+    else if (r.status === 401 || r.status === 404)
+      add("twilio", false, "Twilio refuses TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN. Copy both again " +
+                           "from the Twilio console's home page, Account Info (step 5).");
+    else if (!acct) add("twilio", false, "Twilio answered " + r.status + " when asked for the account.");
+    else if (acct.status && acct.status !== "active")
+      add("twilio", false, "The Twilio account is " + acct.status + ", not active.");
+    else if (String(acct.type || "").toLowerCase() === "trial")
+      add("twilio", false, "The Twilio account is still a trial, which can only text phones " +
+                           "verified in Twilio. Upgrade it (step 3).");
+    else add("twilio", true, "Twilio accepts the Account SID and the Auth Token.");
+  }
+
+  /* 2. the number, and where Twilio hands its texts */
+  if (!from) {
+    add("number", false, env.TWILIO_FROM
+      ? "TWILIO_FROM is not a number Chat can send from: it should read +614 and eight digits."
+      : "TWILIO_FROM is not set on the Worker (step 5).");
+  } else if (acct) {
+    const r = await tw("/IncomingPhoneNumbers.json?PhoneNumber=" + encodeURIComponent(from));
+    const j = r && r.ok ? await r.json().catch(() => null) : null;
+    const n = j && Array.isArray(j.incoming_phone_numbers) ? j.incoming_phone_numbers[0] : null;
+    if (!n) add("number", false, "TWILIO_FROM, " + from + ", is not a number on this Twilio account.");
+    else {
+      add("number", true, "The number " + from + " is on the Twilio account.");
+      const url = String(n.sms_url || "").trim(), how = String(n.sms_method || "").toUpperCase();
+      if (url === want && how === "POST") add("webhook", true, "Twilio hands the number's texts to Chat.");
+      else add("webhook", false, "Twilio hands the number's texts to " +
+        (url ? url + " by " + (how || "an unknown method") : "nowhere") + ". It should be " + want +
+        " by HTTP POST: Active numbers, the number, A message comes in (step 6).");
+    }
+  }
+
+  /* 3. the Worker's own login, its role, and the rules */
+  let signed = false;
+  if (!(env.CONTACT_EMAIL || "").trim() || !(env.CONTACT_PASSWORD || "").trim()) {
+    add("login", false, ((env.CONTACT_EMAIL || "").trim() ? "CONTACT_PASSWORD" : "CONTACT_EMAIL") +
+                        " is not set on the Worker (step 5).");
+  } else {
+    try { await machineToken(env); signed = true; add("login", true, "The Chat Worker signs in."); }
+    catch (e) {
+      const m = String((e && e.message) || e);
+      add("login", false, /API key/i.test(m)
+        ? "FB_API_KEY is not the app's key: paste it again from step 5."
+        : "The Chat Worker cannot sign in (" + m.replace(/^the Worker's login failed: /, "")
+            .replace(/ - check.*$/, "") + "). CONTACT_EMAIL must be its six digit passcode then " +
+          "@staff.nala, and CONTACT_PASSWORD the same six digits (steps 2 and 5).");
+    }
+  }
+  if (signed) {
+    const who = String(env.CONTACT_EMAIL).trim();
+    const rec = await db(env, "/staff/" + emailKey(who), "GET").catch(() => undefined);
+    const threads = await db(env, "/contact/0", "GET").then(() => true).catch(() => false);
+    if (rec === undefined || !threads)
+      add("rules", false, "The database refuses the Chat Worker: publish the rules (step 1), and " +
+                          "check its role is contact in Settings (step 2).");
+    else if (!rec || rec.role !== "contact")
+      /* The address is never said: its six digits are the Worker's password. */
+      add("rules", false, (rec ? "Settings gives the Chat Worker's login the role " + (rec.role || "none")
+                                : "Settings has no one with the Chat Worker's login") +
+                          ": it should be the Chat Worker, role contact (step 2).");
+    else add("rules", true, "The database takes the guests' messages from the Chat Worker.");
+  }
+
+  /* 4. the last text refused, while the Worker remembers it */
+  if (REFUSED)
+    add("inbound", false, "The last text Twilio passed here was refused: " + REFUSED.why + ".", REFUSED.at);
+
+  /* 5. only so you know */
+  const tl = testList(env);
+  add("test", null, tl ? "Test mode is on: Chat can only message " + tl.length +
+                         (tl.length === 1 ? " phone" : " phones") + ", the ones in TEST_NUMBERS."
+                       : "Test mode is off: Chat can message any guest.");
+  add("whatsapp", null, (env.TWILIO_WA_FROM || "").trim()
+    ? "WhatsApp is set up on " + normalisePhone(env.TWILIO_WA_FROM) + "."
+    : "WhatsApp is not set up yet, so everything goes by SMS.");
+  return out;
+}
+
 /* ── the desk ────────────────────────────────────────────────────── */
 async function desk(request, env) {
   let body;
@@ -438,7 +547,7 @@ async function desk(request, env) {
   catch { return reply(400, { error: "not JSON" }); }
   const { idToken, kind } = body || {};
   if (!idToken) return reply(401, { error: "no idToken" });
-  if (["hello", "send", "media", "tasklog", "taskmedia"].indexOf(kind) < 0)
+  if (["hello", "send", "media", "tasklog", "taskmedia", "check"].indexOf(kind) < 0)
     return reply(400, { error: "unknown kind" });
 
   /* 1. Who is asking, from the token: accounts:lookup checks the signature,
@@ -553,6 +662,20 @@ async function desk(request, env) {
   /* Reply to guests, the switch per role in Settings (30 Sep): every send,
      the desk's and a team's, stops here without it. */
   if (kind === "send" && !replyOk) return reply(403, { error: NO_REPLY });
+
+  /* ── the setup check (30 Sep) ──────────────────────────────────
+     The owner, a test text refused and a Twilio console that would not say
+     why: "Why don't you just create an error webhook url". So the Worker
+     checks itself - each thing the setup steps set - and Chat says, in
+     plain words, what is wrong, where the admin already looks. Nothing
+     secret leaves it: which settings are there, whether Twilio and
+     Firebase accept them, and where Twilio sends the number's texts. */
+  if (kind === "check") {
+    const r = role === "staff" ? "admin" : role;
+    if (r !== "admin" && r !== "manager")
+      return reply(403, { error: "Only the admin and the manager see the setup check" });
+    return reply(200, { check: await setupCheck(request, env) });
+  }
 
   const test = !!testList(env);
   if (kind === "hello")
@@ -689,7 +812,9 @@ export default {
       if (path === "/twilio/status") return await receipt(request, env);
       return await desk(request, env);
     } catch (e) {
-      return reply(500, { error: String((e && e.message) || e).slice(0, 200) });
+      const why = String((e && e.message) || e).slice(0, 200);
+      if (path === "/twilio/in") REFUSED = { at: new Date().toISOString(), why };
+      return reply(500, { error: why });
     }
   }
 };

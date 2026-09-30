@@ -126,6 +126,20 @@ function install() {
         return new Response(JSON.stringify({ code: 21211, message: "The 'To' number is not valid." }), { status: 400 });
       return new Response(JSON.stringify({ sid: "SM" + SENT.length, status: "queued" }), { status: 201 });
     }
+    /* The account and its numbers, as the setup check asks for them.
+       twilioAuthOk false is a token Twilio refuses. */
+    if (u.startsWith("https://api.twilio.com/2010-04-01/Accounts/AC123.json") ||
+        u.includes("/IncomingPhoneNumbers.json")) {
+      if (STATE.twilioAuthOk === false || opt.headers.Authorization !== "Basic " + btoa("AC123:" + AUTH))
+        return new Response(JSON.stringify({ code: 20003, message: "Authenticate" }), { status: 401 });
+      if (u.endsWith("AC123.json"))
+        return new Response(JSON.stringify(Object.assign({ sid: "AC123", status: "active", type: "Full" },
+                                                          STATE.account || {})), { status: 200 });
+      const want = decodeURIComponent((u.split("PhoneNumber=")[1] || ""));
+      const nums = (STATE.numbers || [{ phone_number: "+61480000000", sms_url: BASE + "/twilio/in",
+                                        sms_method: "POST" }]).filter((n) => n.phone_number === want);
+      return new Response(JSON.stringify({ incoming_phone_numbers: nums }), { status: 200 });
+    }
     if (u.startsWith("https://api.twilio.com/")) {
       SENT.push({ media: u, auth: opt.headers && opt.headers.Authorization });
       /* Twilio answers a media address with a redirect to a signed link. A
@@ -144,6 +158,8 @@ function install() {
     if (u.includes("nala-push")) { BUZZ.push(JSON.parse(opt.body)); return new Response("{}"); }
     const [path, query] = u.split("firebasedatabase.app")[1].split(".json");
     const token = new URLSearchParams(query.slice(1)).get("auth");
+    /* dbRefuse: the rules before their paste, which refuse the Worker */
+    if (STATE.dbRefuse && token === "MACHINE") return new Response('{"error":"Permission denied"}', { status: 401 });
     if (method !== "GET") WRITES.push({ method, path, token });
     if (method === "PUT") { STORE[path] = JSON.parse(opt.body); return new Response(opt.body); }
     if (method === "PATCH") {
@@ -640,6 +656,78 @@ ck("the desk switched off: the waiter still reads Chat, but may not reply",
    (await desk({ kind: "hello" })).status === 200 && r.status === 403 && SENT.length === 0);
 STATE.email = "mgr@nala.x";
 ck("the manager always may", (await desk({ kind: "send", ck: SARAH, text: "hi" })).status === 200);
+
+/* ── the setup check (30 Sep) ────────────────────────────────────
+   The owner, a test text refused and Twilio's console no help: "Why
+   don't you just create an error webhook url". The Worker checks each
+   thing the setup steps set and says in plain words what is wrong. */
+const check = async (env = envOf()) => {
+  const r = await desk({ kind: "check" }, env);
+  const j = await r.json().catch(() => ({}));
+  return { status: r.status, by: Object.fromEntries((j.check || []).map((x) => [x.key, x])), list: j.check || [] };
+};
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+let c = await check();
+ck("set up as the steps say, every line of the check is working, in the steps' order",
+   c.status === 200 && ["twilio", "number", "webhook", "login", "rules"].every((k) => c.by[k] && c.by[k].ok === true) &&
+   c.list.map((x) => x.key).join() === "twilio,number,webhook,login,rules,test,whatsapp", c.list);
+ck("and what is only for knowing says so: test mode, WhatsApp",
+   c.by.test.ok === null && /Test mode is off/.test(c.by.test.say) && c.by.whatsapp.ok === null &&
+   /WhatsApp is set up/.test(c.by.whatsapp.say));
+ck("nothing secret in it: no token, no password, no Account SID",
+   !JSON.stringify(c.list).includes(AUTH) && !JSON.stringify(c.list).includes("559210\"") &&
+   !JSON.stringify(c.list).includes("AC123"));
+install(); STORE["/staff/559210@staff,nala"] = { role: "contact" };
+ck("only the admin and the manager may ask for it", (await check()).status === 403);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.twilioAuthOk = false;
+c = await check();
+ck("a token Twilio refuses is named, with where to copy it from",
+   c.by.twilio.ok === false && /refuses TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN/.test(c.by.twilio.say), c.by.twilio);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.account = { type: "Trial" };
+ck("a trial account is named: it can only text verified phones", /still a trial/.test((await check()).by.twilio.say));
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.numbers = [{ phone_number: "+61480000000", sms_url: "https://demo.twilio.com/welcome/sms/reply", sms_method: "POST" }];
+c = await check();
+ck("texts handed somewhere else: the check names where, and where they should go",
+   c.by.number.ok === true && c.by.webhook.ok === false &&
+   c.by.webhook.say.includes("https://demo.twilio.com/welcome/sms/reply") &&
+   c.by.webhook.say.includes(BASE + "/twilio/in by HTTP POST"), c.by.webhook);
+STATE.numbers = [{ phone_number: "+61480000000", sms_url: BASE + "/twilio/in", sms_method: "GET" }];
+ck("and a GET where it must be POST", (await check()).by.webhook.ok === false);
+STATE.numbers = [];
+ck("a number that is not on the account", /is not a number on this Twilio account/.test((await check()).by.number.say));
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.loginOk = false;
+c = await check();
+ck("the Worker's own login failing, with the passcode to check",
+   c.by.login.ok === false && /cannot sign in \(INVALID_PASSWORD\)/.test(c.by.login.say) && !c.by.rules, c.by.login);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "waiter" };
+c = await check();
+ck("a login with the wrong role in Settings, its address - its password's digits - never said",
+   /the role waiter/.test(c.by.rules.say) && !JSON.stringify(c.list).includes("559210"), c.by.rules);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.dbRefuse = true;
+ck("rules not yet published: the database refuses the Worker",
+   /publish the rules \(step 1\)/.test((await check()).by.rules.say));
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+await inbound({ From: "+61412345678", Body: "Test 1", MessageSid: "SMz1" }, { token: "a-different-token" });
+c = await check();
+ck("a text refused for its signature is told, with when, while the Worker remembers it",
+   c.by.inbound && c.by.inbound.ok === false && /signature did not match TWILIO_AUTH_TOKEN/.test(c.by.inbound.say) &&
+   !!c.by.inbound.at, c.by.inbound);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.loginOk = false;
+await inbound({ From: "+61412345678", Body: "Test 2", MessageSid: "SMz2" });
+c = await check();
+ck("and one refused because the Worker could not write it, in the Worker's words",
+   c.by.inbound && /login failed: INVALID_PASSWORD/.test(c.by.inbound.say), c.by.inbound);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+c = await check(envOf({ TWILIO_WA_FROM: "", TEST_NUMBERS: "0412 345 678", TWILIO_AUTH_TOKEN: "" }));
+ck("a setting left out is named by its name, and test mode counts its phones",
+   c.by.twilio.ok === false && /TWILIO_AUTH_TOKEN is not set/.test(c.by.twilio.say) &&
+   /only message 1 phone/.test(c.by.test.say) && /not set up yet/.test(c.by.whatsapp.say), c.list);
 
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);

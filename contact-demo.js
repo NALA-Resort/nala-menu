@@ -313,6 +313,12 @@
     var b = {};
     try { b = JSON.parse((o && o.body) || '{}'); } catch (e){}
     if (b.kind === 'hello') return answer(200, { test:false, wa:true, buzz:false, ready:true });
+    /* The setup check (30 Sep): the demo's is all working, so Chat shows none. */
+    if (b.kind === 'check') return answer(200, { check:[
+      { key:'twilio', ok:true, say:'Twilio accepts the Account SID and the Auth Token.' },
+      { key:'webhook', ok:true, say:'Twilio hands the number\u2019s texts to Chat.' },
+      { key:'login', ok:true, say:'The Chat Worker signs in.' },
+      { key:'test', ok:null, say:'Test mode is off: Chat can message any guest.' } ] });
     if (b.kind === 'media')
       return Promise.resolve(new Response(new Blob([UMBRELLA], { type:'image/svg+xml' }),
         { status:200, headers:{ 'Content-Type':'image/svg+xml' } }));

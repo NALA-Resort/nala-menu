@@ -241,6 +241,10 @@ def fb(route, request):
 def wk(route, request):
     b = json.loads(request.post_data)
     SENT.append(b)
+    if b.get("kind") == "check":
+        route.fulfill(status=200, content_type="application/json", body=js({"check": STATE.get("check") or [
+            {"key": "twilio", "ok": True, "say": "Twilio accepts the Account SID and the Auth Token."},
+            {"key": "test", "ok": None, "say": "Test mode is off: Chat can message any guest."}]})); return
     if b.get("kind") == "hello":
         route.fulfill(status=200, content_type="application/json", body=js(STATE["hello"])); return
     if b.get("kind") in ("media", "taskmedia"):
@@ -999,6 +1003,47 @@ with sync_playwright() as p:
     ck("while the admin, never switched off, has it", pg.is_visible("#msgBox") and pg.is_visible("#sendBtn"))
     done(pg)
     del PERMS["guestReply"]
+
+    # ── 10. the setup check (30 Sep) ────────────────────────────────
+    # The owner, a test text refused and Twilio's console no help: "Why
+    # don't you just create an error webhook url". The Worker's words are
+    # held to worker/contact-test.mjs; here, Chat showing them.
+    box = lambda p: p.evaluate("()=>{const b=document.getElementById('setupBox');"
+                               "return getComputedStyle(b).display==='none'?null:b.innerText}")
+    pg = page(email="staff@x"); pg.wait_for_timeout(400)
+    ck("all working and live, the admin's Chat shows no setup check", box(pg) is None, box(pg))
+    done(pg)
+    STATE["hello"]["test"] = True
+    pg = page(email="staff@x"); pg.wait_for_timeout(400)
+    ck("in test mode it shows, and says everything is working",
+       (box(pg) or "").startswith("Setup check: everything is working"), box(pg))
+    done(pg)
+    STATE["hello"]["test"] = False
+    STATE["check"] = [
+        {"key": "twilio", "ok": True, "say": "Twilio accepts the Account SID and the Auth Token."},
+        {"key": "webhook", "ok": False, "say": "Twilio hands the number's texts to nowhere. It should be "
+                                               "https://nala-contact.ben-681.workers.dev/twilio/in by HTTP POST."},
+        {"key": "inbound", "ok": False, "say": "The last text Twilio passed here was refused: its signature did "
+                                               "not match TWILIO_AUTH_TOKEN.", "at": "2026-09-29T13:46:31+10:00"},
+        {"key": "test", "ok": None, "say": "Test mode is on: Chat can only message 1 phone."}]
+    pg = page(email="staff@x"); pg.wait_for_timeout(400)
+    t = (box(pg) or "").replace("\xa0", " ")
+    ck("a thing to fix shows at the top of Chat in the Worker's words, with when",
+       t.startswith("Setup check: 2 things to fix") and "should be https://nala-contact.ben-681.workers.dev/twilio/in" in t and
+       "Tue 29 Sep 1:46pm" in t, t)
+    ck("a line to fix is failure's red, a working one the done green",
+       pg.evaluate("()=>getComputedStyle(document.querySelector('#setupBox .sr.bad')).color") == "rgb(168, 50, 30)" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector('#setupBox .sr.ok .mk')).color") == "rgb(94, 125, 103)")
+    del SENT[:]
+    pg.click("#setupAgain"); pg.wait_for_timeout(300)
+    ck("Check again asks the Worker again", any(b.get("kind") == "check" for b in SENT))
+    done(pg)
+    del SENT[:]
+    pg = page(email="waiter@x"); pg.wait_for_timeout(400)
+    ck("the waiter's Chat neither asks nor shows it", box(pg) is None and
+       not any(b.get("kind") == "check" for b in SENT))
+    done(pg)
+    STATE["check"] = None
 
     br.close()
 

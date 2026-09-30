@@ -158,6 +158,21 @@
              background:var(--law-amber); border:1px solid var(--law-amber-b);
              color:var(--law-amber-ink); font-size:var(--t2); line-height:1.45; }
   .testbar.show { display:block; }
+  /* The setup check (30 Sep), the admin's and the manager's: what the
+     Worker finds wrong, in its words, while test mode is on or anything
+     fails. A line to fix is failure's red; a working one the done green;
+     the rest only so you know. */
+  .setup { display:none; margin:0 0 12px; padding:12px 13px; border-radius:8px;
+           border:1px solid var(--rule); background:var(--surface, #fff); }
+  .setup.show { display:block; }
+  body.paper .setup { box-shadow:var(--lift); }
+  .setup .st { font-size:var(--t2); font-weight:600; margin-bottom:6px; }
+  .setup .sr { display:flex; gap:8px; font-size:var(--t2); line-height:1.45; margin-top:5px; color:var(--ink); }
+  .setup .sr .mk { flex:0 0 14px; text-align:center; font-weight:600; }
+  .setup .sr.ok .mk { color:var(--law-save-ink); }
+  .setup .sr.bad, .setup .sr.bad .mk { color:var(--law-red); }
+  .setup .sr.info .mk, .setup .sr.info { color:var(--mid); }
+  .setup .sbtn { margin-top:10px; }
   #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
   /* A conversation's box and its Send sit at the END of the conversation,
      where the newest message is, not pinned to the screen: a pinned Send
@@ -194,6 +209,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 
 <div class="noaccess" id="noAccess"></div>
 <div class="testbar" id="testBar"></div>
+<div class="setup" id="setupBox"></div>
 
 <div id="listView" style="display:none">
   <div class="knob" id="knob">
@@ -230,7 +246,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=6"></script>
+<script src="contact-demo.js?v=7"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=93"></script>
 <script>
@@ -998,6 +1014,36 @@ function refresh(){
                       'The page tries again by itself.';
   });
 }
+/* The setup check (30 Sep): the Worker checks each thing the setup steps
+   set and says what is wrong. The admin's and the manager's; shown while
+   test mode is on or anything fails, and gone once all works live. */
+function setupCheck(){
+  var r = normaliseRole(window.NALA_ROLE);
+  if (r !== 'admin' && r !== 'manager') return;
+  fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                       body: JSON.stringify({ idToken: window.__idToken, kind:'check' }) })
+    .then(function(x){ return x.ok ? x.json() : null; })
+    .catch(function(){ return null; })
+    .then(function(j){ drawSetup(j && j.check); });
+}
+function drawSetup(items){
+  var box = document.getElementById('setupBox');
+  if (!items || !items.length){ box.className = 'setup'; box.innerHTML = ''; return; }
+  var bad = items.filter(function(x){ return x.ok === false; }).length;
+  if (!bad && !(HELLO && HELLO.test)){ box.className = 'setup'; box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="st">Setup check: ' + (bad ? bad + (bad === 1 ? ' thing' : ' things') +
+      ' to fix' : 'everything is working') + '</div>' +
+    items.map(function(x){
+      var k = x.ok === true ? 'ok' : x.ok === false ? 'bad' : 'info';
+      return '<div class="sr ' + k + '" data-k="' + esc(x.key) + '"><span class="mk">' +
+        (x.ok === true ? '\u2713' : x.ok === false ? '\u2715' : '\u2022') + '</span><span>' +
+        (x.at ? esc(stampOf(x.at)) + ': ' : '') + esc(x.say) + '</span></div>';
+    }).join('') + '<button class="sbtn" id="setupAgain">Check again</button>';
+  box.className = 'setup show';
+  document.getElementById('setupAgain').onclick = function(){
+    this.textContent = 'Checking'; this.disabled = true; setupCheck();
+  };
+}
 function hello(){
   fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
                        body: JSON.stringify({ idToken: window.__idToken, kind:'hello' }) })
@@ -1023,6 +1069,7 @@ function hello(){
         bar.className = 'testbar show';
       }
       if (CK && TH.t !== undefined) drawCompose();
+      setupCheck();
     });
 }
 

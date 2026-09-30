@@ -300,6 +300,28 @@ commit, and `contact_demo_suite.py` checks it there.
 The demo needs the pages published to be opened on a phone; without
 `?demo` the pages are the real ones, the admin's alone until opened.
 
+## The setup check
+
+Built 30 Sep, when the owner's first test text was refused and Twilio's
+console would not say why ("Why don't you just create an error webhook
+url"). The Worker checks each thing the setup steps set, and Chat shows
+its answer at the top of the page, to the admin and the manager, while
+test mode is on or anything fails:
+
+- whether Twilio accepts the Account SID and Auth Token, and whether the
+  account is active and upgraded from trial;
+- whether `TWILIO_FROM` is a number on the account, and where Twilio hands
+  that number's texts - it must be `<the Worker>/twilio/in` by POST;
+- whether the Chat Worker signs in, has the role contact, and the rules
+  let it write;
+- the last text Twilio passed that the Worker refused, and why, while the
+  Worker remembers it (a restart forgets);
+- test mode and WhatsApp, only so you know.
+
+Nothing secret leaves the Worker: no token, no passcode, and not the Chat
+Worker's address, whose six digits are its password. Held to
+`worker/contact-test.mjs` and `tests/contact_suite.py`.
+
 ## Testing on the live app
 
 Only the test phones can be messaged. From them:
