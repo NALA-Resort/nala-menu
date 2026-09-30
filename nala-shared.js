@@ -466,12 +466,14 @@ function phoneConfidence(raw){
    itself - by delegation on a page built from strings, by onclick on one
    built from nodes - and both hand the tap to editPhoneNumber below.
    showPen=false leaves the pencil out where editing has nothing to offer
-   (a completed form needs no number and a dead pencil reads as broken). */
-function phoneBadgeHTML(raw, showPen){
+   (a completed form needs no number and a dead pencil reads as broken).
+   bare leaves the number itself out, for a line that already shows it:
+   Chat's row for a number on no booking, whose name is the number. */
+function phoneBadgeHTML(raw, showPen, bare){
   raw = String(raw == null ? '' : raw).trim();
   var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
-  var h = '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
+  var h = bare ? '' : '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
   var confidence = raw ? phoneConfidence(raw) : null;
   if (confidence === 'mobile')
     h += '<span class="conf ok" title="Sits in this country’s published ' +

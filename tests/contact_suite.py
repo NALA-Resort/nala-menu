@@ -183,6 +183,11 @@ PREVINVITES = {"b-sarah": {"sentAt": "2026-09-22T10:02:00+10:00", "status": "sen
                            "earlier": [{"sentAt": "2026-09-20T16:30:00+10:00", "status": "sent",
                                         "to": "+61412345678", "by": "ben@x", "delivery": "delivered",
                                         "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=q9w3ze"}]}}
+# Robyn, who has left, heard from us only by the pre-arrival form an SMS page
+# sent: Chat's list takes it for her last message (30 Sep).
+PREVINVITES["b-robyn"] = {"sentAt": "2026-09-15T15:10:00+10:00", "status": "sent", "to": "+61411000003",
+                          "by": "ben@x", "delivery": "delivered",
+                          "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=r0b1n5"}
 # the dinner invitations, as invitations.html's Worker records them, and an
 # outside guest's, for the number on no booking
 INVITES = {"2026-09-28": {"7": {"sentAt": "2026-09-28T16:02:00+10:00", "status": "sent", "to": "+61412345678",
@@ -250,6 +255,11 @@ def fb(route, request):
             key = json.loads(q["orderBy"][0]) if "orderBy" in q else None
             want = json.loads(q["equalTo"][0]) if "equalTo" in q else None
             body = {k: v for k, v in team.items() if key is None or v.get(key) == want} or None
+    elif path == "/previnvites.json": body = PREVINVITES
+    elif path == "/spareminders.json": body = None
+    elif path == "/invites.json":
+        lo, hi = json.loads(q["startAt"][0]), json.loads(q["endAt"][0])
+        body = {d: v for d, v in INVITES.items() if lo <= d <= hi} or None
     elif path.startswith("/previnvites/"): body = PREVINVITES.get(path[13:-5])
     elif path.startswith("/invites/"): body = INVITES.get(path[9:-5])
     elif path.startswith("/extinvites/"): body = EXTINVITES.get(path[12:-5])
@@ -352,8 +362,9 @@ with sync_playwright() as p:
     def rows(pg):
         return pg.evaluate("""()=>[...document.querySelectorAll('#board .vrow')].map(e=>({
           ck:e.dataset.ck, b:e.dataset.b, s:e.dataset.state, v:e.querySelector('.v').textContent,
-          nm:e.querySelector('.nm').textContent, l3:e.querySelector('.l3').textContent,
-          pv:e.querySelector('.pv').textContent, dis:e.disabled}))""")
+          nm:e.querySelector('.nm').textContent, l3:(e.querySelector('.l3 .meta')||e.querySelector('.l3')).textContent,
+          num:(e.querySelector('.l3 .num')||{}).textContent||'', pen:!!e.querySelector('.l3 .pen'),
+          pv:e.querySelector('.pv').textContent, dis:e.disabled||e.getAttribute('aria-disabled')==='true'}))""")
     def shot(pg, name):
         if SHOTS: pg.screenshot(path=os.path.join(SHOTS, name + ".png"), full_page=True)
 
@@ -426,6 +437,23 @@ with sync_playwright() as p:
         s.backgroundColor+s.backgroundImage+s.borderTopColor);})"""))
     ck("nothing sent and no number are sunk and dashed",
        all(sty(k)["borderStyle"] == "dashed" and float(sty(k)["opacity"]) < 0.7 for k in ("61411000016", "b-hana")))
+    # The owner, 30 Sep: "the phone number, its validity" as on the SMS pages.
+    ck("each guest's number as the SMS pages show it: the number, its tick, the pencil",
+       by[SARAH]["num"] == "0412 345 678\u2713\u270e" and by[SARAH]["pen"] and
+       by[LEA]["num"] == "+33 6 12 34 56 78\u2713\u270e", [by[SARAH]["num"], by[LEA]["num"]])
+    ck("a number on no booking, already its name, wears the tick alone and no pencil",
+       by[UNK]["num"] == "\u2713" and not by[UNK]["pen"], by[UNK])
+    ck("a booking with no mobile says so, with the pencil to add one",
+       by["b-hana"]["num"] == "no number\u270e", by["b-hana"])
+    del WRITES[:]
+    pg.once("dialog", lambda d: d.accept("0411 999 888"))
+    pg.click('.vrow[data-b="b-hana"] .pen'); pg.wait_for_timeout(500)
+    fix = [w for w in WRITES if w["p"] == "/phonefix/b-hana.json"]
+    ck("the pencil saves the corrected number at /phonefix, as the SMS pages' does, and opens nothing",
+       fix and fix[0]["m"] == "PUT" and fix[0]["b"]["phone"] == "+61411999888" and
+       "c=" not in pg.evaluate("()=>location.search"), fix)
+    pg.click('.vrow[data-b="b-hana"] .nm'); pg.wait_for_timeout(200)
+    ck("and a row with no number still cannot be opened", "c=" not in pg.evaluate("()=>location.search"))
     ck("and no status here is red", pg.evaluate("""()=>![...document.querySelectorAll('#board *')].some(e=>
         getComputedStyle(e).color==='rgb(168, 50, 30)')"""))
     shot(pg, "gc-list")
@@ -438,7 +466,10 @@ with sync_playwright() as p:
     pg.click("#tabPast"); pg.wait_for_timeout(150)
     rs = rows(pg)
     ck("Past: the guests who have left", [r["nm"] for r in rs] == ["Robyn Carter"] and
-       rs[0]["l3"] == "left Thu 24 Sep" and rs[0]["s"] == "none", rs)
+       rs[0]["l3"] == "SMS · left Thu 24 Sep", rs)
+    ck("and a guest Chat never wrote to shows the last text an SMS page sent them: sent, by the page's name",
+       rs[0]["s"] == "sent" and rs[0]["pv"].startswith("Pre-arrival form: Good afternoon.") and
+       not rs[0]["pv"].startswith("You:"), rs[0])
     pg.fill("#find", "whit"); pg.wait_for_timeout(150)
     rs = rows(pg)
     ck("a search reaches every tab: both Whitfields, wherever their dates are",

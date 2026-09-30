@@ -57,6 +57,15 @@ with sync_playwright() as p:
     ck("In-house shows the made-up guests, work first",
        rs and rs[0]["s"] == "fresh" and by["61412345678"]["nm"] == "Sarah Whitfield" and
        by["61411000009"]["s"] == "task" and by["61411000002"]["s"] == "done", rs[:4])
+    # the number as the SMS pages show it, and a page's text as the last line
+    # for a guest Chat never wrote to (the owner, 30 Sep)
+    nums = pg.evaluate("""()=>[...document.querySelectorAll('#board .vrow')].map(e=>
+        [e.dataset.ck, (e.querySelector('.l3 .num')||{}).textContent||'', e.querySelector('.pv').textContent])""")
+    byn = {x[0]: x for x in nums}
+    ck("each guest shows their number with its tick, as on the SMS pages",
+       byn["61412345678"][1].startswith("+61412345678\u2713"), byn.get("61412345678"))
+    ck("and Jonah, whom Chat never wrote to, shows the pre-arrival form an SMS page sent him",
+       byn["61411000016"][2].startswith("Pre-arrival form:"), byn.get("61411000016"))
     # every text the pages sent, in the conversation (the owner, 30 Sep)
     go("guest-contact.html?c=61412345678")
     metas = pg.evaluate("()=>[...document.querySelectorAll('#msgs .meta')].map(e=>e.textContent)")

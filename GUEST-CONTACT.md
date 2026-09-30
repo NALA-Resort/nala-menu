@@ -99,6 +99,22 @@ of where the conversation stands (`contactRowState`, the colour law):
 | All done | plain white, not green (the owner, 30 Sep: "Otherwise, all the cards would be green") | everything they sent is sorted, nothing open |
 | No messages | sunk, dashed | nothing either way, or no mobile on the booking |
 
+Each row carries the guest's number as the SMS pages show it
+(`phoneBadgeHTML`, the owner, 30 Sep: "the phone number, its validity"):
+the number, the tick where it sits in its country's mobile ranges or the
+question mark where that cannot be told, and the pencil, which corrects
+it at `/phonefix` exactly as the SMS pages' does. A number on no booking,
+already the row's name, wears the mark alone.
+
+The row's line and time are the conversation's last message, the SMS
+pages' texts included ("an excerpt of its last chat"): a guest Chat never
+wrote to, but whom Pre-arrival SMS, Invitations or Spa reminders did,
+shows that text by its page's name and sits in Sent, no reply rather than
+No messages. One reading, `pageTexts`, for the conversation and the list;
+the list reads `/previnvites` and `/spareminders` whole and a fortnight of
+`/invites`, at the bookings' five-minute pace. What the guest wrote, and
+so New, Task open and All done, is still Chat's alone.
+
 A number on no booking - a caller about dinner, a guest from months ago -
 still lands on In-house, its number in place of a name.
 

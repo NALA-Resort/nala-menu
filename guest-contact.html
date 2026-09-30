@@ -52,6 +52,13 @@
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow .l3 { font-size:var(--t1); color:var(--mid); margin-top:3px; }
   .vrow .l3 .open { color:var(--law-amber-ink); }
+  /* The guest's number as the SMS pages show it (phoneBadgeHTML, the owner,
+     30 Sep: "the phone number, its validity"): the number, the tick where
+     it sits in its country's mobile ranges or the question mark where that
+     cannot be told, and the pencil that corrects it at /phonefix. */
+  .vrow .num .conf { margin-left:4px; }
+  .vrow .num .conf.ok { color:var(--law-green); }
+  .vrow .num .pen { margin-left:3px; padding:2px 4px; cursor:pointer; }
   /* The states, colour-law tokens and nothing else (CLAUDE.md): a message
      nobody has sorted is work to do, white; a task still open is amber,
      chase this; only we have written is the waiting grey; nothing sent, or
@@ -61,7 +68,7 @@
      and single nothing out. Its band, All done, tells it from New. */
   .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
   .vrow.b-none, .vrow.b-nophone { border-style:dashed; opacity:.62; }
-  .vrow:disabled { cursor:default; }
+  .vrow:disabled, .vrow[aria-disabled="true"] { cursor:default; }
 
   /* ── one conversation ── */
   .ctx { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:-6px 2px 0; }
@@ -400,6 +407,7 @@ function bookingsFrom(nights, fixes){
 var STAYS_MS = 5 * 60 * 1000;
 var STAYS = null, STAYS_AT = 0;
 var SETTINGS = null;        /* /contactsettings: the teams, read at the bookings' pace */
+var PAGES = null;           /* the SMS pages' records, for the list's last line: { pre, spa, inv } */
 function loadStays(){
   if (STAYS && Date.now() - STAYS_AT < STAYS_MS) return Promise.resolve(STAYS);
   var from = plusDays(-WINDOW_DAYS), to = plusDays(WINDOW_DAYS);
@@ -407,7 +415,15 @@ function loadStays(){
     whole('/stays', 'orderBy=' + encodeURIComponent('"$key"') +
           '&startAt=' + encodeURIComponent('"' + from + '"') +
           '&endAt=' + encodeURIComponent('"' + to + '"')),
-    whole('/phonefix'), whole('/contactsettings')
+    whole('/phonefix'), whole('/contactsettings'),
+    /* What the SMS pages sent, for each row's last message: read whole as
+       those pages read them, the invitations for the fortnight a stay's
+       texts are looked for in. A failed read leaves Chat's own. */
+    whole('/previnvites').catch(function(){ return null; }),
+    whole('/spareminders').catch(function(){ return null; }),
+    whole('/invites', 'orderBy=' + encodeURIComponent('"$key"') +
+          '&startAt=' + encodeURIComponent('"' + plusDays(-14) + '"') +
+          '&endAt=' + encodeURIComponent('"' + plusDays(0) + '"')).catch(function(){ return null; })
   ]).then(function(res){
     var nights = {};
     Object.keys(res[0] || {}).forEach(function(d){
@@ -415,6 +431,7 @@ function loadStays(){
     });
     STAYS = bookingsFrom(nights, res[1] || {});
     SETTINGS = res[2] || {};
+    PAGES = { pre: res[3] || {}, spa: res[4] || {}, inv: res[5] || {} };
     STAYS_AT = Date.now();
     return STAYS;
   });
@@ -470,6 +487,13 @@ function rowsOf(){
     var b = DATA.bookings[id];
     var t = b.ck ? DATA.threads[b.ck] : null;
     if (b.ck) seen[b.ck] = true;
+    /* A text an SMS page sent after Chat's own last message is the row's
+       last message: its line, its time, and ours to have written. The
+       guest's own messages, and so the state they set, are Chat's alone. */
+    var pl = pageLast(b), pat = pl && parseISO(pl.at), tat = t && parseISO(t.lastAt);
+    if (pat && (!tat || pat > tat))
+      t = Object.assign({}, t || {}, { lastAt: pl.at, dir: 'out', page: true,
+        preview: pl.kind + ': ' + String(pl.body || '').replace(/\s+/g, ' ') });
     rows.push({ b: b, ck: b.ck, t: t, tab: b.tab,
                 state: contactRowState(t, b.ck ? freshOf(b.ck) : 0,
                                        b.ck ? tasksOf(b.ck).length : 0, !!b.ck) });
@@ -510,7 +534,7 @@ function rowHTML(r, showTab){
   var n = r.ck ? freshOf(r.ck) : 0, open = r.ck ? tasksOf(r.ck) : [];
   var pv = r.state === 'nophone' ? 'No mobile number on the booking'
          : !r.t || !r.t.lastAt ? 'Nothing sent yet'
-         : (r.t.dir === 'out' ? 'You: ' : '') + (r.t.preview || '');
+         : (r.t.dir === 'out' && !r.t.page ? 'You: ' : '') + (r.t.preview || '');
   var l3 = [];
   if (showTab) l3.push({ up:'Upcoming', 'in':'In-house', past:'Past' }[r.tab]);
   if (chWord(r.t)) l3.push(chWord(r.t));
@@ -519,9 +543,14 @@ function rowHTML(r, showTab){
   open.forEach(function(x){ teams[teamLabel(x.team, SETTINGS)] = true; });
   var openWords = Object.keys(teams).length
     ? ' · <span class="open">' + esc(Object.keys(teams).join(', ')) + ' open</span>' : '';
+  /* The number as the SMS pages show it; on a number on no booking, whose
+     name is the number, the mark alone. The pencil corrects a booking's. */
+  var num = r.b ? phoneBadgeHTML(r.b.phoneRaw, true) : phoneBadgeHTML('+' + r.ck, false, true);
+  /* A row with no number cannot be opened, but its pencil can be pressed:
+     aria-disabled, not disabled, which would swallow the pencil's tap. */
   return '<button class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
          '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '"' +
-         (r.state === 'nophone' ? ' disabled' : '') + '>' +
+         (r.state === 'nophone' ? ' aria-disabled="true"' : '') + '>' +
     '<div class="v">' + esc(r.b ? r.b.villa : '?') + '</div><div class="mid">' +
     /* A name may trim; a number standing in for one never does. */
     '<div class="l1 trimrow"><span class="nm' + (r.b || (r.t && r.t.profile) ? ' trim' : '') + '">' +
@@ -529,7 +558,8 @@ function rowHTML(r, showTab){
     '<span class="tm">' + esc(r.t ? whenShort(r.t.lastAt) : '') + '</span></div>' +
     '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
     (n ? '<span class="cnt">' + n + '</span>' : '') + '</div>' +
-    '<div class="l3">' + esc(l3.join(' · ')) + openWords + '</div></div></button>';
+    '<div class="l3">' + (num ? '<span class="num">' + num + '</span> · ' : '') +
+    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></div></div></button>';
 }
 
 function drawList(){
@@ -585,7 +615,19 @@ document.getElementById('knob').onclick = function(e){
 };
 document.getElementById('find').oninput = function(){ if (DATA) drawList(); };
 document.getElementById('board').onclick = function(e){
-  var r = e.target.closest('.vrow'); if (!r || r.disabled) return;
+  var r = e.target.closest('.vrow'), pen = e.target.closest('.pen');
+  /* The pencil corrects the booking's number, as on the SMS pages: saved at
+     /phonefix, which outranks Mews wherever a number is read. */
+  if (pen && r){
+    e.stopPropagation();
+    var b = (STAYS || {})[r.getAttribute('data-b')]; if (!b) return;
+    editPhoneNumber({ id: b.id, name: b.name, current: b.phoneRaw, was: b.raw }, function(err){
+      document.getElementById('errBar').textContent = err || '';
+      if (!err){ STAYS_AT = 0; refresh(); }
+    });
+    return;
+  }
+  if (!r || r.disabled || r.getAttribute('aria-disabled') === 'true') return;
   var q = 'c=' + r.getAttribute('data-ck') + (r.getAttribute('data-b') ? '&b=' + r.getAttribute('data-b') : '') +
           '&t=' + TAB;
   location.href = 'guest-contact.html?' + q;
@@ -618,50 +660,70 @@ function bookingFor(ck){
    again keeps the one it replaced under earlier (send-invites.js), so both
    are here. A number on no booking can only have been an outside guest,
    so its last fortnight of /extinvites is read instead. */
-function smsPageSends(b, phone){
-  var reads = [], kinds = [], today = dkey(new Date());
-  function read(path, kind){
-    reads.push(whole(path).catch(function(){ return null; })); kinds.push(kind);
+/* Every text an SMS page sent this number, from those pages' own records:
+   the pre-arrival form and the ones it replaced, each spa reminder, each
+   night's dinner invitation. The conversation lays them among Chat's own
+   messages; the list takes the newest for its line (the owner, 30 Sep:
+   "an excerpt of its last chat"). One reading for both. pre is the
+   booking's /previnvites record, spa its /spareminders node, nights the
+   /invites (or /extinvites) nodes of the nights that count. */
+function pageTexts(pre, spa, nights, phone){
+  var out = [];
+  function one(rec, kind){
+    if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
+    if (rec.to && normalisePhone(rec.to) !== phone) return;
+    out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
+               kind: kind, page: true,
+               status: rec.status === 'failed' ? 'failed'
+                     : rec.delivery === 'failed' ? 'undelivered'
+                     : rec.delivery === 'delivered' ? 'delivered' : 'sent',
+               err: rec.error || rec.deliveryText || '' });
   }
-  var d, i;
+  function add(rec, kind){
+    one(rec, kind);
+    var was = rec && rec.earlier;
+    if (was && typeof was === 'object')
+      Object.keys(was).forEach(function(k){ one(was[k], kind); });
+  }
+  add(pre, 'Pre-arrival form');
+  Object.keys(spa || {}).forEach(function(k){ add(spa[k], 'Spa reminder'); });
+  (nights || []).forEach(function(n){
+    Object.keys(n || {}).forEach(function(k){ add(n[k], 'Dinner invitation'); });
+  });
+  return out;
+}
+/* The conversation's reads: this booking's records, or for a number on no
+   booking an outside guest's invitations of the last fortnight. */
+function smsPageSends(b, phone){
+  var today = dkey(new Date()), nights = [], d, i;
+  var get = function(path){ return whole(path).catch(function(){ return null; }); };
   if (b){
-    read('/previnvites/' + b.id, 'pre');
-    read('/spareminders/' + b.id, 'spa');
     var end = b.depart < today ? b.depart : today;
     for (d = parseDepDate(b.arrive), i = 0; d && dkey(d) <= end && i < 14; i++){
-      read('/invites/' + dkey(d), 'night'); d = new Date(d.getTime() + 86400000);
+      nights.push(get('/invites/' + dkey(d))); d = new Date(d.getTime() + 86400000);
     }
-  } else {
-    for (d = parseDepDate(today), i = 0; d && i < 14; i++){
-      read('/extinvites/' + dkey(d), 'night'); d = new Date(d.getTime() - 86400000);
-    }
+    return Promise.all([get('/previnvites/' + b.id), get('/spareminders/' + b.id)].concat(nights))
+      .then(function(res){ return pageTexts(res[0], res[1], res.slice(2), phone); });
   }
-  return Promise.all(reads).then(function(res){
-    var out = [];
-    function one(rec, kind){
-      if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
-      if (rec.to && normalisePhone(rec.to) !== phone) return;
-      out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
-                 kind: kind, page: true,
-                 status: rec.status === 'failed' ? 'failed'
-                       : rec.delivery === 'failed' ? 'undelivered'
-                       : rec.delivery === 'delivered' ? 'delivered' : 'sent',
-                 err: rec.error || rec.deliveryText || '' });
-    }
-    function add(rec, kind){
-      one(rec, kind);
-      var was = rec && rec.earlier;
-      if (was && typeof was === 'object')
-        Object.keys(was).forEach(function(k){ one(was[k], kind); });
-    }
-    res.forEach(function(r, i){
-      if (kinds[i] === 'pre') return add(r, 'Pre-arrival form');
-      Object.keys(r || {}).forEach(function(k){
-        add(r[k], kinds[i] === 'spa' ? 'Spa reminder' : 'Dinner invitation');
-      });
-    });
-    return out;
+  for (d = parseDepDate(today), i = 0; d && i < 14; i++){
+    nights.push(get('/extinvites/' + dkey(d))); d = new Date(d.getTime() - 86400000);
+  }
+  return Promise.all(nights).then(function(res){ return pageTexts(null, null, res, phone); });
+}
+/* The newest text an SMS page sent a booking's guest, for the list's line,
+   from the pages' nodes read at the bookings' pace. One that failed never
+   reached them, so it is not what they last heard from us. */
+function pageLast(b){
+  if (!b || !b.ck || !PAGES) return null;
+  var today = dkey(new Date()), end = b.depart < today ? b.depart : today, nights = [], best = null;
+  Object.keys(PAGES.inv || {}).forEach(function(n){
+    if (n >= b.arrive && n <= end) nights.push(PAGES.inv[n]);
   });
+  pageTexts((PAGES.pre || {})[b.id], (PAGES.spa || {})[b.id], nights, '+' + b.ck).forEach(function(m){
+    var at = parseISO(m.at);
+    if (m.status !== 'failed' && at && (!best || at > best.at)) best = { at: at, m: m };
+  });
+  return best && best.m;
 }
 
 var SENT_AT = 0;             /* when the SMS pages' records were last read */
