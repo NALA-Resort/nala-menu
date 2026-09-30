@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Statistics</title>
-<link rel="stylesheet" href="nala-ui2.css?v=10">
+<link rel="stylesheet" href="nala-ui2.css?v=11">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
      dropped each page's :root wholesale to remove the tokens the shared
@@ -21,9 +21,6 @@
   
   .wrap { max-width:var(--appw); margin:0 auto; }
 
-  .wordmark { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; }
-  .title { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
-           font-weight:bold; margin-top:6px; }
   .range { text-align:center; font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:6px; }
 
   .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:28px 0 12px; }
@@ -88,8 +85,16 @@
 </head>
 <body class="ui2">
 <div class="wrap">
-  <div class="wordmark">Nala</div>
-  <div class="title">Statistics</div>
+  <!-- The header every staff page wears, 30 Sep, when Statistics joined the
+       menu (and the chef's tab bar) in place of Reservations' Stats button.
+       It had a wordmark and a title, and no way anywhere but Back. -->
+  <div class="daterow">
+    <div class="date" id="title">Statistics</div>
+    <div class="navwrap" id="navWrap" style="display:none">
+      <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="navdrop" id="navDrop"></div>
+    </div>
+  </div>
 
   <!-- Two tabs, 7 Sep: the already-eaten list made the page one long
        scroll, so each job gets a screen of its own. The planning tab
@@ -147,8 +152,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=95"></script>
+<script src="nala-shared.js?v=96"></script>
 <script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */
 (function gate(){
@@ -162,6 +173,8 @@
     loadStaff(function(recs, e){
       var role = roleOf(u);
       window.NALA_ROLE = role;
+      document.getElementById('navWrap').style.display = 'block';
+      if (window.NALA_NAVFILTER) NALA_NAVFILTER(role);
       if (canOpen(role, 'stats.html') || e) return;
       document.querySelector('.wrap').style.display = 'none';
       var home = homeFor(role);

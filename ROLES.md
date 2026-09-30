@@ -98,7 +98,7 @@ here." The audit found every gated page and what governed it:
 | Past Menus | `resBoard` | yes | only via the capability |
 | Invitations, Pre-arrival SMS | `editBookings` | yes | only via the capability |
 | SMS Templates | `editBookings` | no - the SMS pages | not at all: not in NAV |
-| Statistics | `resBoard` | no - Reservations' Stats door | not at all: not in NAV |
+| Statistics | `resBoard` | no - Reservations' Stats door (in the menu since 30 Sep) | not at all: not in NAV |
 | Dietary Settings | `publishMenu` | yes | only with Publish Menu |
 | Settings, Flags, Site map, Diagnostics | `manageStaff` | 3 of 4 | admin only, correctly |
 

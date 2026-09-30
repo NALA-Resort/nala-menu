@@ -199,8 +199,9 @@ of the row the buttons sit in - never the dress again.
 **Free-standing buttons are 8px** (ruled 27 Aug), matching the nav and date
 controls. The footer row is the exception and keeps the corner law below:
 it sits hard against the bottom of the screen, so it squares off and only
-the two outer lower corners round. `tally_suite` asserts those four corners
-by computed value.
+the two outer lower corners round. `tabs_suite` asserts those corners by
+computed value, on Pre-arrival SMS's Send since Reservations' footer went
+(30 Sep).
 
 ## What a press says back
 
@@ -299,8 +300,15 @@ most. It answers the ban rather than ignoring it, with three rules that
   bar, a save bar - the way a sheet covers the page.
 
 Grey icons, and ink on the page you are on, which also sits on the
-selection grey and is not a link. Under 600pt of height (a phone on its
-side) it steps aside and the menu works alone.
+selection grey and is not a link. It stays on every phone, held sideways
+too.
+
+**A footer that only refreshes or lists is not kept for it** (the owner,
+30 Sep, the same day). Reservations and Cleans lost theirs: Refresh became
+a pull from the top, Reservations' Stats a page in the menu (Statistics,
+on the chef's bar), and Select multiple the Cleans grid's eighteenth cell.
+What stays at the foot of a page is its one primary action - Send,
+Publish - standing on the bar.
 
 **One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
 2026), uppercased by CSS. No ordinals, no long months, no year-less dates.
@@ -320,11 +328,17 @@ side) it steps aside and the menu works alone.
   against the bottom of the screen, so the first button's bottom-left and
   the last button's bottom-right carry an 8px radius (matching the nav
   button); every other corner in the row stays square. Where the tab bar
-  is drawn, the footer stands on it instead (see Header above).
+  is drawn, the footer stands on it instead (see Header above). A
+  footer holds the page's primary action; Refresh is never one (below).
 - **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
   nala-shared.js from `TABBAR`, never written into a page. The icons are
   line drawings on a 24 grid in `TAB_ICONS`, the label under each is the
   page's menu name, and a count from `NAV_ACTIONS` rides on its icon.
+- **Pull to refresh** (since 30 Sep, in place of every Refresh button): a
+  board asks for it with `pullToRefresh()`. In the Home Screen app a pull
+  down from the very top shows a turning arrow, grey until a release would
+  reload and ink once it would; browser tabs keep their own. Never from
+  under a sheet, the menu or the bar.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 - **The action icon** (`.navbadge`, since 25 Aug): a number beside a menu
   entry meaning "something in there waits on you". Amber, the colour law's
@@ -548,9 +562,12 @@ board and on the printed sheet. Only management can set it.
 
 ## Multi-select on the Cleans board
 
-The footer carries Refresh on the left and Select multiple on the right. In
-select mode the button reads **Cancel** while nothing is picked and
-**Options** once something is, so one button covers the whole flow.
+**Select multiple** is the grid's eighteenth cell, bottom right, for the
+logins that can set a job; everyone else finds the key there, since the
+options it leads to are job controls only. It took the cell on 30 Sep,
+when the owner cleared the footer that held it and Refresh for the tab
+bar. In select mode it reads **Cancel** while nothing is picked and
+**Options** once something is, so one control covers the whole flow.
 
 Only villas whose job is **unknown** can be picked: the point is to decide
 several at once, and anything already decided has nothing to decide. Villas

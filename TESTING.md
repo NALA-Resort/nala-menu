@@ -341,14 +341,20 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
 1. **Five icons along the foot**: Dashboard, Reservations, Cleans, Chat,
    Tasks. **Expect** them clear of the home strip, the page you are on on a
    grey pill, and every name whole - "Reservations" is the long one.
-2. **Reservations and Cleans.** **Expect** Refresh and its neighbour
-   standing on the bar, and on Cleans all seventeen villas on one screen.
-3. **Chat, in a conversation, typing.** **Expect** the message box and Send
+2. **Pull Reservations down from its top** and let go. **Expect** a grey
+   arrow that turns ink as you pull, then the board reloading; a short pull
+   does nothing. Same on Cleans and the Dashboard. The headless browser
+   fakes the touches; the rubber band of a real iPhone it cannot.
+3. **Cleans.** **Expect** all seventeen villas on one screen and Select
+   multiple in the bottom right cell, where the key was; a housekeeper's
+   login still sees the key there.
+4. **Chat, in a conversation, typing.** **Expect** the message box and Send
    reachable above the keyboard, the bar not riding up over them.
-4. **Turn the phone sideways.** **Expect** the bar gone and the menu still
-   there: under 600pt of height it steps aside for the boards.
-5. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
+5. **Turn the phone sideways** on Cleans. **Expect** the bar still there
+   and all seventeen villas still on one screen.
+6. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
    that login may open, and the icons in the same places on every page.
+   The chef's includes Statistics.
 
 ---
 

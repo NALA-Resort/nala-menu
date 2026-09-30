@@ -340,12 +340,21 @@ Settings leaves the bar and the menu together). The admin's five lead it,
 as ruled: Dashboard, Reservations, Cleans, Chat, Tasks. The waiter and the
 manager reach more than five too, so they get those same five once Chat
 and Tasks are opened (until then Front Desk and Spa stand in); the chef,
-housekeeping and the masseuse get what they can open, and a login with
-one page gets no bar. The menu's counts ride on the icons. The page's
-footer stands on the bar; sheets and the select and save bars cover it;
-under 600pt of height it steps aside, so the Cleans board keeps all
-seventeen villas on one screen. Not on the printed sheets, which wear the
-older dress. `tests/nav_canon.json` ("tabs") and `tabs_suite` hold it.
+housekeeping and the masseuse get what they can open (the chef's includes
+Statistics, last in the order), and a login with one page gets no bar.
+The menu's counts ride on the icons. The page's footer stands on the
+bar; sheets and the select and save bars cover it. Not on the printed
+sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and
+`tabs_suite` hold it.
+
+The same day the owner cleared the footers it would have sat under:
+Refresh on Reservations, Cleans and the Dashboard became a pull from the
+top (`pullToRefresh`, the Home Screen app only - browser tabs have their
+own), Reservations' Stats button became **Statistics** in the menu, and
+Cleans' Select multiple took the grid's eighteenth cell for the logins
+that can set a job, the key keeping it for everybody else. With its
+footer gone the Cleans board keeps all seventeen villas on one screen at
+every size cl_suite measures with the bar showing, sideways included.
 
 ---
 ## Key cards

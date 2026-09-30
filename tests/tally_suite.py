@@ -756,16 +756,16 @@ with sync_playwright() as p:
       href:[...document.querySelectorAll('.navdrop a')].find(a=>a.href.includes('list')).getAttribute('href')})""")
     ck("Today button enabled off-today", off["today"])
     ck("print link carries browsed date", off["href"]=="list.html?date="+plus(1))
-    #  The foot of the screen is the tab bar's where there is one (30 Sep),
-    #  and the footer stands on it: pinned to its top, not under it.
-    ft=pg.evaluate("""()=>{const f=document.querySelector('.foot');const r=f.getBoundingClientRect();
-      const t=document.getElementById('tabBar');
-      const floor=t&&getComputedStyle(t).display!=='none'?t.getBoundingClientRect().top:window.innerHeight;
-      return {b:Math.round(r.bottom),floor:Math.round(floor),vh:window.innerHeight,
-              doc:document.scrollingElement.scrollHeight};}""")
-    print("   short page:", ft)
-    ck("footer pinned to the foot of the screen on short page, on the tab bar",
-       abs(ft["b"]-ft["floor"])<=1 and ft["floor"]<ft["vh"])
+    #  The footer went 30 Sep, the owner clearing the foot of the screen for
+    #  the tab bar: Refresh is a pull from the top, Stats a page in the menu.
+    #  Nothing may come back to stand between the bar and the bookings.
+    ft=pg.evaluate("""()=>({foot:!!document.querySelector('.foot'),
+      refresh:[...document.querySelectorAll('button,a')].some(b=>/^(refresh|stats)$/i.test(b.textContent.trim())),
+      stats:!!document.querySelector('#navDrop a[href="stats.html"]')})""")
+    print("   the foot of the board:", ft)
+    ck("no footer on the board: no Refresh and no Stats button",
+       not ft["foot"] and not ft["refresh"])
+    ck("Statistics is in the menu instead", ft["stats"])
     #  The menu's shape lives in tests/nav_canon.json - one table the suites
     #  share instead of four private copies of the order. This page's own
     #  link is the one the canon has and the menu must not.
@@ -837,13 +837,8 @@ with sync_playwright() as p:
     # signing out is an action, so it comes last, after the destinations
     ck("logout is the last item in the menu", nav[-1]["t"]=="Logout")
     ck("no menu label wraps to a second line", all(i["h"]<=44 for i in nav))
-    rad=pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{
-      const c=getComputedStyle(b);
-      return [c.borderTopLeftRadius,c.borderTopRightRadius,
-              c.borderBottomRightRadius,c.borderBottomLeftRadius].join('|');})""")
-    print("   foot radii:", rad)
-    ck("footer outer lower corners rounded, inner corners square",
-       len(rad)==2 and rad[0]=="0px|0px|0px|8px" and rad[1]=="0px|0px|8px|0px")
+    #  The footer's corner law is held where a footer is left: tabs_suite,
+    #  on Pre-arrival SMS's Send.
     # Reservations had no auto refresh at all, only the manual button
     hits=[]
     pg.on("request", lambda r: hits.append(r.url) if "firebasedatabase.app" in r.url else None)

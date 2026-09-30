@@ -2329,20 +2329,21 @@ function loadStaff(cb){
    Only runs in standalone mode, so nothing changes in an ordinary tab. Links
    that leave the site, open a new tab, or do something on the page rather
    than go somewhere are left alone.                                     */
+/* navigator.standalone is a Safari property and is undefined in Chrome,
+   where a saved page still opens without the bars. Asking only Safari
+   meant this did nothing at all on half the phones, which is why the app
+   view kept being handed back to the browser. Shared since 30 Sep with
+   pull to refresh, which only the Home Screen app needs.              */
+function inHomeScreenApp(){
+  if (window.navigator && window.navigator.standalone) return true;
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches ||
+           window.matchMedia('(display-mode: minimal-ui)').matches;
+  } catch (e){ return false; }
+}
 (function(){
-  /* navigator.standalone is a Safari property and is undefined in Chrome,
-     where a saved page still opens without the bars. Asking only Safari
-     meant this did nothing at all on half the phones, which is why the app
-     view kept being handed back to the browser.                        */
-  function inApp(){
-    if (window.navigator && window.navigator.standalone) return true;
-    try {
-      return window.matchMedia('(display-mode: standalone)').matches ||
-             window.matchMedia('(display-mode: fullscreen)').matches ||
-             window.matchMedia('(display-mode: minimal-ui)').matches;
-    } catch (e){ return false; }
-  }
-  if (!inApp()) return;
+  if (!inHomeScreenApp()) return;
   document.addEventListener('click', function(e){
     var a = e.target;
     while (a && a.nodeName !== 'A') a = a.parentNode;
@@ -2915,6 +2916,11 @@ var NAV = [
   { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },
   { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
   { href:'publish.html',      label:'Publish Menu', need:'publishMenu'  },
+  /* Its door was the Stats button in Reservations' footer until 30 Sep,
+     when the owner cleared the footers for the tab bar ("could be placed
+     in the menu or could become one of the icons for the chef"). Both: it
+     is here, and last in TABBAR, where only the chef has room for it. */
+  { href:'stats.html',        label:'Statistics',   need:'resBoard'     },
   { group:'Print', items:[
       { href:'list.html',         label:'FOH Sheet',   need:'resSheet'     },
       { href:'housekeeping.html', label:'Clean Sheet', need:'cleansBoard'  },
@@ -2952,7 +2958,6 @@ var NAV = [
    or the pageaccess suite names it by file.                             */
 var NAV_UNLISTED = [
   { href:'guest.html',     label:'Guest Profile', need:'resBoard'     }, /* a calendar bar */
-  { href:'stats.html',     label:'Statistics',    need:'resBoard'     }, /* Reservations' Stats door */
   { href:'templates.html', label:'SMS Templates', need:'editBookings' }, /* the two SMS pages */
   { href:'debug.html',     label:'Diagnostics',   need:'manageStaff'  }  /* Front Desk's foot */
 ];
@@ -3128,7 +3133,8 @@ buildNav();
    so the admin, who may open everything, gets exactly those. The rest are
    the other boards on the menu's top level, for the logins that cannot open
    all five - a housekeeper's Calendar, the masseuse's Spa, the chef's
-   Publish Menu. The Print, SMS and Settings pages stay in their submenus.
+   Publish Menu and Statistics. The Print, SMS and Settings pages stay in
+   their submenus.
 
    A login with one page to go to draws no bar: an icon that can only say
    "you are here" is chrome. The page you are on stays on the bar, marked
@@ -3138,7 +3144,7 @@ buildNav();
    menu's own pattern: change the bar there too, or the suites name it.   */
 var TABBAR = ['dashboard.html', 'tally.html', 'cleaners.html', 'guest-contact.html',
               'tasks.html', 'front-desk.html', 'spa.html', 'calendar.html',
-              'keys.html', 'publish.html'];
+              'keys.html', 'publish.html', 'stats.html'];
 var TABBAR_MAX = 5;
 
 /* The massage mark: one centre petal and a mirrored pair, on the fork's own
@@ -3189,7 +3195,11 @@ var TAB_ICONS = {
   /* a menu card: a title over the courses */
   'publish.html': '<rect x="5" y="3" width="14" height="18" rx="2"/>' +
     '<path d="M10 7.5h4"/><path d="M8.5 11.5h7"/><path d="M8.5 14.5h7"/>' +
-    '<path d="M10 17.5h4"/>'
+    '<path d="M10 17.5h4"/>',
+  /* three bars on a baseline */
+  'stats.html': '<path d="M3.5 20.5h17"/><rect x="5" y="11" width="3.5" height="6.5" rx="1"/>' +
+    '<rect x="10.25" y="5" width="3.5" height="12.5" rx="1"/>' +
+    '<rect x="15.5" y="8.5" width="3.5" height="9" rx="1"/>'
 };
 
 /* The menu's top-level entries by page, taken as this file loads - as
@@ -3256,6 +3266,80 @@ function buildTabs(role){
   });
   bar.appendChild(row);
   body.appendChild(bar);
+}
+
+/* ── pull to refresh ─────────────────────────────────────────────────────
+   Drag the page down from its top and let go: it reloads. The owner, 30
+   Sep, clearing footers for the tab bar: "the refresh button could be a
+   normal drag down to refresh". A board asks for it with one call,
+   pullToRefresh(), where its Refresh button was: Reservations, Cleans and
+   the Dashboard.
+
+   Only in the Home Screen app, which has no pull of its own and is where
+   the staff work. Safari and Chrome tabs already pull to refresh, and a
+   second pull on top of theirs would reload twice.
+
+   A pull counts only from the very top of the page, and never from inside
+   the menu, a sheet, the tab bar or anything fixed, or from a box that
+   scrolls on its own and is not at its own top: a drag that means
+   something else is never taken for one. Past PTR_PULL the mark turns
+   ink, and letting go there reloads; anywhere short of it, nothing.      */
+var PTR_PULL = 70;          /* how far the mark travels to arm a release */
+var PTR_ON = false;
+var PTR_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></svg>';
+function pullToRefresh(refresh){
+  if (PTR_ON || !inHomeScreenApp()) return;
+  PTR_ON = true;
+  var go = refresh || function(){ location.reload(); };
+  var mark = null, y0 = null, pulled = 0;
+  function blocked(t){
+    var drop = document.getElementById('navDrop');
+    if (drop && drop.classList.contains('open')) return true;
+    for (var e = t; e && e.nodeType === 1 && e !== document.body; e = e.parentElement){
+      var cs = getComputedStyle(e);
+      if (cs.position === 'fixed' || cs.position === 'sticky') return true;
+      if (/(auto|scroll)/.test(cs.overflowY) && e.scrollTop > 0) return true;
+    }
+    return false;
+  }
+  function draw(dy){
+    if (!mark){
+      mark = document.createElement('div');
+      mark.className = 'ptr';
+      mark.id = 'ptrMark';
+      mark.innerHTML = PTR_ICON;
+      document.body.appendChild(mark);
+    }
+    mark.style.opacity = dy ? String(0.35 + 0.65 * Math.min(dy / PTR_PULL, 1)) : '0';
+    mark.style.transform = 'translateY(' + (Math.min(dy, PTR_PULL * 1.2) - 60) + 'px)' +
+                           ' rotate(' + Math.round(dy * 3) + 'deg)';
+    mark.classList.toggle('ready', dy >= PTR_PULL);
+  }
+  document.addEventListener('touchstart', function(e){
+    y0 = null;
+    if (e.touches.length !== 1 || window.scrollY > 0 || blocked(e.target)) return;
+    y0 = e.touches[0].clientY;
+    pulled = 0;
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if (y0 === null) return;
+    /* Half the finger's travel, so the mark lags it, as a phone's own does. */
+    pulled = window.scrollY > 0 ? 0 : Math.max(0, (e.touches[0].clientY - y0) / 2);
+    draw(pulled);
+  }, { passive:true });
+  document.addEventListener('touchend', function(){
+    if (y0 === null) return;
+    y0 = null;
+    if (pulled < PTR_PULL){ draw(0); return; }
+    mark.classList.add('spin');
+    go();
+  });
+  document.addEventListener('touchcancel', function(){
+    if (y0 === null) return;
+    y0 = null;
+    draw(0);
+  });
 }
 
 function navFilterShared(role){

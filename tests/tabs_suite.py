@@ -20,10 +20,15 @@ answer to each other, and whichever side a change misses fails by name.
      and Publish's bar - a sheet and the select and save bars cover it, and
      the foot of a long page scrolls clear of it.
   5. The menu's counts ride on its icons, and not on the page you are on.
-  6. It fits: every label whole at 390, no sideways scroll at 320, and
-     under 600pt of height it steps aside so the boards keep their room.
+  6. It fits: every label whole at 390, no sideways scroll at 320, and held
+     sideways it stays while the Cleans board keeps its villas on a screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
+  8. Pull to refresh, which took the Refresh buttons' place the same day so
+     the boards' footers could go: in the Home Screen app a long pull from
+     the top reloads Reservations, Cleans and the Dashboard, and nothing
+     else reloads - a short pull, a pull from the bar, under a sheet or
+     from part-way down, a page that never asked, a browser tab.
 
 The night is tests/paper_night.json, read through tests/night_harness.py,
 with a login for each role added here.
@@ -66,12 +71,16 @@ def ck(name, cond, detail=""):
     print(("PASS " if cond else "FAIL ") + name + ("" if cond or not detail else "  -> " + str(detail)))
     P, F = (P + 1, F) if cond else (P, F + 1)
 
-def open_as(b, email, page, w=390, h=844, perms=None):
-    """A page on the fixture night, signed in as email, settled."""
+def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False):
+    """A page on the fixture night, signed in as email, settled. app: as the
+    Home Screen app, on a touch screen; touch: a touch screen in a tab."""
     if perms is None: TREE.pop("permissions", None)
     else: TREE["permissions"] = perms
-    ctx = b.new_context(viewport={"width": w, "height": h}, timezone_id="Australia/Brisbane")
+    ctx = b.new_context(viewport={"width": w, "height": h}, timezone_id="Australia/Brisbane",
+                        has_touch=app or touch)
     pg = ctx.new_page()
+    if app:
+        pg.add_init_script("Object.defineProperty(navigator,'standalone',{get:function(){return true;}});")
     pg.clock.set_fixed_time(CLOCK)
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
@@ -207,9 +216,18 @@ with sync_playwright() as p:
         ck("%s: %s stands on the bar, not under it" % (page, label),
            bool(m) and abs(m["foot"] - m["bar"]) <= 1, m)
         ctx.close()
-    foot_on_bar("tally.html", ".foot", "the sticky footer")
+    foot_on_bar("arrivals-sms.html", ".foot", "the sticky Send footer")
     foot_on_bar("invitations.html", "body > .foot", "the fixed Send footer")
     foot_on_bar("publish.html", "#bar", "the Publish bar")
+    # The footer's corner law, held here since Reservations' footer went:
+    # square but for the two outer lower corners. One button is both.
+    ctx, pg = open_as(b, EMAIL["admin"], "arrivals-sms.html")
+    rad = pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{const c=getComputedStyle(b);
+        return [c.borderTopLeftRadius,c.borderTopRightRadius,c.borderBottomRightRadius,
+                c.borderBottomLeftRadius].join('|');})""")
+    ck("and its button keeps the footer's corners: square above, rounded at the outer foot",
+       rad == ["0px|0px|8px|8px"], rad)
+    ctx.close()
 
     def covered(pg):
         """What the finger lands on at the middle of the bar: the ids of the
@@ -282,11 +300,17 @@ with sync_playwright() as p:
         ck("at %d all five icons sit on the screen, and nothing scrolls sideways" % w,
            m["n"] == 5 and m["inside"] and m["side"] <= 1, m)
         ctx.close()
-    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", h=560)
-    m = pg.evaluate("""()=>({bar:getComputedStyle(document.getElementById('tabBar')).display,
-        foot:Math.round(document.querySelector('.foot').getBoundingClientRect().bottom), vh:innerHeight})""")
-    ck("under 600pt of height the bar steps aside, and the footer takes the foot again",
-       m["bar"] == "none" and abs(m["foot"] - m["vh"]) <= 1, m)
+    # Held sideways it stays. It stepped aside under 600pt until the Cleans
+    # footer went the same day, which gave the board back more than the bar
+    # takes: seventeen villas still fit the smallest phone on its side.
+    ctx, pg = open_as(b, EMAIL["admin"], "cleaners.html", w=667, h=320)
+    m = pg.evaluate("""()=>{const g=document.getElementById('grid'), t=document.getElementById('tabBar');
+        return {bar:!!t&&getComputedStyle(t).display!=='none',
+                page:document.documentElement.scrollHeight-innerHeight,
+                grid:g.scrollHeight-g.clientHeight,
+                clear:g.getBoundingClientRect().bottom<=(t?t.getBoundingClientRect().top:innerHeight)+1};}""")
+    ck("a phone on its side keeps the bar, and the Cleans board every villa on one screen",
+       m["bar"] and m["page"] <= 1 and m["grid"] <= 1 and m["clear"], m)
     ctx.close()
 
     # ── 7. where it is drawn ──────────────────────────────────────────
@@ -312,6 +336,67 @@ with sync_playwright() as p:
     pg.emulate_media(media="print"); pg.wait_for_timeout(200)
     ck("and it never reaches paper",
        pg.evaluate("()=>getComputedStyle(document.getElementById('tabBar')).display") == "none")
+    ctx.close()
+
+    # ── 8. pull to refresh ────────────────────────────────────────────
+    # A finger down the screen from (x, y), dy in all, then lifted: the
+    # touches a phone sends, dispatched where the finger lands.
+    PULL = """([x, y0, dy])=>{const t=document.elementFromPoint(x, y0);
+      const at=y=>new Touch({identifier:1, target:t, clientX:x, clientY:y, pageX:x, pageY:y+scrollY});
+      const send=(type, y, list)=>t.dispatchEvent(new TouchEvent(type, {bubbles:true, cancelable:true,
+        touches:list, targetTouches:list, changedTouches:[at(y)]}));
+      send('touchstart', y0, [at(y0)]);
+      for (let i=1; i<=10; i++) send('touchmove', y0+dy*i/10, [at(y0+dy*i/10)]);
+      const m=document.getElementById('ptrMark'), armed=!!m && m.classList.contains('ready');
+      send('touchend', y0+dy, []);
+      return {armed, on:(t.id||t.tagName)};}"""
+
+    def pulled(pg, dy=200, x=195, y0=180):
+        """Pull, and say whether the page reloaded and whether the mark armed."""
+        pg.evaluate("()=>{window.__stay=1;}")
+        g = pg.evaluate(PULL, [x, y0, dy])
+        pg.wait_for_timeout(1500)
+        try:
+            pg.wait_for_load_state("load", timeout=5000)
+            g["reloaded"] = pg.evaluate("()=>window.__stay!==1")
+        except Exception as e:
+            g["reloaded"] = "unsure: " + str(e).split("\n")[0][:60]
+        return g
+
+    for page, name in (("tally.html", "Reservations"), ("cleaners.html", "Cleans"),
+                       ("dashboard.html", "the Dashboard")):
+        ctx, pg = open_as(b, EMAIL["admin"], page, app=True)
+        gone = pg.evaluate("""()=>[...document.querySelectorAll('button,a')]
+            .filter(b=>/^refresh$/i.test(b.textContent.trim())).length""")
+        ck("%s keeps no Refresh button" % name, gone == 0, gone)
+        g = pulled(pg)
+        ck("in the Home Screen app, a long pull from the top reloads %s" % name,
+           g["armed"] and g["reloaded"] is True, g)
+        ctx.close()
+
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", app=True)
+    g = pulled(pg, dy=80)
+    ck("a short pull only shows the mark, and reloads nothing", not g["armed"] and g["reloaded"] is False, g)
+    g = pulled(pg, y0=844 - 28)
+    ck("nor does a pull that starts on the tab bar", g["reloaded"] is False, g)
+    pg.evaluate("()=>window.scrollTo(0, 400)"); pg.wait_for_timeout(200)
+    g = pulled(pg)
+    ck("nor a pull from part-way down the page", g["reloaded"] is False, g)
+    pg.evaluate("()=>window.scrollTo(0, 0)"); pg.wait_for_timeout(200)
+    miss = press(pg, "#rooms .room >> nth=0"); pg.wait_for_timeout(600)
+    g = pulled(pg)
+    ck("nor one under an open sheet", not miss and g["reloaded"] is False, miss or g)
+    ctx.close()
+
+    ctx, pg = open_as(b, EMAIL["admin"], "front-desk.html", app=True)
+    g = pulled(pg)
+    ck("a page that never asked for it does not reload", not g["armed"] and g["reloaded"] is False, g)
+    ctx.close()
+
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", touch=True)
+    g = pulled(pg)
+    ck("in a browser tab the pull is the browser's own: none of ours",
+       not g["armed"] and g["reloaded"] is False, g)
     ctx.close()
 
     b.close()

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Dashboard</title>
-<link rel="stylesheet" href="nala-ui2.css?v=10">
+<link rel="stylesheet" href="nala-ui2.css?v=11">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* v9. The v8 design, redrawn on the app's own stylesheets rather than a
@@ -134,20 +134,6 @@
      is otherwise the sheet's. */
   body.ui2 .acts .btn.done { border-color:var(--law-green-b); color:var(--law-green); }
 
-  /* Header, copied from tally.html rather than approximated: same markup,
-     same class names, same rules. Two boards showing the same three numbers
-     in two hand-made headers is how they come to disagree about them. */
-  .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
-                font-size:var(--t2); color:var(--ink);
-                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  /* The button is tally.html's Refresh, copied. Only its width is set here,
-     because body.ui2 .btn is full width for the footer rows it usually sits
-     in, and this one is a lone control under the counts. Everything polls
-     and nothing pushes, so a board left open goes quietly stale; this is the
-     one control that is always worth having in reach. */
-  body.ui2 .tablesline .btn { width:auto; padding:var(--s2) var(--s5);
-                              min-height:36px; font-size:var(--t2); }
-
   /* Body padding is hand-set on every page rather than by the shared sheet.
      Two variants exist: tally's 28px 24px 0, and the safe-area one on Spa,
      Front Desk and Cleans. Taking the majority, because it is the one that
@@ -204,9 +190,6 @@
   <div class="stat"><div class="stat-n" id="nInv">&ndash;</div><div class="stat-l">Invitations</div></div>
   <div class="stat"><div class="stat-n" id="nReps">&ndash;</div><div class="stat-l">Responses</div></div>
 </div>
-<div class="tablesline">
-  <button class="btn ghost" onclick="location.reload()">Refresh</button>
-</div>
 
 <div id="board"></div>
 </div><!-- /wrap -->
@@ -226,7 +209,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=95"></script>
+<script src="nala-shared.js?v=96"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -1074,6 +1057,11 @@ setInterval(function(){ if (LOADED) render(); }, 60000);
 document.addEventListener('visibilitychange', function(){
   if (!document.hidden && LOADED) load().catch(function(){});
 });
+
+/* Everything polls and nothing pushes, so a board left open goes quietly
+   stale; a reload has to be in reach. It was a Refresh button under the
+   counts until 30 Sep, when the owner made it a pull from the top. */
+pullToRefresh();
 </script>
 </body>
 </html>

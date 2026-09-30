@@ -47,6 +47,10 @@
     [
       "publish.html",
       "Publish Menu"
+    ],
+    [
+      "stats.html",
+      "Statistics"
     ]
   ],
   "groups": [
@@ -122,10 +126,12 @@
       "icon a page, five at most, only pages the login may open, and the",
       "admin's five are Dashboard, Reservations, Cleans, Chat and Tasks. A",
       "login gets the first five of the order it may open, in that order; one",
-      "page alone draws no bar. 'roles' is what each role is offered on the",
-      "shipped grants while Chat and Tasks are still the admin's alone",
-      "(PREVIEW_PAGES), 'roles_open' once the owner has opened them. Change",
-      "the bar in TABBAR and here, and tabs_suite names whichever was missed."
+      "page alone draws no bar. Statistics came last the same day, for the",
+      "chef ('could become one of the icons for the chef'). 'roles' is what",
+      "each role is offered on the shipped grants while Chat and Tasks are",
+      "still the admin's alone (PREVIEW_PAGES), 'roles_open' once the owner",
+      "has opened them. Change the bar in TABBAR and here, and tabs_suite",
+      "names whichever was missed."
     ],
     "order": [
       "dashboard.html",
@@ -137,7 +143,8 @@
       "spa.html",
       "calendar.html",
       "keys.html",
-      "publish.html"
+      "publish.html",
+      "stats.html"
     ],
     "max": 5,
     "roles": {
@@ -158,7 +165,8 @@
       "chef": [
         "dashboard.html",
         "tally.html",
-        "publish.html"
+        "publish.html",
+        "stats.html"
       ],
       "waiter": [
         "dashboard.html",
@@ -192,7 +200,8 @@
         "dashboard.html",
         "tally.html",
         "tasks.html",
-        "publish.html"
+        "publish.html",
+        "stats.html"
       ],
       "waiter": [
         "dashboard.html",
