@@ -94,17 +94,25 @@ function newToken() {
 /* ── a phone number a machine can dial ──────────────────────────
    The twin of normalisePhone in nala-shared.js, carried here because a Worker
    cannot import from the site. E.164 or nothing: 04..., +614... and 614...
-   with the right digit count become +614XXXXXXXX, and everything else is
-   refused rather than guessed at - an international number, a landline, a
-   mobile with digits missing. worker/invites-test.mjs asserts this copy and
-   the shared one against the same table, so they cannot drift apart quietly.
+   with the right digit count become +614XXXXXXXX, a full international
+   number goes as typed less a trunk 0 after its code, and everything else
+   is refused rather than guessed at - an Australian landline, a mobile with
+   digits missing, a foreign number without its code. worker/invites-test.mjs
+   asserts this copy and the shared one against the same table
+   (tests/phone_cases.json), so they cannot drift apart quietly.
    Exported for exactly that test. */
 export function normalisePhone(raw) {
-  let s = String(raw == null ? "" : raw).replace(/[\s().\-]/g, "");
+  let s = String(raw == null ? "" : raw).replace(/[\s().\-\u2010-\u2015\u2212]/g, "");
   /* 0011 is Australia's international dial-out and 00 most of the world's:
      both mean the + of E.164. */
   if (/^0011[1-9]\d/.test(s))    s = "+" + s.slice(4);
   else if (/^00[1-9]\d/.test(s)) s = "+" + s.slice(2);
+  /* A 0 after a country code is its trunk prefix, dropped from abroad:
+     the list and the reason are the twin's, in nala-shared.js. */
+  const TRUNK_ZERO = ["61", "64", "44", "353", "49", "33", "31", "32", "41", "43", "358", "86",
+                      "91", "81", "82", "27", "971", "972", "66", "62", "60", "63", "84", "886", "90"];
+  const cc = TRUNK_ZERO.find((c) => s.startsWith("+" + c + "0"));
+  if (cc) s = "+" + cc + s.slice(cc.length + 2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
   if (/^614\d{8}$/.test(s))   return "+" + s;
   /* Our own country we can judge: +61 must be a mobile. Any other full
@@ -113,6 +121,21 @@ export function normalisePhone(raw) {
   if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
   if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   return null;
+}
+
+/* A guest who texted STOP to the resort's number is sent nothing from any
+   page until they text START. The owner's review, 30 Sep: Chat recorded the
+   STOP, and Invitations, Pre-arrival SMS and Spa reminders went on texting,
+   from the same number once SMS_VIA=twilio. The record is Chat's,
+   /contact/<ck>/optout, read as the caller; a read that fails refuses the
+   send rather than risk texting somebody who asked us to stop. */
+async function refuseIfStopped(phone, idToken) {
+  let o;
+  try { o = await dbGet("/contact/" + phone.slice(1) + "/optout", idToken); }
+  catch { throw new Error("could not check whether this guest texted STOP, so nothing was sent"); }
+  if (o && typeof o === "object")
+    throw new Error("this guest texted " + String(o.word || "STOP").slice(0, 20) +
+                    " to the resort's number: nothing can be sent until they text START");
 }
 
 /* The same key /staff is filed under: every dot to a comma, globally. */
@@ -296,8 +319,13 @@ export function spaReminderText(tpl, first, rec, prev) {
   return s.split("<booking>").join(spaBookingText(rec, prev));
 }
 
+/* How long a sender may take before no answer is the answer. */
+const SEND_WAIT_MS = 15000;
+const NO_ANSWER = " did not answer: it may still arrive, so wait a minute before sending it again";
+
 async function clickSend(env, phone, bodyText) {
   const send = await fetch(CLICKSEND, {
+    signal: AbortSignal.timeout(SEND_WAIT_MS),
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -314,7 +342,8 @@ async function clickSend(env, phone, bodyText) {
          dashboard.clicksend.com/sms/website-registration, or a message
          carrying the link will not send at all. */
       shorten_urls: false }),
-  });
+  }).catch(() => null);
+  if (!send) return { ok: false, msg: null, out: { response_msg: "ClickSend" + NO_ANSWER } };
   const out = await send.json().catch(() => null);
   const msg = out && out.data && out.data.messages && out.data.messages[0];
   return { ok: send.ok && msg && msg.status === "SUCCESS", msg: msg, out: out };
@@ -353,19 +382,37 @@ async function smsSend(env, phone, bodyText) {
     method: "POST",
     headers: { "Authorization": twilioAuth(env),
                "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ From: (env.TWILIO_FROM || "").trim(), To: phone,
-                                Body: bodyText }).toString() }).catch(() => null);
+    /* The number as the rule reads it, the Chat Worker's way: typed
+       national or spaced into Cloudflare, Twilio still gets E.164. */
+    body: new URLSearchParams({ From: normalisePhone((env.TWILIO_FROM || "").trim()) ||
+                                      (env.TWILIO_FROM || "").trim(), To: phone,
+                                Body: bodyText }).toString(),
+    signal: AbortSignal.timeout(SEND_WAIT_MS) }).catch(() => null);
   const j = r ? await r.json().catch(() => null) : null;
   if (r && r.ok && j && j.sid) return { ok: true, id: String(j.sid), error: "" };
   return { ok: false, id: "",
            error: (j && (j.message || (j.code && "Twilio error " + j.code))) ||
-                  (r ? "Twilio answered " + r.status : "Twilio did not answer") };
+                  (r ? "Twilio answered " + r.status : "Twilio" + NO_ANSWER) };
 }
 
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (request.method !== "POST") return reply(405, { error: "POST only" });
+    /* Anything thrown on the way - Google, ClickSend, Twilio or the
+       database dropping a connection - is answered in words and with the
+       CORS headers, so the page says what happened, not "the sender did
+       not answer". Found by the owner's review, 30 Sep. */
+    try { return await handle(request, env); }
+    catch (e) {
+      return reply(502, { error: "the sender hit a fault, so check each row before sending again: " +
+                                 String((e && e.message) || e).slice(0, 200) });
+    }
+  },
+};
+
+async function handle(request, env) {
+  {
 
     let body;
     try { body = await request.json(); }
@@ -456,9 +503,12 @@ export default {
     let staffRec, permissions;
     try {
       staffRec = await dbGet("/staff/" + emailKey(email), idToken);
-      permissions = await dbGet("/permissions", idToken).catch(() => null);
+      /* A read that fails refuses: falling back to what each role ships
+         with would switch a permission the admin turned off back on. */
+      permissions = await dbGet("/permissions", idToken);
     } catch {
-      return reply(403, { error: "could not read the staff record" });
+      return reply(403, { error: "could not read this login's record or its permissions, so nothing " +
+                                 "was sent. Try again" });
     }
     const role = staffRec && staffRec.role;
     if (!maySend(role, permissions))
@@ -598,6 +648,7 @@ export default {
           if (!phone)
             throw new Error("number cannot be normalised for sending: " + raw);
           rec.to = phone;
+          await refuseIfStopped(phone, idToken);
           rec.body = spaReminderText(text, pms.first, spa, prev);
           const cs = await smsSend(env, phone, rec.body);
           if (cs.ok) {
@@ -660,6 +711,7 @@ export default {
           if (!phone)
             throw new Error("number cannot be normalised for sending: " + raw);
           rec.to = phone;
+          await refuseIfStopped(phone, idToken);
           const token = await mintToken(idToken, id, villa, arrive, rec.sentAt);
           if (!token) throw new Error("the link token did not store, nothing sent");
           rec.token = token;
@@ -733,6 +785,7 @@ export default {
           if (!b || b.source !== "invite") throw new Error("no such invitation tonight");
           phone = normalisePhone(b.phone);
           if (!phone) throw new Error("number cannot be normalised for sending: " + b.phone);
+          await refuseIfStopped(phone, idToken);
           token = String(b.token || key.slice(4));
           /* A link lost somewhere is put back rather than sending a dead one. */
           const l = await dbGet("/links/" + token, idToken).catch(() => null);
@@ -741,6 +794,7 @@ export default {
             throw new Error("the link did not store, nothing sent");
         } else {
           phone = normalisePhone(xPhone);
+          await refuseIfStopped(phone, idToken);
           token = await mintLink(idToken, (t) => ({ x: "ext-" + t, d: date, at: rec.sentAt }));
           if (!token) throw new Error("the link token did not store, nothing sent");
           key = "ext-" + token;
@@ -808,6 +862,7 @@ export default {
         if (!phone)
           throw new Error("number cannot be normalised for sending: " + raw);
         rec.to = phone;
+        await refuseIfStopped(phone, idToken);
         const token = await mintToken(idToken, stay.id, v, date, rec.sentAt);
         if (!token) throw new Error("the link token did not store, nothing sent");
         rec.token = token;
@@ -845,5 +900,5 @@ export default {
       results[v] = { status: rec.status, error: rec.error || undefined };
     }
     return reply(200, { results });
-  },
-};
+  }
+}

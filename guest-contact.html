@@ -965,6 +965,17 @@ function loadPhotos(){
   });
 }
 
+/* The Worker's words for a refusal, one of them translated: a door this
+   page knows and the Worker does not answers "unknown kind", which means
+   the Chat Worker in Cloudflare is older than the page, and only a paste
+   mends it (30 Sep: Delete tried before its paste). */
+var WORKER_OLD = 'The Chat Worker in Cloudflare is older than this page. Paste worker/guest-contact.js ' +
+                 'into nala-contact and press Deploy, then try again.';
+function workerSaid(j, fallback){
+  var e = j && j.error;
+  return e === 'unknown kind' ? WORKER_OLD : (e || fallback);
+}
+
 /* ── sorting a guest's message ───────────────────────────────── */
 function me(){ return (window.NALA_USER && NALA_USER.email) || ''; }
 function sortWrite(patch){
@@ -999,7 +1010,7 @@ function askDelete(id){
         body: JSON.stringify({ idToken: window.__idToken, kind:'delete', ck: CK, m: id }) })
         .then(function(r){ return r.json().catch(function(){ return {}; })
           .then(function(j){
-            if (!r.ok){ var er = new Error(j.error || 'the messenger did not answer'); er.said = true; throw er; }
+            if (!r.ok){ var er = new Error(workerSaid(j, 'the messenger did not answer')); er.said = true; throw er; }
           }); });
     }, { busy:'Deleting', done:'Deleted', hold:300, fail: document.getElementById('delErr'),
          then: function(){ closeSheet(); DELSEL = null; refresh(); } });
@@ -1283,7 +1294,7 @@ document.getElementById('sendBtn').onclick = function(){
         .then(function(j){ return { ok: r.ok, j: j }; }); })
       .then(function(res){
         if (!res.ok){
-          var e = new Error(res.j && res.j.error ? res.j.error : 'the messenger did not answer');
+          var e = new Error(workerSaid(res.j, 'the messenger did not answer'));
           e.said = true; throw e;
         }
       });
@@ -1313,7 +1324,11 @@ function setupCheck(){
   if (r !== 'admin' && r !== 'manager') return;
   fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
                        body: JSON.stringify({ idToken: window.__idToken, kind:'check' }) })
-    .then(function(x){ return x.ok ? x.json() : null; })
+    .then(function(x){ return x.json().catch(function(){ return null; }).then(function(j){
+      if (x.ok) return j;
+      /* a Worker older than the check itself says so at the top */
+      return j && j.error === 'unknown kind' ? { check: [{ key:'worker', ok:false, say: WORKER_OLD }] } : null;
+    }); })
     .catch(function(){ return null; })
     .then(function(j){ drawSetup(j && j.check); });
 }

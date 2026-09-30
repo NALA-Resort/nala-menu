@@ -83,6 +83,8 @@ function install() {
   globalThis.fetch = async (url, opt = {}) => {
     const u = String(url);
     if (u.includes("accounts:lookup")) {
+      /* lookupThrows: the connection to Google dropping */
+      if (STATE.lookupThrows) throw new TypeError("network connection lost");
       if (!STATE.tokenOk) return new Response(JSON.stringify({ error: {} }), { status: 400 });
       return new Response(JSON.stringify({ users: [{ email: STATE.email }] }), { status: 200 });
     }
@@ -96,6 +98,7 @@ function install() {
     if (u.startsWith("https://api.twilio.com/") && u.endsWith("/Messages.json")) {
       const form = Object.fromEntries(new URLSearchParams(opt.body));
       TSENDS.push({ form, auth: opt.headers && opt.headers.Authorization });
+      STATE.sigs = (STATE.sigs || []).concat(!!opt.signal);
       if (STATE.twilioOk === false)
         return new Response(JSON.stringify({ code: 21211,
           message: "The 'To' number is not a valid phone number." }), { status: 400 });
@@ -109,6 +112,9 @@ function install() {
     }
     if (u.includes("clicksend.com")) {
       SENDS.push(JSON.parse(opt.body));
+      STATE.sigs = (STATE.sigs || []).concat(!!opt.signal);
+      /* clicksendNoAnswer: the line dropping before ClickSend answered */
+      if (STATE.clicksendNoAnswer) throw new TypeError("network connection lost");
       if (!STATE.clicksendOk)
         return new Response(JSON.stringify({ data: { messages: [{ status: "INVALID_RECIPIENT" }] } }), { status: 200 });
       return new Response(JSON.stringify({ data: { messages: [{ status: "SUCCESS", message_id: "mid-1" }] } }), { status: 200 });
@@ -134,6 +140,8 @@ function install() {
       STORE[path] = JSON.parse(opt.body);
       return new Response(opt.body, { status: 200 });
     }
+    /* failRead: one node the database cannot serve just now */
+    if (STATE.failRead === path) return new Response('{"error":"unavailable"}', { status: 503 });
     return new Response(JSON.stringify(STORE[path] ?? null), { status: 200 });
   };
 }
@@ -809,6 +817,67 @@ await dlv({ invites: [{ date: today, villa: "4" }] });
 ck("the receipt check writes its verdict and keeps what was sent before",
    STORE["/invites/" + today + "/4"].delivery === "delivered" &&
    (STORE["/invites/" + today + "/4"].earlier || []).length === 1);
+
+/* ── the review of 30 Sep ───────────────────────────────────────────
+   The owner: "run a check over the code to ensure we have a solid system.
+   And includes error handling, mobile phone number checks, country code
+   checking etc." Each check below is one of that review's findings. The
+   STOP checks run on ClickSend, as the pages send today, and again
+   switched to Twilio, where Chat's STOP is on the same number. */
+const STOPPED = () => ({ at: new Date().toISOString(), word: "STOP" });
+const noneSent = () => SENDS.length === 0 && TSENDS.length === 0;
+for (const via of ["ClickSend", "Twilio"]) {
+if (via === "Twilio") Object.assign(env, TW);
+install(); STORE["/contact/61411222333/optout"] = STOPPED();
+r = await post(); j = await r.json();
+ck("[" + via + "] a guest who texted STOP to Chat's number is sent no dinner invitation",
+   j.results["4"].status === "failed" && /texted STOP/.test(j.results["4"].error) &&
+   noneSent() && !keysUnder("/links/").length);
+r = await pre(); j = await r.json();
+ck("[" + via + "] nor the pre-arrival form, and no link is made for it",
+   j.results["bk-future"].status === "failed" && /texted STOP/.test(j.results["bk-future"].error) &&
+   noneSent() && !keysUnder("/links/").length);
+spaWorld(); STORE["/contact/61411222333/optout"] = STOPPED();
+r = await spa(); j = await r.json();
+ck("[" + via + "] nor a spa reminder", j.results["bk-spa/t1"].status === "failed" &&
+   /texted STOP/.test(j.results["bk-spa/t1"].error) && noneSent());
+install(); STORE["/contact/61412345678/optout"] = STOPPED();
+r = await ext(); j = await r.json();
+ck("[" + via + "] and an outside guest who texted STOP is neither booked in nor texted",
+   j.result.status === "failed" && /texted STOP/.test(j.result.error) && noneSent() &&
+   !keysUnder("/manual/").length && !keysUnder("/links/").length);
+install(); STATE.failRead = "/contact/61411222333/optout";
+r = await pre(); j = await r.json();
+ck("[" + via + "] a STOP that cannot be checked is not taken as absent: nothing goes",
+   j.results["bk-future"].status === "failed" && /could not check/.test(j.results["bk-future"].error) &&
+   noneSent());
+install(); r = await pre(); j = await r.json();
+ck("[" + via + "] and a guest who never texted STOP is sent to as before",
+   j.results["bk-future"].status === "sent" && SENDS.length + TSENDS.length === 1);
+}
+
+install(); STORE["/permissions"] = { editBookings: { waiter: false } }; STATE.failRead = "/permissions";
+r = await post();
+ck("a permissions read that fails refuses, rather than falling back to what the waiter ships with",
+   r.status === 403 && TSENDS.length === 0 && SENDS.length === 0);
+
+install(); STATE.lookupThrows = true;
+r = await post().catch(() => null); j = r ? await r.json().catch(() => null) : null;
+ck("a connection that drops on the way is answered in words and with CORS, not a bare 500",
+   !!r && r.status === 502 && !!j && /the sender hit a fault/.test(j.error) &&
+   r.headers.get("Access-Control-Allow-Origin") === "*");
+
+install(); env.TWILIO_FROM = "0480 000 000";   /* still switched to Twilio from the loop */
+r = await post(); j = await r.json();
+ck("TWILIO_FROM typed as a national number still goes out from +61480000000",
+   TSENDS[0] && TSENDS[0].form.From === "+61480000000");
+ck("and a send waits only as long as its timeout", (STATE.sigs || []).length === 1 && STATE.sigs[0] === true);
+env.TWILIO_FROM = "+61480000000";
+install(); delete env.SMS_VIA; STATE.clicksendNoAnswer = true;
+r = await post(); j = await r.json();
+ck("ClickSend that does not answer is said as it may still arrive, not as refused",
+   j.results["4"].status === "failed" && /may still arrive/.test(j.results["4"].error) &&
+   (STATE.sigs || []).length === 1 && STATE.sigs[0] === true);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

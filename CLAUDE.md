@@ -105,7 +105,9 @@ Already done this way — follow these:
   worker/guest-contact.js, and the colour a guest's row wears
   (`contactRowState`). Added 29 Sep with the module; GUEST-CONTACT.md.
   And who may use the desk or reply to a guest (`can`, the Worker's
-  `mayDo`), 30 Sep with the Reply to guests switch.
+  `mayDo`), 30 Sep with the Reply to guests switch; and whom the preview
+  shuts out (`previewShut`, twinned in the Worker the same day, after the
+  owner's review found the door open where the menu was shut).
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them

@@ -1,113 +1,1058 @@
 {
   "_why": "Chat's rules as cases, one table for two readers (CLAUDE.md rules 1 and 3). waWindow, contactChannel and contactTemplateText live in nala-shared.js for the page and again in worker/guest-contact.js, because a Worker cannot import from the site: the page previews what the Worker sends and says when the 24 hours close, and the Worker refuses free text outside them. contact_suite.py runs the page's copies through this table and worker/contact-test.mjs the Worker's; a case added here fails whichever copy has not learned it. contactRowState is the page's alone, pinned here all the same because it is the colour a row wears, and so are contactTeams and teamsOf, the team list every page offers (29 Sep).",
-
   "window": {
     "_note": "[guest's last WhatsApp message, now, open?, closes at]. Meta's rule: free text only within 24 hours of the guest's last WhatsApp message. Stamps are compared as instants, whatever zone they were written in.",
     "cases": [
-      ["2026-09-29T15:14:00+10:00", "2026-09-29T15:20:00+10:00", true,  "2026-09-30T15:14:00+10:00"],
-      ["2026-09-29T15:14:00+10:00", "2026-09-30T15:13:59+10:00", true,  "2026-09-30T15:14:00+10:00"],
-      ["2026-09-29T15:14:00+10:00", "2026-09-30T15:14:00+10:00", false, "2026-09-30T15:14:00+10:00"],
-      ["2026-09-29T05:14:00Z",      "2026-09-30T15:13:00+10:00", true,  "2026-09-30T15:14:00+10:00"],
-      ["2026-09-29T05:14:00.123456Z", "2026-09-29T06:00:00Z",    true,  "2026-09-30T05:14:00.123Z"],
-      ["",                          "2026-09-29T15:20:00+10:00", false, null],
-      [null,                        "2026-09-29T15:20:00+10:00", false, null],
-      ["not a date",                "2026-09-29T15:20:00+10:00", false, null]
+      [
+        "2026-09-29T15:14:00+10:00",
+        "2026-09-29T15:20:00+10:00",
+        true,
+        "2026-09-30T15:14:00+10:00"
+      ],
+      [
+        "2026-09-29T15:14:00+10:00",
+        "2026-09-30T15:13:59+10:00",
+        true,
+        "2026-09-30T15:14:00+10:00"
+      ],
+      [
+        "2026-09-29T15:14:00+10:00",
+        "2026-09-30T15:14:00+10:00",
+        false,
+        "2026-09-30T15:14:00+10:00"
+      ],
+      [
+        "2026-09-29T05:14:00Z",
+        "2026-09-30T15:13:00+10:00",
+        true,
+        "2026-09-30T15:14:00+10:00"
+      ],
+      [
+        "2026-09-29T05:14:00.123456Z",
+        "2026-09-29T06:00:00Z",
+        true,
+        "2026-09-30T05:14:00.123Z"
+      ],
+      [
+        "",
+        "2026-09-29T15:20:00+10:00",
+        false,
+        null
+      ],
+      [
+        null,
+        "2026-09-29T15:20:00+10:00",
+        false,
+        null
+      ],
+      [
+        "not a date",
+        "2026-09-29T15:20:00+10:00",
+        false,
+        null
+      ]
     ]
   },
-
   "channel": {
     "_note": "[thread, now, which way a message from us goes]. none: texted STOP. wa: WhatsApp free text. watpl: WhatsApp, approved wording only. sms: SMS free text. A guest who wrote in the last 24 hours is answered the way they wrote; otherwise WhatsApp only for a guest who agreed (the desk's switch, or they once wrote there) and whose number WhatsApp knows.",
     "cases": [
-      [{}, "2026-09-29T15:20:00+10:00", "sms"],
-      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-29T15:14:00+10:00"}, "2026-09-29T15:20:00+10:00", "wa"],
-      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "sms"}, "2026-09-29T15:20:00+10:00", "sms"],
-      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "sms", "lastInWa": "2026-09-28T09:00:00+10:00"}, "2026-09-29T15:20:00+10:00", "sms"],
-      [{"lastIn": "2026-09-23T09:52:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-23T09:52:00+10:00"}, "2026-09-29T15:20:00+10:00", "watpl"],
-      [{"wa": {"on": true, "by": "ben@x", "at": "2026-09-28T10:00:00+10:00"}}, "2026-09-29T15:20:00+10:00", "watpl"],
-      [{"wa": {"on": false, "by": "ben@x", "at": "2026-09-28T10:00:00+10:00"}}, "2026-09-29T15:20:00+10:00", "sms"],
-      [{"wa": {"on": true}, "waBad": true}, "2026-09-29T15:20:00+10:00", "sms"],
-      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-29T15:14:00+10:00", "waBad": true}, "2026-09-29T15:20:00+10:00", "wa"],
-      [{"optout": {"at": "2026-09-29T10:00:00+10:00", "word": "STOP"}, "lastIn": "2026-09-29T10:00:00+10:00", "lastInCh": "sms"}, "2026-09-29T15:20:00+10:00", "none"],
-      [{"optout": {"at": "2026-09-29T10:00:00+10:00", "word": "STOP"}, "wa": {"on": true}}, "2026-09-29T15:20:00+10:00", "none"]
+      [
+        {},
+        "2026-09-29T15:20:00+10:00",
+        "sms"
+      ],
+      [
+        {
+          "lastIn": "2026-09-29T15:14:00+10:00",
+          "lastInCh": "wa",
+          "lastInWa": "2026-09-29T15:14:00+10:00"
+        },
+        "2026-09-29T15:20:00+10:00",
+        "wa"
+      ],
+      [
+        {
+          "lastIn": "2026-09-29T15:14:00+10:00",
+          "lastInCh": "sms"
+        },
+        "2026-09-29T15:20:00+10:00",
+        "sms"
+      ],
+      [
+        {
+          "lastIn": "2026-09-29T15:14:00+10:00",
+          "lastInCh": "sms",
+          "lastInWa": "2026-09-28T09:00:00+10:00"
+        },
+        "2026-09-29T15:20:00+10:00",
+        "sms"
+      ],
+      [
+        {
+          "lastIn": "2026-09-23T09:52:00+10:00",
+          "lastInCh": "wa",
+          "lastInWa": "2026-09-23T09:52:00+10:00"
+        },
+        "2026-09-29T15:20:00+10:00",
+        "watpl"
+      ],
+      [
+        {
+          "wa": {
+            "on": true,
+            "by": "ben@x",
+            "at": "2026-09-28T10:00:00+10:00"
+          }
+        },
+        "2026-09-29T15:20:00+10:00",
+        "watpl"
+      ],
+      [
+        {
+          "wa": {
+            "on": false,
+            "by": "ben@x",
+            "at": "2026-09-28T10:00:00+10:00"
+          }
+        },
+        "2026-09-29T15:20:00+10:00",
+        "sms"
+      ],
+      [
+        {
+          "wa": {
+            "on": true
+          },
+          "waBad": true
+        },
+        "2026-09-29T15:20:00+10:00",
+        "sms"
+      ],
+      [
+        {
+          "lastIn": "2026-09-29T15:14:00+10:00",
+          "lastInCh": "wa",
+          "lastInWa": "2026-09-29T15:14:00+10:00",
+          "waBad": true
+        },
+        "2026-09-29T15:20:00+10:00",
+        "wa"
+      ],
+      [
+        {
+          "optout": {
+            "at": "2026-09-29T10:00:00+10:00",
+            "word": "STOP"
+          },
+          "lastIn": "2026-09-29T10:00:00+10:00",
+          "lastInCh": "sms"
+        },
+        "2026-09-29T15:20:00+10:00",
+        "none"
+      ],
+      [
+        {
+          "optout": {
+            "at": "2026-09-29T10:00:00+10:00",
+            "word": "STOP"
+          },
+          "wa": {
+            "on": true
+          }
+        },
+        "2026-09-29T15:20:00+10:00",
+        "none"
+      ]
     ]
   },
-
   "row": {
     "_note": "[thread, unsorted messages, open tasks, has a sendable mobile, the row's state]. fresh is white (work to do), task amber, sent the waiting grey, done white too (the owner, 30 Sep: green would be nearly every card), none and nophone sunk.",
     "cases": [
-      [null, 0, 0, false, "nophone"],
-      [null, 0, 0, true,  "none"],
-      [{}, 0, 0, true, "none"],
-      [{"lastAt": "2026-09-29T15:02:00+10:00", "lastOut": "2026-09-29T15:02:00+10:00"}, 0, 0, true, "sent"],
-      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 1, 0, true, "fresh"],
-      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 1, 1, true, "fresh"],
-      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 1, true, "task"],
-      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 0, true, "done"],
-      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 0, false, "done"]
+      [
+        null,
+        0,
+        0,
+        false,
+        "nophone"
+      ],
+      [
+        null,
+        0,
+        0,
+        true,
+        "none"
+      ],
+      [
+        {},
+        0,
+        0,
+        true,
+        "none"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:02:00+10:00",
+          "lastOut": "2026-09-29T15:02:00+10:00"
+        },
+        0,
+        0,
+        true,
+        "sent"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:14:00+10:00",
+          "lastIn": "2026-09-29T15:14:00+10:00"
+        },
+        1,
+        0,
+        true,
+        "fresh"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:14:00+10:00",
+          "lastIn": "2026-09-29T15:14:00+10:00"
+        },
+        1,
+        1,
+        true,
+        "fresh"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:14:00+10:00",
+          "lastIn": "2026-09-29T15:14:00+10:00"
+        },
+        0,
+        1,
+        true,
+        "task"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:14:00+10:00",
+          "lastIn": "2026-09-29T15:14:00+10:00"
+        },
+        0,
+        0,
+        true,
+        "done"
+      ],
+      [
+        {
+          "lastAt": "2026-09-29T15:14:00+10:00",
+          "lastIn": "2026-09-29T15:14:00+10:00"
+        },
+        0,
+        0,
+        false,
+        "done"
+      ]
     ]
   },
-
   "templates": {
     "_note": "[template, first name, arrival day, the words]. The approved WhatsApp wording, as the preview shows it and the Worker records it. GUEST-CONTACT.md holds the same text with {{1}} and {{2}} for Meta.",
     "cases": [
-      ["question", "James", "", "Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
-      ["question", "", "", "Hi there, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
-      ["question", "  Léa ", "", "Hi Léa, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
-      ["arrival", "James", "2026-10-03", "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."],
-      ["arrival", "James", "2026-10-03T14:00:00", "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."],
-      ["arrival", "", "", "Hi there, we look forward to welcoming you to Nala Resort on your arrival day. If there is anything we can prepare before you arrive, just reply to this message."],
-      ["nosuch", "James", "", ""]
+      [
+        "question",
+        "James",
+        "",
+        "Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"
+      ],
+      [
+        "question",
+        "",
+        "",
+        "Hi there, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"
+      ],
+      [
+        "question",
+        "  Léa ",
+        "",
+        "Hi Léa, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"
+      ],
+      [
+        "arrival",
+        "James",
+        "2026-10-03",
+        "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."
+      ],
+      [
+        "arrival",
+        "James",
+        "2026-10-03T14:00:00",
+        "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."
+      ],
+      [
+        "arrival",
+        "",
+        "",
+        "Hi there, we look forward to welcoming you to Nala Resort on your arrival day. If there is anything we can prepare before you arrive, just reply to this message."
+      ],
+      [
+        "nosuch",
+        "James",
+        "",
+        ""
+      ]
     ]
   },
-
   "teams": {
     "_note": "[/contactsettings, all?, the list as [key, label, retired?]]. contactTeams, the one reading of the team list (29 Sep, editable in Settings > General, Teams): the six the owner started with, under whatever name Settings gave them, then each team added there, oldest first. A removed team is retired, never deleted: without all it is gone from the list, with all it is there, marked, so its tasks keep its name. A node that is not a team - a bad key, no name and not one of the six, not an object - is no team.",
     "cases": [
-      [null, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
-      [{}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
-      [{"teams": {"frontdesk": {"label": "Reception"}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Reception", false]]],
-      [{"teams": {"kitchen": {"members": {"chef@x": true}}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
-      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["frontdesk", "Front desk", false]]],
-      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", true], ["frontdesk", "Front desk", false]]],
-      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z"}, "gardens": {"label": "Gardens", "added": "2026-09-29T23:00:00.000Z"}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false], ["gardens", "Gardens", false], ["poolbar", "Pool bar", false]]],
-      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "off": true}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
-      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "off": true}}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false], ["poolbar", "Pool bar", true]]],
-      [{"teams": {"Bad-Key": {"label": "Bad"}, "nolabel": {"members": {"a@x": true}}, "odd": "text"}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]]
+      [
+        null,
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {},
+        true,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "frontdesk": {
+              "label": "Reception"
+            }
+          }
+        },
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Reception",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "kitchen": {
+              "members": {
+                "chef@x": true
+              }
+            }
+          }
+        },
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "spa": {
+              "off": true,
+              "members": {
+                "masseuse@x": true
+              }
+            }
+          }
+        },
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "spa": {
+              "off": true,
+              "members": {
+                "masseuse@x": true
+              }
+            }
+          }
+        },
+        true,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            true
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "poolbar": {
+              "label": "Pool bar",
+              "added": "2026-09-30T01:00:00.000Z"
+            },
+            "gardens": {
+              "label": "Gardens",
+              "added": "2026-09-29T23:00:00.000Z"
+            }
+          }
+        },
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ],
+          [
+            "gardens",
+            "Gardens",
+            false
+          ],
+          [
+            "poolbar",
+            "Pool bar",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "poolbar": {
+              "label": "Pool bar",
+              "added": "2026-09-30T01:00:00.000Z",
+              "off": true
+            }
+          }
+        },
+        false,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "poolbar": {
+              "label": "Pool bar",
+              "added": "2026-09-30T01:00:00.000Z",
+              "off": true
+            }
+          }
+        },
+        true,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ],
+          [
+            "poolbar",
+            "Pool bar",
+            true
+          ]
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "Bad-Key": {
+              "label": "Bad"
+            },
+            "nolabel": {
+              "members": {
+                "a@x": true
+              }
+            },
+            "odd": "text"
+          }
+        },
+        true,
+        [
+          [
+            "bar",
+            "Bar",
+            false
+          ],
+          [
+            "kitchen",
+            "Kitchen",
+            false
+          ],
+          [
+            "housekeeping",
+            "Housekeeping",
+            false
+          ],
+          [
+            "maintenance",
+            "Maintenance",
+            false
+          ],
+          [
+            "spa",
+            "Spa",
+            false
+          ],
+          [
+            "frontdesk",
+            "Front desk",
+            false
+          ]
+        ]
+      ]
     ]
   },
-
   "grants": {
     "_note": "[role, /permissions, editBookings, guestReply]. Who may use the desk and who may reply to a guest, as can() answers it on the page and mayDo in worker/guest-contact.js, which refuses what the page would not offer. guestReply (30 Sep, the owner: a switch in Settings for a role being able to respond to messages): shipped on for the admin, the manager and the waiter; the Roles switches move it for the chef, the waiter and housekeeping. The admin and the manager are never switched off, and the rules refuse the matrix a column for either, the masseuse or a machine. A value that is not true or false is no opinion.",
     "cases": [
-      ["admin", null, true, true],
-      ["staff", null, true, true],
-      ["manager", null, true, true],
-      ["waiter", null, true, true],
-      ["chef", null, false, false],
-      ["housekeeping", null, false, false],
-      ["spa", null, false, false],
-      ["contact", null, false, false],
-      ["sync", null, false, false],
-      ["nobody", null, false, false],
-      [null, null, false, false],
-      ["waiter", {"guestReply": {"waiter": false}}, true, false],
-      ["waiter", {"editBookings": {"waiter": false}}, false, true],
-      ["housekeeping", {"guestReply": {"housekeeping": true}}, false, true],
-      ["chef", {"guestReply": {"chef": true}, "editBookings": {"chef": true}}, true, true],
-      ["housekeeping", {"guestReply": {"housekeeping": "yes"}}, false, false],
-      ["admin", {"guestReply": {"waiter": false}}, true, true],
-      ["manager", {"guestReply": {"chef": true, "waiter": false}}, true, true]
+      [
+        "admin",
+        null,
+        true,
+        true
+      ],
+      [
+        "staff",
+        null,
+        true,
+        true
+      ],
+      [
+        "manager",
+        null,
+        true,
+        true
+      ],
+      [
+        "waiter",
+        null,
+        true,
+        true
+      ],
+      [
+        "chef",
+        null,
+        false,
+        false
+      ],
+      [
+        "housekeeping",
+        null,
+        false,
+        false
+      ],
+      [
+        "spa",
+        null,
+        false,
+        false
+      ],
+      [
+        "contact",
+        null,
+        false,
+        false
+      ],
+      [
+        "sync",
+        null,
+        false,
+        false
+      ],
+      [
+        "nobody",
+        null,
+        false,
+        false
+      ],
+      [
+        null,
+        null,
+        false,
+        false
+      ],
+      [
+        "waiter",
+        {
+          "guestReply": {
+            "waiter": false
+          }
+        },
+        true,
+        false
+      ],
+      [
+        "waiter",
+        {
+          "editBookings": {
+            "waiter": false
+          }
+        },
+        false,
+        true
+      ],
+      [
+        "housekeeping",
+        {
+          "guestReply": {
+            "housekeeping": true
+          }
+        },
+        false,
+        true
+      ],
+      [
+        "chef",
+        {
+          "guestReply": {
+            "chef": true
+          },
+          "editBookings": {
+            "chef": true
+          }
+        },
+        true,
+        true
+      ],
+      [
+        "housekeeping",
+        {
+          "guestReply": {
+            "housekeeping": "yes"
+          }
+        },
+        false,
+        false
+      ],
+      [
+        "admin",
+        {
+          "guestReply": {
+            "waiter": false
+          }
+        },
+        true,
+        true
+      ],
+      [
+        "manager",
+        {
+          "guestReply": {
+            "chef": true,
+            "waiter": false
+          }
+        },
+        true,
+        true
+      ]
     ]
   },
-
   "teamsof": {
     "_note": "[/contactsettings, a login's email, the teams whose tasks it sees]. teamsOf: the teams a login is switched on for in Settings, in the list's order; a retired team is nobody's. The email is keyed as emailKey keys it.",
     "cases": [
-      [{"teams": {"maintenance": {"members": {"grounds@x": true}}, "housekeeping": {"members": {"grounds@x": true}}}}, "grounds@x", ["housekeeping", "maintenance"]],
-      [{"teams": {"maintenance": {"members": {"grounds@x": false}}}}, "grounds@x", []],
-      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, "masseuse@x", []],
-      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "members": {"bar,one@x": true}}}}, "Bar.One@x", ["poolbar"]],
-      [null, "grounds@x", []]
+      [
+        {
+          "teams": {
+            "maintenance": {
+              "members": {
+                "grounds@x": true
+              }
+            },
+            "housekeeping": {
+              "members": {
+                "grounds@x": true
+              }
+            }
+          }
+        },
+        "grounds@x",
+        [
+          "housekeeping",
+          "maintenance"
+        ]
+      ],
+      [
+        {
+          "teams": {
+            "maintenance": {
+              "members": {
+                "grounds@x": false
+              }
+            }
+          }
+        },
+        "grounds@x",
+        []
+      ],
+      [
+        {
+          "teams": {
+            "spa": {
+              "off": true,
+              "members": {
+                "masseuse@x": true
+              }
+            }
+          }
+        },
+        "masseuse@x",
+        []
+      ],
+      [
+        {
+          "teams": {
+            "poolbar": {
+              "label": "Pool bar",
+              "added": "2026-09-30T01:00:00.000Z",
+              "members": {
+                "bar,one@x": true
+              }
+            }
+          }
+        },
+        "Bar.One@x",
+        [
+          "poolbar"
+        ]
+      ],
+      [
+        null,
+        "grounds@x",
+        []
+      ]
+    ]
+  },
+  "preview": {
+    "_note": "[page, role, /permissions, shut]. Chat and Tasks are the admin's alone until Settings opens them (/permissions/open/<page> true): previewShut on the page (PREVIEW_PAGES, nala-shared.js) and its twin in worker/guest-contact.js, which since 30 Sep shuts the Worker's door as well as the menu (the owner's review: \"ensure we have a solid system\"). Only true opens; a page not in preview is never shut; the admin never is.",
+    "cases": [
+      [
+        "guest-contact",
+        "admin",
+        null,
+        false
+      ],
+      [
+        "guest-contact",
+        "staff",
+        null,
+        false
+      ],
+      [
+        "guest-contact",
+        "manager",
+        null,
+        true
+      ],
+      [
+        "guest-contact",
+        "waiter",
+        null,
+        true
+      ],
+      [
+        "guest-contact",
+        "waiter",
+        {
+          "open": {
+            "guest-contact": true
+          }
+        },
+        false
+      ],
+      [
+        "guest-contact",
+        "waiter",
+        {
+          "open": {
+            "tasks": true
+          }
+        },
+        true
+      ],
+      [
+        "guest-contact",
+        "waiter",
+        {
+          "open": {
+            "guest-contact": "yes"
+          }
+        },
+        true
+      ],
+      [
+        "tasks",
+        "housekeeping",
+        {
+          "open": {
+            "tasks": true
+          }
+        },
+        false
+      ],
+      [
+        "tasks",
+        "housekeeping",
+        {
+          "open": {
+            "guest-contact": true
+          }
+        },
+        true
+      ],
+      [
+        "tasks",
+        "admin",
+        {},
+        false
+      ],
+      [
+        "dashboard",
+        "waiter",
+        null,
+        false
+      ]
     ]
   }
 }

@@ -275,6 +275,9 @@ def inv(route, request):
 def wk(route, request):
     b = json.loads(request.post_data)
     SENT.append(b)
+    # old: the Worker in Cloudflare from before a door this page knows
+    if STATE.get("old") and b.get("kind") in ("delete", "check"):
+        route.fulfill(status=400, content_type="application/json", body=js({"error": "unknown kind"})); return
     if b.get("kind") == "delete":
         route.fulfill(status=200, content_type="application/json", body=js({"deleted": b.get("m")})); return
     if b.get("kind") == "check":
@@ -1133,6 +1136,20 @@ with sync_playwright() as p:
     ck("the desk's waiter taps and gets no Delete: the admin's alone",
        not pg.query_selector('[data-act="delask"]'))
     done(pg)
+    # The owner, 30 Sep, Delete tried before the Worker's paste: "unknown
+    # kind". Said as what it means, where it happens and at the top.
+    STATE["old"] = True
+    pg = page("?c=%s&b=b-sarah" % SARAH, email="staff@x"); pg.wait_for_timeout(800)
+    ck("a Worker older than the page is named at the top, for the admin",
+       "older than this page" in (pg.text_content("#setupBox") or ""), pg.text_content("#setupBox"))
+    pg.click('.msg[data-m="oreply1"] .bub'); pg.wait_for_timeout(150)
+    pg.click("#dl-oreply1"); pg.wait_for_timeout(150)
+    pg.click("#delGo"); pg.wait_for_timeout(700)
+    ck("and a Delete it does not know says to paste the Worker, not unknown kind",
+       "Paste worker/guest-contact.js" in pg.text_content("#delErr") and
+       "unknown kind" not in pg.text_content("#delErr"), pg.text_content("#delErr"))
+    done(pg)
+    STATE["old"] = False
 
     # ── 12. every template, from the send area (30 Sep) ──────────────
     # The owner: "we should have access to all the templates from the send

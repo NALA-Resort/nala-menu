@@ -389,11 +389,28 @@ function openedTonight(villa, marks){
    NOT tidyPhone in list.html, which goes the other way: that one makes a
    number readable by a person, this one makes it dialable by a machine.  */
 function normalisePhone(raw){
-  var s = String(raw == null ? '' : raw).replace(/[\s().\-]/g, '');
+  /* Dashes a phone or a document typed (the en dash, the minus) and a space
+     that does not break are punctuation too. */
+  var s = String(raw == null ? '' : raw).replace(/[\s().\-\u2010-\u2015\u2212]/g, '');
   /* 0011 is Australia's international dial-out and 00 most of the world's:
      both mean the + of E.164. */
   if (/^0011[1-9]\d/.test(s))    s = '+' + s.slice(4);
   else if (/^00[1-9]\d/.test(s)) s = '+' + s.slice(2);
+  /* A 0 typed after a country code - "+44 (0)7700 900123", "+64 027..." -
+     is that country's trunk prefix, which a number dialled from abroad
+     drops. In these countries nothing follows the code with a 0, so taking
+     it out is reading the number, not guessing at it. Italy and a few
+     others do keep a real 0 there, so this is a list and not a rule; no
+     country code begins another, so a prefix names exactly one. Added
+     30 Sep, the owner asking for country codes checked properly: "+44
+     (0)..." went out to a number that does not exist, "+61 (0)4..." was
+     refused. */
+  var TRUNK_ZERO = ['61','64','44','353','49','33','31','32','41','43','358','86','91',
+                    '81','82','27','971','972','66','62','60','63','84','886','90'];
+  for (var i = 0; i < TRUNK_ZERO.length; i++)
+    if (s.indexOf('+' + TRUNK_ZERO[i] + '0') === 0){
+      s = '+' + TRUNK_ZERO[i] + s.slice(TRUNK_ZERO[i].length + 2); break;
+    }
   if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
   if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
   /* Our own country we can judge: +61 must be a mobile, a landline is

@@ -80,9 +80,15 @@ const twiml = () => new Response('<?xml version="1.0" encoding="UTF-8"?><Respons
    normalisePhone to tests/phone_cases.json, the rest to
    tests/contact_cases.json (CLAUDE.md rule 3). Exported for the test. */
 export function normalisePhone(raw) {
-  let s = String(raw == null ? "" : raw).replace(/[\s().\-]/g, "");
+  let s = String(raw == null ? "" : raw).replace(/[\s().\-\u2010-\u2015\u2212]/g, "");
   if (/^0011[1-9]\d/.test(s))    s = "+" + s.slice(4);
   else if (/^00[1-9]\d/.test(s)) s = "+" + s.slice(2);
+  /* A 0 after a country code is its trunk prefix, dropped from abroad:
+     the list and the reason are the twin's, in nala-shared.js. */
+  const TRUNK_ZERO = ["61", "64", "44", "353", "49", "33", "31", "32", "41", "43", "358", "86",
+                      "91", "81", "82", "27", "971", "972", "66", "62", "60", "63", "84", "886", "90"];
+  const cc = TRUNK_ZERO.find((c) => s.startsWith("+" + c + "0"));
+  if (cc) s = "+" + cc + s.slice(cc.length + 2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
   if (/^614\d{8}$/.test(s))   return "+" + s;
   if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
@@ -171,6 +177,16 @@ export function mayDo(what, role, permissions) {
   return SHIPPED[what].indexOf(role) > -1;
 }
 
+/* Chat and Tasks are the admin's alone until /permissions/open/<page> is
+   true: the twin of previewShut and PREVIEW_PAGES in nala-shared.js, held
+   to the same answers by contact_cases.json "preview". */
+const PREVIEW_PAGES = { "guest-contact": true, tasks: true };
+export function previewShut(page, role, permissions) {
+  if (!PREVIEW_PAGES[page] || (role === "staff" ? "admin" : role) === "admin") return false;
+  const open = permissions && permissions.open;
+  return !(open && open[page] === true);
+}
+
 const emailKey = (e) => String(e || "").trim().toLowerCase().replace(/\./g, ",");
 
 /* ── the database ────────────────────────────────────────────────
@@ -214,17 +230,37 @@ async function dbAs(idToken, path) {
 const twilioAuth = (env) => "Basic " + btoa((env.TWILIO_ACCOUNT_SID || "").trim() + ":" +
                                               (env.TWILIO_AUTH_TOKEN || "").trim());
 
+/* Fifteen seconds, then no answer is the answer: a line that hangs must
+   not leave the desk on Sending with nothing to go on. */
+const TWILIO_WAIT_MS = 15000;
 async function twilioSend(env, params) {
   const r = await fetch(TWILIO + (env.TWILIO_ACCOUNT_SID || "").trim() + "/Messages.json", {
     method: "POST",
     headers: { "Authorization": twilioAuth(env),
                "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(params).toString() }).catch(() => null);
+    body: new URLSearchParams(params).toString(),
+    signal: AbortSignal.timeout(TWILIO_WAIT_MS) }).catch(() => null);
   const j = r ? await r.json().catch(() => null) : null;
   if (r && r.ok && j && j.sid) return { ok: true, sid: j.sid, status: j.status || "queued" };
+  /* No answer is not a refusal: Twilio may have taken the message before
+     the line dropped. Its receipt, if one comes, still lands (receipt(),
+     a record with no sid), and the desk is told not to send it twice. */
+  if (!r) return { ok: false, noAnswer: true,
+                   error: "No answer from Twilio: it may still arrive, so wait a minute before sending it again" };
   return { ok: false,
-           error: (j && (j.message || (j.code && "Twilio error " + j.code))) ||
-                  (r ? "Twilio answered " + r.status : "Twilio did not answer") };
+           error: (j && (j.message || (j.code && "Twilio error " + j.code))) || "Twilio answered " + r.status };
+}
+
+/* The number a text goes from, as normalisePhone reads it: what was typed
+   into Cloudflare may be spaced, national, or for WhatsApp already carry
+   "whatsapp:", and Twilio takes E.164 alone. The setup check reads it the
+   same way, so its tick is a number every send can use. What the rule
+   cannot read goes as typed, for Twilio to say why. */
+function twilioFrom(env, ch) {
+  const raw = String((ch === "wa" ? env.TWILIO_WA_FROM : env.TWILIO_FROM) || "").trim()
+    .replace(/^whatsapp:/i, "");
+  const n = normalisePhone(raw) || raw;
+  return ch === "wa" && n ? "whatsapp:" + n : n;
 }
 
 /* X-Twilio-Signature: HMAC-SHA1 of the URL Twilio called, then each posted
@@ -364,7 +400,7 @@ async function inbound(request, env, ctx) {
   const phone = normalisePhone(raw.replace(/^whatsapp:/i, ""));
   if (!phone) return twiml();                 /* nothing a thread can be keyed on */
   const ck = phone.slice(1);
-  const now = new Date().toISOString();
+  let now = new Date().toISOString();
   const body = String(p.Body || "").slice(0, 1600);
   const media = {};
   const n = Math.min(parseInt(p.NumMedia, 10) || 0, 10);
@@ -377,6 +413,13 @@ async function inbound(request, env, ctx) {
      rather than a second copy of the message. */
   const sid = String(p.MessageSid || p.SmsSid || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 60);
   const id = "in-" + (sid || newId());
+  /* A retried webhook finds the message it filed before, and does not file
+     it again: the desk may have sorted it since, and a second PUT would
+     wipe that and put it back on the new list. Only the thread, which a
+     first try that failed half way may not have reached, is brought up to
+     date, at the message's own time. */
+  const had = sid ? await db(env, "/contactmsgs/" + ck + "/" + id, "GET").catch(() => null) : null;
+  if (had && had.at) now = had.at;
   const msg = { dir: "in", ch: wa ? "wa" : "sms", body, at: now };
   if (sid) msg.sid = sid;
   if (p.ProfileName) msg.profile = String(p.ProfileName).slice(0, 120);
@@ -390,9 +433,12 @@ async function inbound(request, env, ctx) {
   if (STOP_WORDS.has(word)) thread.optout = { at: now, word };
   if (START_WORDS.has(word)) thread.optout = null;
 
-  await db(env, "/contactmsgs/" + ck + "/" + id, "PUT", msg);
-  await db(env, "/contactnew/" + ck + "/" + id, "PUT", true);
+  if (!had) {
+    await db(env, "/contactmsgs/" + ck + "/" + id, "PUT", msg);
+    await db(env, "/contactnew/" + ck + "/" + id, "PUT", true);
+  }
   await db(env, "/contact/" + ck, "PATCH", thread);
+  if (had) return twiml();                    /* the desk was buzzed the first time */
 
   /* Buzz the desk. Fire and tolerate: a lost buzz costs a buzz, the
      message is already safe. Only once BUZZ is set - see the secrets. */
@@ -425,8 +471,17 @@ async function receipt(request, env) {
      overwrite "read". A failure always lands. */
   const was = RANK[rec.status] == null ? -1 : RANK[rec.status];
   const code = String(p.ErrorCode || "");
-  if (RANK[status] >= was || status === "failed" || status === "undelivered") {
+  /* A record with no sid is a send whose answer never reached us: Twilio
+     calls back only about messages it made, so this receipt is the answer,
+     and it lands even over the "failed" the lost answer left. */
+  const lost = !rec.sid;
+  if (RANK[status] >= was || status === "failed" || status === "undelivered" || lost) {
     const patch = { status, statusAt: new Date().toISOString() };
+    if (lost) {
+      const sid = String(p.MessageSid || p.SmsSid || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 60);
+      if (sid) patch.sid = sid;
+      patch.err = null;
+    }
     if (code) patch.err = ("Error " + code + (p.ErrorMessage ? ": " + p.ErrorMessage : "")).slice(0, 300);
     await db(env, "/contactmsgs/" + ck + "/" + m, "PATCH", patch);
   }
@@ -442,11 +497,9 @@ async function receipt(request, env) {
       await db(env, "/contactmsgs/" + ck + "/" + m, "PATCH", { fell: m2 });
       await db(env, "/contactmsgs/" + ck + "/" + m2, "PUT", { dir: "out", ch: "sms",
         body: rec.body, at: now, by: rec.by || "", kind: "fallback", of: m, status: "sending" });
-      const sent = await twilioSend(env, { From: (env.TWILIO_FROM || "").trim(), To: phone,
+      const sent = await twilioSend(env, { From: twilioFrom(env, "sms"), To: phone,
         Body: rec.body, StatusCallback: statusUrl(request.url, ck, m2) });
-      await db(env, "/contactmsgs/" + ck + "/" + m2, "PATCH", sent.ok
-        ? { sid: sent.sid, status: sent.status }
-        : { status: "failed", err: String(sent.error).slice(0, 300) });
+      await recordSent(env, ck, m2, sent);
     }
   }
   return new Response("", { status: 200 });
@@ -462,6 +515,25 @@ async function bookingHolds(idToken, booking, phone) {
   const fix = await dbAs(idToken, "/phonefix/" + b).catch(() => null);
   return (normalisePhone(pms.phone) === phone ||
           (fix && normalisePhone(fix.phone) === phone)) ? pms : null;
+}
+/* What Twilio's answer to a send means for its record. A receipt can beat
+   the answer here - Twilio calls back while this is still writing - so the
+   status only climbs the ladder receipts climb, never back down to queued;
+   and a send Twilio never answered is marked failed only if no receipt has
+   said otherwise, since one may still come. */
+async function recordSent(env, ck, m, sent) {
+  const path = "/contactmsgs/" + ck + "/" + m;
+  const cur = await db(env, path, "GET").catch(() => null);
+  /* Only a receipt's status counts, and a receipt always leaves the sid:
+     without one, "sending" is still this Worker's own mark from before. */
+  const was = cur && cur.sid && RANK[cur.status] != null ? RANK[cur.status] : -1;
+  if (sent.ok) {
+    const patch = { sid: sent.sid };
+    if ((RANK[sent.status] == null ? RANK.queued : RANK[sent.status]) > was) patch.status = sent.status;
+    return db(env, path, "PATCH", patch);
+  }
+  if (sent.noAnswer && was > -1) return null;          /* its receipt came first: it went */
+  return db(env, path, "PATCH", { status: "failed", err: String(sent.error).slice(0, 300) });
 }
 function statusUrl(base, ck, m) {
   return new URL(base).origin + "/twilio/status?ck=" + ck + "&m=" + encodeURIComponent(m);
@@ -492,7 +564,7 @@ export async function setupCheck(request, env) {
   const out = [];
   const add = (key, ok, say, at) => out.push(at ? { key, ok, say, at } : { key, ok, say });
   const sid = (env.TWILIO_ACCOUNT_SID || "").trim(), tok = (env.TWILIO_AUTH_TOKEN || "").trim();
-  const from = normalisePhone(env.TWILIO_FROM || "");
+  const from = normalisePhone(twilioFrom(env, "sms"));
   const want = new URL(request.url).origin + "/twilio/in";
   const tw = (path) => fetch(TWILIO + sid + path, { headers: { "Authorization": twilioAuth(env) } })
     .catch(() => null);
@@ -584,7 +656,7 @@ export async function setupCheck(request, env) {
                          (tl.length === 1 ? " phone" : " phones") + ", the ones in TEST_NUMBERS."
                        : "Test mode is off: Chat can message any guest.");
   add("whatsapp", null, (env.TWILIO_WA_FROM || "").trim()
-    ? "WhatsApp is set up on " + normalisePhone(env.TWILIO_WA_FROM) + "."
+    ? "WhatsApp is set up on " + twilioFrom(env, "wa").replace(/^whatsapp:/, "") + "."
     : "WhatsApp is not set up yet, so everything goes by SMS.");
   return out;
 }
@@ -611,16 +683,27 @@ async function desk(request, env) {
 
   /* 2. What the role may do: editBookings is the desk, Chat's own
      gate; guestReply is a reply to a guest, from there or a task's card. */
+  /* A read that fails refuses, rather than falling back to what each role
+     ships with: that would switch a Reply the admin turned off back on. */
   let staffRec, permissions;
   try {
     staffRec = await dbAs(idToken, "/staff/" + emailKey(email));
-    permissions = await dbAs(idToken, "/permissions").catch(() => null);
+    permissions = await dbAs(idToken, "/permissions");
   } catch {
-    return reply(403, { error: "could not read the staff record" });
+    return reply(403, { error: "Could not read this login's record or its permissions, so nothing " +
+                               "was done. Try again." });
   }
   const role = staffRec && staffRec.role;
   const deskOk = mayDo("editBookings", role, permissions);
   const replyOk = mayDo("guestReply", role, permissions);
+  /* Chat and Tasks are the admin's alone until Settings opens them to the
+     staff: shut here as well as off the menu, so the door a login cannot
+     see is not open to it either. A task card's requests are Tasks'. */
+  const pageOf = kind === "tasklog" || kind === "taskmedia" || (kind === "send" && body.team)
+    ? "tasks" : "guest-contact";
+  if (previewShut(pageOf, role, permissions))
+    return reply(403, { error: (pageOf === "tasks" ? "Tasks" : "Chat") + " is the admin's alone until " +
+                               "it is opened to the staff in Settings" });
 
   /* The teams Settings puts this login on: the desk acts for any. Read as
      the caller, and only when a team's door needs it. */
@@ -787,8 +870,15 @@ async function desk(request, env) {
   /* ── kind "send" ── */
   /* The desk reads the thread as itself; a team's login reads none, so for
      its task the Worker does. */
-  const thread = (task ? await db(env, "/contact/" + ck, "GET").catch(() => null)
-                       : await dbAs(idToken, "/contact/" + ck).catch(() => null)) || {};
+  /* A thread that cannot be read refuses the send: an empty one would pass
+     the STOP check below for a guest who did text STOP. */
+  let thread;
+  try {
+    thread = (task ? await db(env, "/contact/" + ck, "GET")
+                   : await dbAs(idToken, "/contact/" + ck)) || {};
+  } catch {
+    return reply(503, { error: "Could not read this guest's conversation, so nothing was sent. Try again." });
+  }
   const phone = normalisePhone(thread.phone || "+" + ck);
   if (!phone || phone.slice(1) !== ck) return reply(400, { error: "bad guest number" });
   if (thread.optout)
@@ -860,16 +950,13 @@ async function desk(request, env) {
   try { await db(env, "/contactmsgs/" + ck + "/" + m, "PUT", rec); }
   catch (e) { return reply(500, { error: "could not record the message, so it was not sent" }); }
 
-  const from = ch === "wa" ? "whatsapp:" + (env.TWILIO_WA_FROM || "").trim() : (env.TWILIO_FROM || "").trim();
-  const sent = await twilioSend(env, Object.assign({ From: from,
+  const sent = await twilioSend(env, Object.assign({ From: twilioFrom(env, ch),
     To: ch === "wa" ? "whatsapp:" + phone : phone,
     StatusCallback: statusUrl(request.url, ck, m) }, params));
-  await db(env, "/contactmsgs/" + ck + "/" + m, "PATCH", sent.ok
-    ? { sid: sent.sid, status: sent.status }
-    : { status: "failed", err: String(sent.error).slice(0, 300) }).catch(() => {});
+  await recordSent(env, ck, m, sent).catch(() => {});
   await db(env, "/contact/" + ck, "PATCH", { phone, lastAt: at, lastOut: at,
     preview: previewOf(text), dir: "out" }).catch(() => {});
-  if (!sent.ok) return reply(502, { id: m, ch, error: "Not sent: " + sent.error });
+  if (!sent.ok) return reply(502, { id: m, ch, error: sent.noAnswer ? sent.error : "Not sent: " + sent.error });
   return reply(200, { id: m, ch, status: sent.status, test });
 }
 

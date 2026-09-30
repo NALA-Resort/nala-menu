@@ -336,6 +336,50 @@ guest's reply to one lands at ClickSend, not here. And **test mode does
 not hold them back**: TEST_NUMBERS is the Chat Worker's, and the SMS pages'
 sender is live, so the box says so in test mode before Send.
 
+## The review of 30 Sep
+
+The owner, once Chat was live: "run a check over the code to ensure we
+have a solid system. And includes error handling, mobile phone number
+checks, country code checking etc." A review of both Workers and the page
+found ten things; each was checked against the code, fixed, given a test
+of its own, and broken on purpose to watch that test go red.
+
+- **STOP holds everywhere.** A guest who texts STOP to Chat's number is
+  sent nothing by Invitations, Pre-arrival SMS or Spa reminders either,
+  until they text START: `worker/send-invites.js` reads Chat's
+  `/contact/<ck>/optout` before every text, and says so on the row. Before,
+  only Chat obeyed it, and once `SMS_VIA=twilio` the pages would have
+  texted them from the very number they said STOP to.
+- **A read that fails refuses.** The permissions, and a guest's
+  conversation (which holds the STOP), used to be treated as empty when
+  their read failed, which switched an admin's Off back on and let a send
+  past a STOP. Both Workers now refuse and say try again.
+- **The door matches the menu.** While Chat and Tasks are the admin's
+  alone, the Worker refuses the staff too (`previewShut`'s twin, held to
+  `contact_cases.json` "preview"), not only the menu.
+- **Twilio's answers.** A send waits 15 seconds, then says "No answer from
+  Twilio: it may still arrive, so wait a minute before sending it again";
+  the receipt, if it comes, still lands. A receipt that beats Twilio's own
+  answer is no longer put back to queued. A webhook Twilio sends twice no
+  longer wipes how the desk sorted the message. The SMS pages' Worker
+  answers any fault in words rather than a bare error.
+- **A Worker older than the page says so.** The owner's first Delete, tried
+  before the Worker's paste, read "unknown kind". Chat now says what that
+  means - the Chat Worker in Cloudflare is older than this page, paste
+  `worker/guest-contact.js` into nala-contact and press Deploy - where it
+  happened, and at the top in the setup check.
+- **The sending number** is read as the phone rule reads it, so
+  `TWILIO_FROM` typed as 0495 033 444, or `TWILIO_WA_FROM` typed with its
+  `whatsapp:`, still works, and the setup check agrees with the sends.
+- **Country codes.** A 0 typed after a country code - "+44 (0)7700
+  900123", "+61 (0)412...", "+64 027..." - is dropped, as it is when
+  dialling from abroad, for the countries where it is always the trunk
+  prefix; Italy and a few others keep theirs. En dashes and non-breaking
+  spaces are punctuation. The rest stands: an Australian number must be a
+  mobile, and a foreign number without its code is never guessed at.
+  Nine new cases in `tests/phone_cases.json`, which all three copies of
+  the rule answer to.
+
 ## Deleting a message
 
 The admin's alone (the owner, 30 Sep: "is it possible to delete individual
