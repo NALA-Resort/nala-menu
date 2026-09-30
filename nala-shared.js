@@ -1758,7 +1758,7 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard','tasks'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard','tasks','guestReply'],
   /* Everything the admin holds except manageStaff, asked for 25 Aug: a
      management login that runs the whole day without the keys to Settings
      General, Pages or Diagnostics, which are the three manageStaff gates.
@@ -1766,13 +1766,18 @@ var ROLE_GRANTS = {
      out is a second admin, and this is the role for everybody who is
      nearly one. spaBoard rides along because the definition is the admin's
      list, whatever joins it, minus that one key. */
-  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard','tasks'],
+  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard','tasks','guestReply'],
   /* tasks, 29 Sep: the Tasks page, where each team closes what a guest's
      message became. Every human role holds it; which tasks a login SEES is
      its teams, set per login in Settings > General, and the rules hold the
-     same line - a login reads only its own teams' tasks. */
+     same line - a login reads only its own teams' tasks.
+     guestReply, 30 Sep: a reply to a guest (the owner: "a toggle in
+     settings for a role being able to respond to messages"). The desk's
+     roles ship with it, as they did before it was a switch; a team's role
+     switched on replies from its own open tasks. The Worker asks it too,
+     as mayDo - contact_cases.json "grants" holds the two to one answer. */
   chef:         ['resBoard','resSheet','publishMenu','tasks'],
-  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard','tasks'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard','tasks','guestReply'],
   housekeeping: ['cleansBoard','cleansMarks','tasks'],
   /* The masseuse, an external contractor with one screen: the Spa board and
      nothing else. Like the chef, a real login for a real person, but the
@@ -2221,7 +2226,8 @@ var PERM_ACTIONS = [
   ['cleansMarks',  'Mark a clean done'],
   ['setJob',       'Change what a villa needs'],
   ['spaBoard',     'See the Spa board'],
-  ['tasks',        'See their team\u2019s tasks']
+  ['tasks',        'See their team\u2019s tasks'],
+  ['guestReply',   'Reply to guests']
 ];
 
 /* The columns. admin is absent because it always has everything, and a column

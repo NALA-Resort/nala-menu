@@ -126,7 +126,27 @@ information attached"):
   *Note* on the open task afterwards, for what the conversation does not
   say - *charge to villa 9*, *bring the ladder*.
 
-Replies to the guest stay with the desk.
+**Who may reply is a switch per role** (the owner, 30 Sep: "a toggle in
+settings for a role being able to respond to messages"): *Reply to guests*,
+Settings, General, Roles. It ships on for the admin, the manager and the
+waiter - the desk, as before it was a switch - and off for the chef and
+housekeeping.
+
+- A role switched on that does tasks gets **Reply** on each open card,
+  beside Done: a box that says which way it goes (WhatsApp, SMS, or past
+  WhatsApp's 24 hours so SMS), and Send. It goes to that task's guest and
+  nobody else, and only until Done. The approved WhatsApp wording stays
+  the desk's.
+- Switched off, a login reads - its tasks, or at the desk the whole
+  conversation - and cannot send. Guest Contact says so where the box
+  was.
+- The admin and the manager always may. The masseuse is not on the grid,
+  so never may: an outside contractor's reach is a rules decision.
+
+The Worker decides, not the page: `mayDo`, the twin of the page's `can()`,
+held to `tests/contact_cases.json` "grants"; a team's reply names its task,
+and the Worker checks the login is on that task's team, the task is open,
+and sends to the task's guest.
 
 **The Dashboard** has a Guest messages card beside Arrivals, today only: how
 many guests have a message to sort and how many tasks are open, and a door
@@ -316,7 +336,8 @@ Only the test phones can be messaged. From them:
   checked against Twilio's own published example; inbound SMS, WhatsApp and
   photos; STOP and START; who may send; the 24 hours; the approved messages;
   the test list; a first message only to a number on a booking; receipts in
-  and out of order; the SMS fallback, once; photos only from Twilio.
+  and out of order; the SMS fallback, once; photos only from Twilio; a
+  team's reply, only with the switch, only to its open task's guest.
 - `tests/contact_suite.py` (`contact`): both pages at the fixture's 3:20pm,
   in two zones, against the same table; and the team list as all three
   pages offer it, Settings' Teams tab included.

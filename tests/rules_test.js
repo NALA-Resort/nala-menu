@@ -1310,6 +1310,19 @@ console.log('--- Guest Contact: messages and tasks ---');
      !asx(WAITER).update('/permissions/open', { 'guest-contact': true }).allowed &&
      !asx(MANAGER).update('/permissions/open', { tasks: true }).allowed &&
      !asx(ADMIN).update('/permissions/open', { tasks: 'yes' }).allowed);
+  /* Reply to guests (30 Sep): a switch per role, the Roles tab's PUT of
+     the whole node. The Worker reads it; nothing here grants a write. */
+  ck('the admin switches Reply to guests for a role, yes or no',
+     asx(ADMIN).write('/permissions/guestReply/housekeeping', true).allowed &&
+     asx(ADMIN).write('/permissions', { tasks: { chef: true }, guestReply: { housekeeping: true, waiter: false },
+                                        open: { tasks: true } }).allowed &&
+     !asx(ADMIN).write('/permissions/guestReply/housekeeping', 'yes').allowed);
+  ck('never for the admin, the manager or the masseuse, and never by anyone else',
+     !asx(ADMIN).write('/permissions/guestReply/manager', false).allowed &&
+     !asx(ADMIN).write('/permissions/guestReply/admin', false).allowed &&
+     !asx(ADMIN).write('/permissions/guestReply/spa', true).allowed &&
+     !asx(WAITER).write('/permissions/guestReply/waiter', true).allowed &&
+     !asx(MANAGER).write('/permissions/guestReply/chef', true).allowed);
   ck('and a team added there takes tasks like the six',
      asx(WAITER).write('/tasks/poolbar/t4abcdef', Object.assign({}, TASK, { state: 'open' })).allowed);
   ck('and nobody signed out reads anything',

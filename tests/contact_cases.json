@@ -76,6 +76,30 @@
     ]
   },
 
+  "grants": {
+    "_note": "[role, /permissions, editBookings, guestReply]. Who may use the desk and who may reply to a guest, as can() answers it on the page and mayDo in worker/guest-contact.js, which refuses what the page would not offer. guestReply (30 Sep, the owner: a switch in Settings for a role being able to respond to messages): shipped on for the admin, the manager and the waiter; the Roles switches move it for the chef, the waiter and housekeeping. The admin and the manager are never switched off, and the rules refuse the matrix a column for either, the masseuse or a machine. A value that is not true or false is no opinion.",
+    "cases": [
+      ["admin", null, true, true],
+      ["staff", null, true, true],
+      ["manager", null, true, true],
+      ["waiter", null, true, true],
+      ["chef", null, false, false],
+      ["housekeeping", null, false, false],
+      ["spa", null, false, false],
+      ["contact", null, false, false],
+      ["sync", null, false, false],
+      ["nobody", null, false, false],
+      [null, null, false, false],
+      ["waiter", {"guestReply": {"waiter": false}}, true, false],
+      ["waiter", {"editBookings": {"waiter": false}}, false, true],
+      ["housekeeping", {"guestReply": {"housekeeping": true}}, false, true],
+      ["chef", {"guestReply": {"chef": true}, "editBookings": {"chef": true}}, true, true],
+      ["housekeeping", {"guestReply": {"housekeeping": "yes"}}, false, false],
+      ["admin", {"guestReply": {"waiter": false}}, true, true],
+      ["manager", {"guestReply": {"chef": true, "waiter": false}}, true, true]
+    ]
+  },
+
   "teamsof": {
     "_note": "[/contactsettings, a login's email, the teams whose tasks it sees]. teamsOf: the teams a login is switched on for in Settings, in the list's order; a retired team is nobody's. The email is keyed as emailKey keys it.",
     "cases": [

@@ -294,7 +294,7 @@
         }
       },
       "$action": {
-        ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob' || $action == 'spaBoard' || $action == 'tasks'",
+        ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob' || $action == 'spaBoard' || $action == 'tasks' || $action == 'guestReply'",
         "$role": {
           ".validate": "newData.isBoolean() && ($role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
         }

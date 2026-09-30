@@ -37,7 +37,15 @@
                  overflow:hidden; text-decoration:none; }
   .task a.words { text-decoration:underline; text-decoration-color:var(--law-amber-b); }
   /* Done sits under the words, so the name never gives way to it. */
-  .task .tact { display:flex; justify-content:flex-end; margin-top:8px; }
+  .task .tact { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+  /* A reply from the card (30 Sep), for a role Settings lets reply: which
+     way it goes, the box - white, the editable surface - and its Send. */
+  .task .reply { margin-top:10px; }
+  .task .rwin { font-size:var(--t2); color:var(--law-amber-ink); line-height:1.45; margin:0 0 6px; }
+  .task .rwin b { font-weight:600; }
+  .task .reply textarea { min-height:84px; line-height:1.45; resize:vertical; display:block; }
+  .task .ract { display:flex; gap:8px; margin-top:8px; }
+  .task .ract .btn { flex:1; }
   /* What the team needs beyond the request (the owner, 29 Sep): the desk's
      note, then the conversation since the request - the desk's replies and
      the guest's answers - so "drinks by the pool" arrives with which ones. */
@@ -85,9 +93,9 @@ body.paper .task { box-shadow:var(--lift); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=3"></script>
+<script src="contact-demo.js?v=4"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=91"></script>
+<script src="nala-shared.js?v=92"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -102,6 +110,9 @@ var TEAMS = [];          /* the teams this login sees */
 var CFG = null;          /* /contactsettings: the team list and who does which */
 var OPEN = {}, DONE = {};
 var LOGS = {};           /* 'team/task': its conversation since the request, from the Worker */
+var ROUTES = {};         /* 'team/task': which way a reply would go, for a login that may send one */
+var REPLY = null;        /* 'team/task' whose reply is being written */
+var DRAFT = {};          /* 'team/task': the words typed, kept through a redraw */
 var PHOTOS = {};         /* a photo's key: its object URL, fetched once */
 var READFAIL = false;
 
@@ -177,9 +188,9 @@ function loadLogs(){
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
       if (!j || !j.logs) return;
-      var was = JSON.stringify(LOGS);
-      LOGS = j.logs;
-      if (JSON.stringify(LOGS) !== was) draw();
+      var was = JSON.stringify([LOGS, ROUTES]);
+      LOGS = j.logs; ROUTES = j.routes || {};
+      if (JSON.stringify([LOGS, ROUTES]) !== was && !REPLY) draw();
     })
     .catch(function(){});
 }
@@ -219,6 +230,24 @@ function cardHTML(team, id, t, done){
            ' ' + esc(timeOf(x.at)) + '</span> ' + esc(x.body) + photos(x) + '</div>';
   }).join('') + '</div>' : '';
   var note = t.note ? '<div class="tnote"><span class="lbl">Note</span> ' + esc(t.note) + '</div>' : '';
+  /* A reply, for a role Settings lets reply (30 Sep), which way the
+     Worker says it goes: the card never reads the conversation itself. */
+  var key = team + '/' + id, route = done ? null : ROUTES[key];
+  var mayReply = !!route && can(window.NALA_ROLE, 'guestReply');
+  var tag = esc(team + '-' + id), reply = '', writing = mayReply && REPLY === key && route.ch !== 'none';
+  if (mayReply && route.ch === 'none')
+    reply = '<div class="reply"><div class="rwin">This guest texted STOP. Nothing can be sent until ' +
+            'they text START.</div></div>';
+  else if (writing)
+    reply = '<div class="reply"><div class="rwin">' + (route.ch === 'wa' ? 'Goes on <b>WhatsApp</b>'
+              : route.ch === 'watpl' ? 'WhatsApp\u2019s 24 hours have passed, so this goes by <b>SMS</b>'
+              : 'Goes by <b>SMS</b>') + '</div>' +
+      '<textarea id="rb-' + tag + '" data-key="' + esc(key) + '" aria-label="Reply to ' +
+        esc(t.name || 'the guest') + '" placeholder="Reply to ' + esc((t.name || 'the guest').split(' ')[0]) +
+        '">' + esc(DRAFT[key] || '') + '</textarea>' +
+      '<div class="ract"><button class="btn" data-act="rcancel">Cancel</button>' +
+      '<button class="btn solid" id="rs-' + tag + '" data-act="rsend" data-team="' + team + '" data-t="' +
+        esc(id) + '">Send</button></div><div class="tfail" id="rf-' + tag + '"></div></div>';
   return '<div class="task' + (done ? ' done' : '') + '" data-t="' + esc(id) + '" data-team="' + team + '">' +
     '<div class="v">' + esc(t.villa || '?') + '</div><div class="mid">' +
     '<div class="l1 trimrow"><span class="nm trim">' + esc(t.name || 'Guest') + '</span>' +
@@ -227,8 +256,11 @@ function cardHTML(team, id, t, done){
     /* The guest's words open their conversation, for a login that may read
        it; for a team's own login they are only the words. */
     (talk ? '<a class="words" href="guest-contact.html?c=' + esc(t.ck) + '">' + words + '</a>'
-          : '<div class="words">' + words + '</div>') + srcPhotos + note + said +
-    (done ? '' : '<div class="tact"><button class="sbtn" id="done-' + esc(id) + '" data-act="done" data-team="' +
+          : '<div class="words">' + words + '</div>') + srcPhotos + note + said + reply +
+    (done || writing ? '' : '<div class="tact">' +
+                 (mayReply && route.ch !== 'none' ? '<button class="sbtn" id="rp-' + tag + '" data-act="reply" data-team="' +
+                   team + '" data-t="' + esc(id) + '">Reply</button>' : '') +
+                 '<button class="sbtn" id="done-' + esc(id) + '" data-act="done" data-team="' +
                  team + '" data-t="' + esc(id) + '">Done</button></div><div class="tfail" id="tf-' +
                  esc(id) + '"></div>') +
     '</div></div>';
@@ -277,6 +309,8 @@ function draw(){
 /* Done: closes the task in this login's name, today. The rules let a team
    member do exactly that and nothing else. */
 document.getElementById('board').onclick = function(e){
+  var rb = e.target.closest('button[data-act="reply"],button[data-act="rcancel"],button[data-act="rsend"]');
+  if (rb) return replyAct(rb);
   var btn = e.target.closest('button[data-act="done"]'); if (!btn) return;
   var team = btn.getAttribute('data-team'), id = btn.getAttribute('data-t');
   var u = window.NALA_USER;
@@ -290,9 +324,48 @@ document.getElementById('board').onclick = function(e){
        then: function(){ load(); } });
 };
 
-setInterval(function(){ if (window.__idToken && !document.hidden) load(); }, 15000);
+/* A reply from the card (30 Sep): Reply opens the box, Send hands the words
+   to the Worker, which sends them to the task's guest - and only while the
+   task is open, for a role Settings lets reply. The board does not redraw
+   under somebody writing. */
+function replyAct(btn){
+  var act = btn.getAttribute('data-act');
+  if (act === 'reply'){
+    REPLY = btn.getAttribute('data-team') + '/' + btn.getAttribute('data-t'); draw();
+    var box = document.querySelector('textarea[data-key="' + REPLY + '"]');
+    if (box) box.focus();
+    return;
+  }
+  if (act === 'rcancel'){ REPLY = null; draw(); return; }
+  var team = btn.getAttribute('data-team'), id = btn.getAttribute('data-t'), key = team + '/' + id;
+  var t = (OPEN[team] || {})[id] || {}, route = ROUTES[key] || {};
+  var fail = document.getElementById('rf-' + team + '-' + id);
+  var text = (DRAFT[key] || '').trim();
+  if (!text){ saveFailSay(fail, 'Write the reply first.'); return; }
+  var req = { idToken: window.__idToken, kind:'send', team: team, t: id, ck: t.ck || '', text: text };
+  if (route.ch === 'watpl') req.via = 'sms';
+  saveFeedback(btn, function(){
+    return fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                                body: JSON.stringify(req) })
+      .then(function(r){ return r.json().catch(function(){ return {}; })
+        .then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(res){
+        if (!res.ok){
+          var er = new Error(res.j && res.j.error ? res.j.error : 'the messenger did not answer');
+          er.said = true; throw er;
+        }
+      });
+  }, { busy:'Sending', done:'Sent', hold:400, fail: fail,
+       then: function(){ delete DRAFT[key]; REPLY = null; load(); } });
+}
+document.getElementById('board').addEventListener('input', function(e){
+  var k = e.target.getAttribute && e.target.getAttribute('data-key');
+  if (k) DRAFT[k] = e.target.value;
+});
+
+setInterval(function(){ if (window.__idToken && !document.hidden && !REPLY) load(); }, 15000);
 document.addEventListener('visibilitychange', function(){
-  if (!document.hidden && window.__idToken) load();
+  if (!document.hidden && window.__idToken && !REPLY) load();
 });
 
 function showAccess(allowed, e){

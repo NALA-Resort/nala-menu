@@ -151,16 +151,24 @@ export function contactTemplateText(id, first, arrive) {
                .split("{arrive}").join(arriveWords(arrive) || "your arrival day");
 }
 
-/* ── who may send ────────────────────────────────────────────────
-   editBookings as can() answers it: the admin always, the manager, an
-   explicit matrix grant, and the waiter unless the matrix says no - the
-   same line the rules draw for the desk's own writes. */
-function maySend(role, permissions) {
+/* ── who may do what ─────────────────────────────────────────────
+   can() as nala-shared.js answers it, for the two things this Worker asks:
+   editBookings, the desk - Guest Contact's own gate, the same line the
+   rules draw for the desk's writes - and guestReply, a reply to a guest
+   (30 Sep, a switch per role in Settings, Roles). The admin and the
+   manager always; an explicit matrix answer; else what the role ships
+   with in ROLE_GRANTS. contact_cases.json "grants" holds both copies to
+   one answer. */
+const SHIPPED = { editBookings: ["waiter"], guestReply: ["waiter"] };
+const NO_REPLY = "Replying to guests is switched off for this login. " +
+                 "An admin can switch it on in Settings, General, Roles.";
+export function mayDo(what, role, permissions) {
   role = role === "staff" ? "admin" : role;
+  if (!SHIPPED[what]) return false;
   if (role === "admin" || role === "manager") return true;
-  const row = permissions && permissions.editBookings;
+  const row = permissions && permissions[what];
   if (row && typeof row[role] === "boolean") return row[role];
-  return role === "waiter";
+  return SHIPPED[what].indexOf(role) > -1;
 }
 
 const emailKey = (e) => String(e || "").trim().toLowerCase().replace(/\./g, ",");
@@ -443,7 +451,8 @@ async function desk(request, env) {
   const email = look && look.ok && who && who.users && who.users[0] && who.users[0].email;
   if (!email) return reply(401, { error: "sign in again" });
 
-  /* 2. The role may use Guest Contact: editBookings, the page's own gate. */
+  /* 2. What the role may do: editBookings is the desk, Guest Contact's own
+     gate; guestReply is a reply to a guest, from there or a task's card. */
   let staffRec, permissions;
   try {
     staffRec = await dbAs(idToken, "/staff/" + emailKey(email));
@@ -451,7 +460,22 @@ async function desk(request, env) {
   } catch {
     return reply(403, { error: "could not read the staff record" });
   }
-  const deskOk = maySend(staffRec && staffRec.role, permissions);
+  const role = staffRec && staffRec.role;
+  const deskOk = mayDo("editBookings", role, permissions);
+  const replyOk = mayDo("guestReply", role, permissions);
+
+  /* The teams Settings puts this login on: the desk acts for any. Read as
+     the caller, and only when a team's door needs it. */
+  const settings = !deskOk && ["tasklog", "taskmedia", "send"].indexOf(kind) > -1
+    ? await dbAs(idToken, "/contactsettings").catch(() => null) : null;
+  const onTeam = (team) => deskOk || !!(settings && settings.teams && settings.teams[team] &&
+    settings.teams[team].members && settings.teams[team].members[emailKey(email)] === true);
+  /* A task of a team this login may act for, read as the caller. */
+  const taskOf = async (team, t) => {
+    if (!/^[a-z]{2,20}$/.test(team) || !/^[A-Za-z0-9_-]{1,64}$/.test(t) || !onTeam(team)) return null;
+    const task = await dbAs(idToken, "/tasks/" + team + "/" + t).catch(() => null);
+    return task && /^[1-9]\d{7,14}$/.test(String(task.ck || "")) ? task : null;
+  };
 
   /* ── a team's view of its own tasks (29 Sep) ─────────────────────
      The owner, on the first build: the login doing a task "can only see
@@ -462,14 +486,10 @@ async function desk(request, env) {
      the task is done, nothing before it. The desk may ask for any team's
      tasks; any other login only for a team Settings puts it on. */
   if (kind === "tasklog" || kind === "taskmedia") {
-    const settings = await dbAs(idToken, "/contactsettings").catch(() => null);
-    const onTeam = (team) => deskOk || !!(settings && settings.teams && settings.teams[team] &&
-      settings.teams[team].members && settings.teams[team].members[emailKey(email)] === true);
     const excerpt = async (team, t) => {
-      if (!/^[a-z]{2,20}$/.test(team) || !/^[A-Za-z0-9_-]{1,64}$/.test(t) || !onTeam(team)) return null;
-      const task = await dbAs(idToken, "/tasks/" + team + "/" + t).catch(() => null);
-      const ck = String((task && task.ck) || "");
-      if (!/^[1-9]\d{7,14}$/.test(ck)) return null;
+      const task = await taskOf(team, t);
+      if (!task) return null;
+      const ck = String(task.ck);
       const msgs = (await db(env, "/contactmsgs/" + ck, "GET").catch(() => null)) || {};
       const src = msgs[task.msg];
       const from = stampMs(src && src.at) != null ? stampMs(src.at) : (stampMs(task.at) || 0);
@@ -483,14 +503,25 @@ async function desk(request, env) {
         const at = stampMs(msgs[id] && msgs[id].at);
         return at != null && at >= from && at <= until && !theirs(msgs[id]);
       }).sort((a, b) => (stampMs(msgs[a].at) - stampMs(msgs[b].at)) || (a < b ? -1 : 1));
-      return { msgs, ids };
+      return { msgs, ids, task, ck };
     };
     if (kind === "tasklog") {
-      const logs = {};
+      const logs = {}, routes = {}, threads = {};
+      const waOn = !!(env.TWILIO_WA_FROM || "").trim(), now = Date.now();
       for (const it of (Array.isArray(body.tasks) ? body.tasks.slice(0, 40) : [])) {
         const team = String((it && it.team) || ""), t = String((it && it.t) || "");
         const x = await excerpt(team, t);
         if (!x) continue;
+        /* Which way a reply from this card would go, for a login that may
+           send one (30 Sep): the thread as the Worker reads it, since a
+           team's login reads none. Only while the task is open. */
+        if (replyOk && x.task.state === "open") {
+          if (!(x.ck in threads))
+            threads[x.ck] = (await db(env, "/contact/" + x.ck, "GET").catch(() => null)) || {};
+          const c = contactChannel(threads[x.ck], now);
+          routes[team + "/" + t] = (!waOn && (c.ch === "wa" || c.ch === "watpl"))
+            ? { ch: "sms", until: null } : c;
+        }
         /* The words and who said them; never a photo's address, which
            only this Worker may fetch. */
         logs[team + "/" + t] = x.ids.slice(-40).map((id) => {
@@ -501,7 +532,7 @@ async function desk(request, env) {
                    photos: m.media ? Object.keys(m.media).length : 0 };
         });
       }
-      return reply(200, { logs });
+      return reply(200, { logs, routes });
     }
     /* taskmedia: a photo inside the task's stretch of the conversation. */
     const m = String(body.m || ""), i = String(body.i || "0");
@@ -518,7 +549,10 @@ async function desk(request, env) {
       "Cache-Control": "private, max-age=3600", ...CORS } });
   }
 
-  if (!deskOk) return reply(403, { error: "this login may not use Guest Contact" });
+  if (!deskOk && kind !== "send") return reply(403, { error: "this login may not use Guest Contact" });
+  /* Reply to guests, the switch per role in Settings (30 Sep): every send,
+     the desk's and a team's, stops here without it. */
+  if (kind === "send" && !replyOk) return reply(403, { error: NO_REPLY });
 
   const test = !!testList(env);
   if (kind === "hello")
@@ -526,7 +560,18 @@ async function desk(request, env) {
                         buzz: !!String(env.BUZZ || "").trim(),
                         ready: !!((env.TWILIO_ACCOUNT_SID || "").trim() && (env.TWILIO_FROM || "").trim()) });
 
-  const ck = String(body.ck || "");
+  /* A reply from a team's task card (30 Sep): a login that is not the
+     desk may message only the guest of an open task on one of its teams,
+     and only if Settings lets its role reply. The guest is the task's,
+     never a number the page names. */
+  let task = null;
+  if (!deskOk) {
+    task = await taskOf(String(body.team || ""), String(body.t || ""));
+    if (!task || task.state !== "open")
+      return reply(403, { error: "That is not an open task of this login's teams" });
+    if (body.template) return reply(400, { error: "An approved message goes from Guest Contact" });
+  }
+  const ck = task ? String(task.ck) : String(body.ck || "");
   if (!/^[1-9]\d{7,14}$/.test(ck)) return reply(400, { error: "bad guest number" });
 
   if (kind === "media") {
@@ -546,7 +591,10 @@ async function desk(request, env) {
   }
 
   /* ── kind "send" ── */
-  const thread = await dbAs(idToken, "/contact/" + ck).catch(() => null) || {};
+  /* The desk reads the thread as itself; a team's login reads none, so for
+     its task the Worker does. */
+  const thread = (task ? await db(env, "/contact/" + ck, "GET").catch(() => null)
+                       : await dbAs(idToken, "/contact/" + ck).catch(() => null)) || {};
   const phone = normalisePhone(thread.phone || "+" + ck);
   if (!phone || phone.slice(1) !== ck) return reply(400, { error: "bad guest number" });
   if (thread.optout)
@@ -563,7 +611,7 @@ async function desk(request, env) {
      desk's corrected one. Once a thread exists - the guest wrote, or we
      did - it is the guest's own number and needs no booking. Without this
      an edited page could text anyone from the resort's number. */
-  if (!thread.lastAt && !(await bookingHolds(idToken, body.booking, phone)))
+  if (!thread.lastAt && (task || !(await bookingHolds(idToken, body.booking, phone))))
     return reply(400, { error: "That number is not on the guest's booking" });
 
   const now = Date.now();

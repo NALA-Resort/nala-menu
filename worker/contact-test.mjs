@@ -8,7 +8,7 @@
  */
 import worker, { normalisePhone as workerNorm, waWindow as wWindow,
                  contactChannel as wChannel, contactTemplateText as wTemplate,
-                 twilioSignature, forgetToken } from "./guest-contact.js";
+                 mayDo as wMayDo, twilioSignature, forgetToken } from "./guest-contact.js";
 import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 
@@ -28,11 +28,12 @@ function cut(name, kind = "function") {
   const open = kind === "var" ? SHARED.indexOf("=", i) : SHARED.indexOf("{", i);
   if (kind === "var") {
     let k = open + 1; while (/\s/.test(SHARED[k])) k++;
-    if (SHARED[k] !== "[") return SHARED.slice(i, SHARED.indexOf(";", i) + 1);
+    const [o, c] = SHARED[k] === "[" ? ["[", "]"] : SHARED[k] === "{" ? ["{", "}"] : [];
+    if (!o) return SHARED.slice(i, SHARED.indexOf(";", i) + 1);
     let depth = 0;
     for (let x = k; x < SHARED.length; x++) {
-      if (SHARED[x] === "[") depth++;
-      else if (SHARED[x] === "]" && --depth === 0) return SHARED.slice(i, x + 1) + ";";
+      if (SHARED[x] === o) depth++;
+      else if (SHARED[x] === c && --depth === 0) return SHARED.slice(i, x + 1) + ";";
     }
   }
   let depth = 0;
@@ -44,8 +45,10 @@ function cut(name, kind = "function") {
 }
 const page = new Function([cut("normalisePhone"), cut("parseISO"), cut("parseDepDate"),
   cut("WA_WINDOW_MS", "var"), cut("waWindow"), cut("waAgreed"), cut("contactChannel"),
-  cut("CONTACT_TEMPLATES", "var"), cut("contactTemplateText")].join("\n") +
-  "\nreturn { normalisePhone, waWindow, contactChannel, contactTemplateText };")();
+  cut("CONTACT_TEMPLATES", "var"), cut("contactTemplateText"),
+  cut("ROLE_GRANTS", "var"), cut("normaliseRole"), cut("grantedByDefault"), "var PERMISSIONS = null;",
+  cut("setPermissions"), cut("can")].join("\n") +
+  "\nreturn { normalisePhone, waWindow, contactChannel, contactTemplateText, setPermissions, can };")();
 
 {
   const phones = JSON.parse(readFileSync(new URL("../tests/phone_cases.json", import.meta.url), "utf8")).cases;
@@ -63,6 +66,14 @@ const page = new Function([cut("normalisePhone"), cut("parseISO"), cut("parseDep
   ck("and the page's", chOk(page.contactChannel));
   const tpOk = (f) => T.templates.cases.every(([id, first, arrive, want]) => f(id, first, arrive) === want);
   ck("the approved words: the Worker records what the page previews", tpOk(wTemplate) && tpOk(page.contactTemplateText));
+  /* Who may use the desk, and who may reply: the page's can() and the
+     Worker's twin, on every case (30 Sep, the reply switch). */
+  const off = (f) => T.grants.cases.filter(([role, perms, desk, rep]) =>
+    f("editBookings", role, perms) !== desk || f("guestReply", role, perms) !== rep);
+  const pageMay = (what, role, perms) => { page.setPermissions(perms); return page.can(role, what); };
+  ck("who may use the desk and who may reply: the Worker agrees with contact_cases.json",
+     !off(wMayDo).length, off(wMayDo));
+  ck("and so does the page's can()", !off(pageMay).length, off(pageMay));
 }
 
 /* ── Twilio's own example ─────────────────────────────────────────
@@ -143,21 +154,28 @@ function install() {
     if (method === "DELETE") { delete STORE[path]; return new Response("null"); }
     /* A read of a node answers with what is stored at it, inside the
        record that holds it, or beneath it. */
-    if (path in STORE) return new Response(JSON.stringify(STORE[path]));
-    const holder = Object.keys(STORE).filter((k) => path.startsWith(k + "/"))
-                                     .sort((a, b) => b.length - a.length)[0];
-    if (holder) {
-      let o = STORE[holder];
-      for (const part of path.slice(holder.length + 1).split("/")) o = o == null ? null : o[part];
-      return new Response(JSON.stringify(o === undefined ? null : o));
+    let base;
+    if (path in STORE) base = STORE[path];
+    else {
+      const holder = Object.keys(STORE).filter((k) => path.startsWith(k + "/"))
+                                       .sort((a, b) => b.length - a.length)[0];
+      if (holder) {
+        let o = STORE[holder];
+        for (const part of path.slice(holder.length + 1).split("/")) o = o == null ? null : o[part];
+        return new Response(JSON.stringify(o === undefined ? null : o));
+      }
     }
-    const kids = {};
+    /* and whatever was written beneath it since, as the database would */
+    const kids = base && typeof base === "object" ? JSON.parse(JSON.stringify(base)) : {};
+    let under = false;
     for (const k of Object.keys(STORE)) if (k.startsWith(path + "/")) {
+      under = true;
       const rest = k.slice(path.length + 1).split("/");
       let o = kids;
       for (let i = 0; i < rest.length - 1; i++) o = o[rest[i]] = o[rest[i]] || {};
       o[rest[rest.length - 1]] = STORE[k];
     }
+    if (!under) return new Response(JSON.stringify(base === undefined ? null : base));
     return new Response(JSON.stringify(Object.keys(kids).length ? kids : null));
   };
 }
@@ -539,6 +557,89 @@ ck("but not one from before the request",
    (await desk({ kind: "taskmedia", team: "bar", t: "t1", m: "in-SMold", i: "0" })).status === 404);
 ck("nor any photo of a team it is not on",
    (await desk({ kind: "taskmedia", team: "maintenance", t: "t2", m: "in-SMold", i: "0" })).status === 403);
+
+/* ── a reply from a task's card (30 Sep) ─────────────────────────
+   The owner: "a toggle in settings for a role being able to respond to
+   messages". A role switched on in Settings replies from its own open
+   tasks, to that task's guest and nobody else; switched off, it reads. */
+function replyWorld(perms) {
+  const at = teamWorld();
+  STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: at(3), lastIn: at(3),
+                                 lastInCh: "wa", lastInWa: at(3) };
+  STORE["/contact/" + LEA] = { phone: "+33612345678", lastAt: at(3), lastIn: at(3), lastInCh: "sms" };
+  if (perms) STORE["/permissions"] = perms;
+  STATE.email = "ray@nala.x";
+  return at;
+}
+const HK_ON = { guestReply: { housekeeping: true } };
+replyWorld();
+r = await desk({ kind: "send", team: "bar", t: "t1", text: "Coming right up." });
+j = await r.json();
+ck("a team's login its role may not reply from is refused, and told where the switch is",
+   r.status === 403 && /Settings, General, Roles/.test(j.error) && SENT.length === 0 && msgs(SARAH).length === 0, j);
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("and its cards carry no way to send", r.status === 200 && (j.logs["bar/t1"] || []).length === 3 &&
+   !Object.keys(j.routes || {}).length, j.routes);
+replyWorld(HK_ON);
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("switched on, each open card says which way a reply goes: WhatsApp, the way she wrote",
+   j.routes && j.routes["bar/t1"] && j.routes["bar/t1"].ch === "wa" && j.routes["bar/t1"].until > Date.now(), j.routes);
+r = await desk({ kind: "send", team: "bar", t: "t1", ck: LEA, text: "Two G&Ts and a lemonade, on their way." });
+j = await r.json(); s = SENT[0] && SENT[0].form;
+ck("a reply from the card goes to the task's guest, whatever number the page names",
+   r.status === 200 && j.ch === "wa" && s && s.To === "whatsapp:+61412345678" &&
+   s.Body === "Two G&Ts and a lemonade, on their way." && !SENT.some((x) => x.form && /33612345678/.test(x.form.To)), { j, s });
+m = STORE["/contactmsgs/" + SARAH + "/" + j.id];
+ck("recorded in the login's name, written by the Worker, the desk's conversation and the card's",
+   m && m.dir === "out" && m.by === "ray@nala.x" && m.kind === "staff" &&
+   WRITES.every((w) => w.token === "MACHINE") && STORE["/contact/" + SARAH].lastOut === m.at, m);
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("and the card shows it under the guest's answer",
+   (j.logs["bar/t1"] || []).slice(-1).map((x) => x.by + "|" + x.body).join() ===
+   "ray@nala.x|Two G&Ts and a lemonade, on their way.", j.logs["bar/t1"]);
+r = await desk({ kind: "send", team: "maintenance", t: "t2", text: "hi" });
+ck("never from a task of a team it is not on", r.status === 403 && SENT.length === 1);
+r = await desk({ kind: "send", ck: SARAH, text: "hi" });
+ck("nor with no task at all: only the desk writes to any guest", r.status === 403 && SENT.length === 1);
+r = await desk({ kind: "send", team: "bar", t: "t1", template: "question" });
+ck("an approved message is the desk's, not the card's", r.status === 400 && SENT.length === 1);
+ck("and the desk's doors stay shut to it", (await desk({ kind: "hello" })).status === 403);
+STORE["/tasks/bar/t1"].state = "done"; STORE["/tasks/bar/t1"].doneAt = new Date().toISOString();
+r = await desk({ kind: "send", team: "bar", t: "t1", text: "One more thing" });
+ck("once Done, the card's reply is over", r.status === 403 && SENT.length === 1);
+replyWorld(HK_ON);
+const stale = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+Object.assign(STORE["/contact/" + SARAH], { lastIn: stale, lastInWa: stale });
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("past WhatsApp's 24 hours the card is told so", j.routes["bar/t1"].ch === "watpl", j.routes);
+r = await desk({ kind: "send", team: "bar", t: "t1", text: "Your drinks are on the deck." });
+ck("free text on WhatsApp is refused, as it is for the desk", r.status === 409 && SENT.length === 0);
+r = await desk({ kind: "send", team: "bar", t: "t1", text: "Your drinks are on the deck.", via: "sms" });
+j = await r.json();
+ck("and goes by SMS instead", r.status === 200 && j.ch === "sms" && SENT[0].form.To === "+61412345678");
+replyWorld(HK_ON);
+STORE["/contact/" + SARAH].optout = { at: new Date().toISOString(), word: "STOP" };
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("a guest who texted STOP: the card is told nothing can go",
+   j.routes["bar/t1"].ch === "none" &&
+   (await desk({ kind: "send", team: "bar", t: "t1", text: "x", via: "sms" })).status === 409 && SENT.length === 0);
+replyWorld(HK_ON);
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] }, envOf({ TWILIO_WA_FROM: "" }));
+j = await r.json();
+ck("with WhatsApp not set up, the card says SMS", j.routes["bar/t1"].ch === "sms", j.routes);
+teamWorld(); STORE["/permissions"] = { guestReply: { waiter: false } };
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
+  lastIn: new Date().toISOString(), lastInCh: "sms" };
+r = await desk({ kind: "send", ck: SARAH, text: "hi" });
+ck("the desk switched off: the waiter still reads Guest Contact, but may not reply",
+   (await desk({ kind: "hello" })).status === 200 && r.status === 403 && SENT.length === 0);
+STATE.email = "mgr@nala.x";
+ck("the manager always may", (await desk({ kind: "send", ck: SARAH, text: "hi" })).status === 200);
 
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);

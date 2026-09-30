@@ -126,7 +126,22 @@ with sync_playwright() as p:
     ck("as Anna, Bar: the drinks arrive with the desk's note, and which drinks",
        bool(gin) and "Charge to villa 9" in gin["note"] and any("Tanqueray" in x for x in gin["lg"]) and
        any(x.startswith("Reception") for x in gin["lg"]), gin)
+    # Reply to guests, switched on for housekeeping as Settings would (30 Sep)
+    pg.click("#rp-bar-t2gandt"); pg.wait_for_timeout(200)
+    pg.fill("#rb-bar-t2gandt", "Two Tanqueray and tonics on their way to the pool.")
+    pg.click("#rs-bar-t2gandt"); pg.wait_for_timeout(2500)
+    lg = pg.evaluate("""()=>[...document.querySelectorAll('.task[data-t="t2gandt"] .lg')].map(e=>e.textContent)""")
+    ck("and Anna, switched on in Settings, answers from the card; her reply joins it",
+       any(x.startswith("Anna") and "on their way to the pool" in x for x in lg) and
+       not pg.query_selector("#rb-bar-t2gandt"), lg)
+    pg.select_option("#demoWho", "marco@demo"); pg.wait_for_timeout(2000)
+    ck("while Marco, a chef, reads his card with no Reply",
+       pg.query_selector("#board .task") is not None and not pg.query_selector('[data-act="reply"]'))
     pg.select_option("#demoWho", "desk@demo"); pg.wait_for_timeout(1800)
+    pg.goto("http://localhost:%d/guest-contact.html?c=61411000009" % PORT); pg.wait_for_timeout(1500)
+    ck("and the desk sees Anna's reply in the conversation",
+       "Two Tanqueray and tonics on their way to the pool." in pg.text_content("#msgs"))
+    go("guest-contact.html")
 
     # ── 4. it stays the demo ───────────────────────────────────────
     menu = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]

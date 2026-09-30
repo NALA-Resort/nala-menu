@@ -43,7 +43,10 @@
   }
   function ago(mins){ return new Date(Date.now() - mins * 60000).toISOString(); }
   function seed(){
-    var t = { staff:{}, permissions:{ open:{ 'guest-contact':true, tasks:true } },
+    /* Reply to guests switched on for housekeeping, as Settings would:
+       Ray and Anna answer from their cards, Marco (a chef) only reads. */
+    var t = { staff:{}, permissions:{ open:{ 'guest-contact':true, tasks:true },
+                                      guestReply:{ housekeeping:true } },
               contactsettings:{ teams:{
                 bar:{ members:{ 'anna@demo':true } }, kitchen:{ members:{ 'marco@demo':true } },
                 housekeeping:{ members:{} }, maintenance:{ members:{ 'ray@demo':true } },
@@ -178,7 +181,7 @@
   }
 
   /* ── the tab's copy of the database ─────────────────────────── */
-  var SEED = 2;   /* moved when the made-up guests change: a tab holding older ones starts again */
+  var SEED = 3;   /* moved when the made-up guests change: a tab holding older ones starts again */
   var TREE = null;
   try { TREE = JSON.parse(sessionStorage.getItem(DBK) || 'null'); } catch (e){}
   if (!TREE || TREE.demoSeed !== SEED){ TREE = seed(); save(); }
@@ -297,19 +300,21 @@
           var theirs = m.dir === 'in' && m.tasks && Object.keys(m.tasks).length && !m.tasks[team];
           return a >= from && a <= until && !theirs;
         }).sort(function(x, y){ return Date.parse(msgs[x].at) - Date.parse(msgs[y].at); });
-        return { msgs:msgs, ids:ids };
+        return { msgs:msgs, ids:ids, task:task };
       };
       if (b.kind === 'tasklog'){
-        var logs = {};
+        var logs = {}, routes = {};
         (b.tasks || []).forEach(function(it){
           var x = excerpt(String(it.team), String(it.t)); if (!x) return;
+          if (can(WHO.role, 'guestReply') && x.task.state === 'open')
+            routes[it.team + '/' + it.t] = contactChannel(get('/contact/' + x.task.ck) || {}, Date.now());
           logs[it.team + '/' + it.t] = x.ids.map(function(k){
             var m = x.msgs[k];
             return { id:k, dir:m.dir, ch:m.ch, body:m.body || '', at:m.at,
                      by:m.dir === 'out' ? (m.by || '') : '', photos:m.media ? Object.keys(m.media).length : 0 };
           });
         });
-        return answer(200, { logs:logs });
+        return answer(200, { logs:logs, routes:routes });
       }
       var tx = excerpt(String(b.team), String(b.t));
       if (!tx) return answer(403, { error:'not one of this login\u2019s tasks' });
@@ -318,7 +323,20 @@
         { status:200, headers:{ 'Content-Type':'image/svg+xml' } }));
     }
     if (b.kind !== 'send') return answer(400, { error:'unknown kind' });
-    var ck = String(b.ck || ''), t = get('/contact/' + ck) || {};
+    /* As the Worker: a reply only from a role Settings lets reply, and a
+       login that is not the desk only to the guest of its own open task. */
+    if (!can(WHO.role, 'guestReply'))
+      return answer(403, { error:'Replying to guests is switched off for this login. An admin can ' +
+                                 'switch it on in Settings, General, Roles.' });
+    var ck = String(b.ck || '');
+    if (!can(WHO.role, 'editBookings')){
+      var mine = (((TREE.contactsettings || {}).teams || {})[b.team] || {}).members || {};
+      var tk = mine[WHO.email] === true && get('/tasks/' + b.team + '/' + b.t);
+      if (!tk || tk.state !== 'open') return answer(403, { error:'That is not an open task of this login\u2019s teams' });
+      if (b.template) return answer(400, { error:'An approved message goes from Guest Contact' });
+      ck = String(tk.ck);
+    }
+    var t = get('/contact/' + ck) || {};
     if (t.optout) return answer(409, { error:'This guest texted STOP. Nothing can be sent until they text START.' });
     var route = contactChannel(t, Date.now()).ch, ch, text;
     if (b.template){

@@ -255,7 +255,8 @@ Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 guests' messages, SMS and WhatsApp through Twilio, to replace Guest Touch.
 Every guest by booking on Upcoming, In-house and Past; one conversation
 each; every message a guest sends sorted into no task or a team's task,
-which the team closes on its own login. Its own Worker
+which the team closes on its own login, and may answer from if Settings
+lets its role reply (Reply to guests, 30 Sep). Its own Worker
 (`worker/guest-contact.js`), so the SMS pages' ClickSend Worker is
 untouched until the switch-over. `GUEST-CONTACT.md` is the brief, the
 decisions and the setup; open item 18 is what waits on the owner.
@@ -716,6 +717,12 @@ None of these can move without him.
     they can go live before Twilio does. And `guest-contact.html?demo` is
     the whole flow on made-up guests, nothing leaving the tab
     (contact-demo.js).
+    Reply to guests (30 Sep) is a switch per role in Settings, General,
+    Roles, and a new name in the rules' permission list: the Worker and
+    the rules both need their paste before a team can reply. Until the
+    rules have it, switching it on is refused ("That change was not
+    saved"), and so is any switch pressed after it until the page is
+    reloaded; nothing already saved is touched.
     Alerts wait on the push Worker's code coming into this repo. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any

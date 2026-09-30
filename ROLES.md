@@ -29,6 +29,13 @@ hold the same line - and the machine role `contact`, the Guest Contact
 Worker's login, which writes the guests' messages and nothing else, sync's
 pattern.
 
+And on 30 Sep, `guestReply`, **Reply to guests** on the Roles grid: a reply
+to a guest's message, from Guest Contact or from a task's card. It ships
+with the admin, the manager and the waiter - the desk, which replied before
+it was a switch - and the grid moves it for the chef, the waiter and
+housekeeping. The Guest Contact Worker asks the same question (`mayDo`),
+held to the page's `can()` by `tests/contact_cases.json`.
+
 `manager` is the admin's grants minus `manageStaff`, and nothing else. That
 one exclusion is what keeps the three manageStaff gates - Settings General,
 Pages and Diagnostics - the admin's alone. It is a role rather than a row on

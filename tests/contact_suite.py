@@ -236,7 +236,7 @@ def wk(route, request):
         # until Done. worker/contact-test.mjs holds the real one to it.
         import datetime
         ms = lambda x: datetime.datetime.fromisoformat(x.replace("Z", "+00:00")).timestamp()
-        logs = {}
+        logs, routes = {}, {}
         for it in b.get("tasks", []):
             task = TASKS.get(it["team"], {}).get(it["t"])
             if not task: continue
@@ -250,7 +250,12 @@ def wk(route, request):
                 "body": msgs[k].get("body", ""), "at": msgs[k]["at"],
                 "by": msgs[k].get("by", "") if msgs[k]["dir"] == "out" else "",
                 "photos": len(msgs[k].get("media", {}))} for k in ids]
-        route.fulfill(status=200, content_type="application/json", body=js({"logs": logs})); return
+            # which way a reply would go, for every open card: the page
+            # alone decides whether its role may send one (section 9)
+            if task.get("state") == "open":
+                routes[it["team"] + "/" + it["t"]] = STATE.get("route") or {"ch": "wa", "until": None}
+        route.fulfill(status=200, content_type="application/json",
+                      body=js({"logs": logs, "routes": routes})); return
     st, rep = STATE["send"] or (200, {"id": "onew", "ch": "wa", "status": "queued"})
     route.fulfill(status=st, content_type="application/json", body=js(rep))
 
@@ -654,7 +659,7 @@ with sync_playwright() as p:
            pg.evaluate("()=>{const i=document.querySelector('.task[data-t=\"t1umbrella\"] img.tphoto');"
                        "return !!(i && i.src.startsWith('blob:'))}"))
         del WRITES[:]
-        pg.click('.task[data-t="t1umbrella"] .sbtn'); pg.wait_for_timeout(500)
+        pg.click('.task[data-t="t1umbrella"] [data-act="done"]'); pg.wait_for_timeout(500)
         w = WRITES[-1] if WRITES else {"b": {}}
         ck("and closes it in its own name, today",
            w.get("m") == "PATCH" and w.get("p") == "/tasks/maintenance/t1umbrella.json" and
@@ -855,6 +860,95 @@ with sync_playwright() as p:
     m = menu(pg)
     ck("opened, the waiter's menu has both", "guest-contact.html" in m and "tasks.html" in m, m)
     done(pg)
+
+    # ── 9. a reply from the card, for a role Settings lets reply (30 Sep) ─
+    # The owner: "a toggle in settings for a role being able to respond to
+    # messages". The Worker's half - refused unless switched on, only to an
+    # open task's guest - is worker/contact-test.mjs; this is the page's.
+    pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)
+    ck("housekeeping ships without it: the card has Done and no Reply",
+       pg.is_visible('.task[data-t="t1umbrella"] [data-act="done"]') and
+       not pg.query_selector('.task[data-t="t1umbrella"] [data-act="reply"]'))
+    done(pg)
+    pg = page(email="staff@x", file="staff.html")
+    pg.click('[data-t="tRoles"]'); pg.wait_for_timeout(150)
+    pg.click('#permPick [data-r="2"]'); pg.wait_for_timeout(100)
+    ck("Settings, Roles: Reply to guests, off for housekeeping as it ships",
+       "Reply to guests" in pg.text_content("#permList") and
+       pg.get_attribute("#may-guestReply", "aria-checked") == "false")
+    del WRITES[:]
+    pg.click("#may-guestReply"); pg.wait_for_timeout(400)
+    w = [x for x in WRITES if x["p"] == "/permissions.json"]
+    ck("switched on, it is saved with the rest of who may do what, the opening kept",
+       len(w) == 1 and w[0]["m"] == "PUT" and w[0]["b"].get("guestReply") == {"housekeeping": True} and
+       w[0]["b"].get("open") == PERMS.get("open"), w)
+    pg.click('#permPick [data-r="1"]'); pg.wait_for_timeout(100)
+    ck("and the waiter, at the desk, ships with it on",
+       pg.get_attribute("#may-guestReply", "aria-checked") == "true")
+    done(pg)
+    PERMS["guestReply"] = {"housekeeping": True}
+    RB, RS, RF = "#rb-maintenance-t1umbrella", "#rs-maintenance-t1umbrella", "#rf-maintenance-t1umbrella"
+    pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)
+    ck("switched on, the card offers Reply beside Done", pg.is_visible("#rp-maintenance-t1umbrella") and
+       pg.is_visible('.task[data-t="t1umbrella"] [data-act="done"]'))
+    pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(150)
+    ck("which opens a box, saying which way it goes as the Worker says it",
+       pg.is_visible(RB) and "Goes on WhatsApp" in pg.text_content('.task[data-t="t1umbrella"] .rwin') and
+       pg.evaluate("()=>document.activeElement && document.activeElement.id") == RB[1:])
+    ck("the box is the editable white, its Send the one solid on the card",
+       pg.evaluate("(s)=>getComputedStyle(document.querySelector(s)).backgroundColor", RB) == "rgb(255, 255, 255)" and
+       pg.evaluate("()=>document.querySelectorAll('.task[data-t=\"t1umbrella\"] .btn.solid').length") == 1)
+    del SENT[:]
+    pg.click(RS); pg.wait_for_timeout(200)
+    ck("an empty reply goes nowhere, and says why",
+       not [b for b in SENT if b.get("kind") == "send"] and "Write the reply first" in pg.text_content(RF))
+    pg.fill(RB, "On my way with a new one.")
+    pg.click(RS); pg.wait_for_timeout(900)
+    sd = [b for b in SENT if b.get("kind") == "send"]
+    ck("Send hands the Worker the words and the task",
+       len(sd) == 1 and sd[0]["team"] == "maintenance" and sd[0]["t"] == "t1umbrella" and
+       sd[0]["text"] == "On my way with a new one." and "via" not in sd[0] and "template" not in sd[0], sd)
+    ck("and once sent the box closes and the card asks for its conversation again",
+       not pg.query_selector(RB) and len([b for b in SENT if b.get("kind") == "tasklog"]) >= 1)
+    STATE["send"] = (409, {"error": "This guest texted STOP. Nothing can be sent until they text START."})
+    pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(100)
+    pg.fill(RB, "Hello again"); pg.click(RS); pg.wait_for_timeout(500)
+    ck("a refusal is said in the Worker's words, and what was typed stays",
+       "texted STOP" in pg.text_content(RF) and pg.input_value(RB) == "Hello again", pg.text_content(RF))
+    STATE["send"] = None
+    shot(pg, "tasks-reply")
+    done(pg)
+    STATE["route"] = {"ch": "watpl", "until": None}
+    del SENT[:]
+    pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)
+    pg.click("#rp-maintenance-t1umbrella"); pg.wait_for_timeout(100)
+    say = pg.text_content('.task[data-t="t1umbrella"] .rwin')
+    pg.fill(RB, "Your umbrella is fixed."); pg.click(RS); pg.wait_for_timeout(700)
+    sd = [b for b in SENT if b.get("kind") == "send"]
+    ck("past WhatsApp's 24 hours the card says so, and the reply goes by SMS",
+       "24 hours have passed" in say and "SMS" in say and len(sd) == 1 and sd[0].get("via") == "sms", [say, sd])
+    done(pg)
+    STATE["route"] = {"ch": "none", "until": None}
+    pg = page(email="grounds@x", file="tasks.html"); pg.wait_for_timeout(500)
+    ck("a guest who texted STOP: the card says so, and offers no Reply",
+       "texted STOP" in pg.text_content('.task[data-t="t1umbrella"]') and
+       not pg.query_selector("#rp-maintenance-t1umbrella"))
+    done(pg)
+    STATE["route"] = None
+    pg = page(email="chef@x", file="tasks.html"); pg.wait_for_timeout(500)
+    ck("the chef, not switched on, only reads", len(cards(pg)) == 1 and
+       not pg.query_selector('[data-act="reply"]'))
+    done(pg)
+    PERMS["guestReply"] = {"waiter": False}
+    pg = page("?c=%s&b=b-sarah" % SARAH, email="waiter@x")
+    ck("the desk's waiter switched off: the conversation reads, with no box to reply in",
+       pg.query_selector(".msg") is not None and not pg.is_visible("#msgBox") and
+       not pg.is_visible("#sendBtn") and "switched off for this login" in pg.text_content("#win"))
+    done(pg)
+    pg = page("?c=%s&b=b-sarah" % SARAH, email="staff@x")
+    ck("while the admin, never switched off, has it", pg.is_visible("#msgBox") and pg.is_visible("#sendBtn"))
+    done(pg)
+    del PERMS["guestReply"]
 
     br.close()
 

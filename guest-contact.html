@@ -203,9 +203,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=3"></script>
+<script src="contact-demo.js?v=4"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=91"></script>
+<script src="nala-shared.js?v=92"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -748,6 +748,14 @@ function drawCompose(){
   tpls.innerHTML = ''; prev.innerHTML = '';
   box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
   var name = TH.b ? TH.b.first : '';
+  /* Reply to guests, a switch per role in Settings (30 Sep): switched off,
+     this login reads and sorts, and the Worker refuses its sends. */
+  if (!can(window.NALA_ROLE, 'guestReply')){
+    win.innerHTML = 'Replying to guests is switched off for this login. An admin can switch it ' +
+      'on in Settings, General, Roles.';
+    box.style.display = 'none'; foot.style.display = 'none';
+    return;
+  }
   if (c.ch === 'none'){
     win.innerHTML = 'This guest texted <b>' + esc(t.optout.word || 'STOP') + '</b> ' +
       esc(stampOf(t.optout.at)) + '. Nothing can be sent until they text START.';
