@@ -565,7 +565,12 @@ with sync_playwright() as p:
     STATE["hello"]["buzz"] = True
     pg = page("?c=%s&b=b-sarah" % SARAH)
     del BUZZ[:]
-    pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150); pg.click("#tm-in-SMcandle-bar"); pg.wait_for_timeout(500)
+    pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150); pg.click("#tm-in-SMcandle-bar")
+    # the buzz follows the write and the button's 300ms Saved hold: waited
+    # for, not guessed at, which a fixed 500ms was under a loaded machine
+    for _ in range(30):
+        if BUZZ: break
+        pg.wait_for_timeout(100)
     ck("once it does, the team's phones are buzzed, the team named",
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "bar" and
        BUZZ[0].get("villa") == "7", BUZZ)
