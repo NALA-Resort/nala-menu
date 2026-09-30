@@ -310,19 +310,19 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
    - a capsule 62pt tall, floating 21pt above the foot of the screen and
      21pt in from its sides (further in from a notch), with 2pt inside
      it to the tabs. The home indicator lives in the 21pt below it.
-   - icons in a 28pt box, the largest 23pt, and a label of 10pt
-     semibold, 1pt under its icon.
+   - icons in a 28pt box, the largest 23pt.
    - the page you are on in a grey capsule as tall as the bar.
    - two or three tabs keep a narrow bar, 98pt a tab, centred; iOS 26
      fills the width from four.
-   - held sideways, the compact bar: 44pt, the icon beside its name, and
-     nearer the foot, so the Cleans board keeps its villas on a screen.
+   - held sideways, the compact bar: 44pt, smaller icons, and nearer the
+     foot, so the Cleans board keeps its villas on a screen.
    Apple's numbers: the HIG (tab bars, SF Symbols) and the system bar as
    measured for FabBar. STYLEGUIDE.md has the sources.
 
-   Four places it parts from the phone. The icons are line icons where
-   the phone fills its own: Lucide's, the owner's choice of 30 Sep
-   (nala-shared.js). And three for rules of this app: selection is grey
+   Where it parts from the phone, the owner chose to, 30 Sep: line icons
+   where the phone fills its own, Lucide's (nala-shared.js), drawn
+   thinner than Lucide's own ("Make icon line thinner"), and no name under
+   them ("No text below icon"). And three for rules of this app: selection is grey
    and ink, not the phone's blue ("Selected is grey, never black and
    never blue", STYLEGUIDE.md); the bar is solid white, not glass, as
    nothing on paper lets the page through; and a count is the menu's
@@ -358,22 +358,22 @@ body.ui2 .tabrow{ position:absolute; bottom:21px; left:max(21px, env(safe-area-i
                              0 6px 20px rgba(28,28,26,.10);
                   pointer-events:auto; }
 body.ui2 .tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
-                    align-items:center; justify-content:center; gap:1px;
+                    align-items:center; justify-content:center;
                     border-radius:var(--pill); color:var(--mid); text-decoration:none;
                     -webkit-tap-highlight-color:transparent; }
 body.ui2 .tabbar.few .tabrow{ width:fit-content; }
 body.ui2 .tabbar.few a{ flex:0 0 98px; }
 body.ui2 .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
-/* Lucide's line, as Lucide draws it: 2 on its 24 grid, round ends. */
+/* Lucide's line drawn thinner than its own 2, at the owner's ask: 1.5 on
+   its 24 grid, 1.75pt on the bar. Round ends, as Lucide's. */
 body.ui2 .tabbar svg{ width:100%; height:100%; display:block; fill:none;
-                      stroke:currentColor; stroke-width:2;
+                      stroke:currentColor; stroke-width:1.5;
                       stroke-linecap:round; stroke-linejoin:round; }
-/* A label is a name, so it is the thing that may trim (the trim rule):
-   five share the bar, 69pt each on a 390pt iPhone, and "Reservations"
-   needs about 65 of them at 10pt semibold. Below 375pt it trims. */
-body.ui2 .tabbar .tablbl{ max-width:100%; font-size:10px; font-weight:600;
-                          line-height:12px; white-space:nowrap; overflow:hidden;
-                          text-overflow:ellipsis; }
+/* No name under the icon: the owner, 30 Sep, "No text below icon". The
+   name stays in the link, out of sight, so a screen reader still says
+   "Chat, 1" (and a mouse has the link's title). */
+body.ui2 .tabbar .tablbl{ position:absolute; width:1px; height:1px; overflow:hidden;
+                          clip-path:inset(50%); white-space:nowrap; }
 body.ui2 .tabbar a[aria-current]{ background:var(--sel-bg); color:var(--ink); cursor:default; }
 body.ui2 .tabbar a[href]:active{ background:var(--card); }
 body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
@@ -381,9 +381,7 @@ body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
 @media (orientation:landscape) and (max-height:500px){
   body.ui2.hastabs{ --tabroom:calc(44px + max(8px, env(safe-area-inset-bottom))); }
   body.ui2 .tabrow{ height:44px; bottom:max(8px, env(safe-area-inset-bottom)); }
-  body.ui2 .tabbar a{ flex-direction:row; gap:7px; }
   body.ui2 .tabbar .tabic{ width:22px; height:22px; }
-  /* on the icon's corner, clear of the name beside it */
   body.ui2 .tabbar .navbadge{ top:-7px; left:auto; right:-7px; min-width:16px;
                               height:16px; padding:0 4px; font-size:11px; }
 }

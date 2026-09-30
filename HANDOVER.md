@@ -350,14 +350,16 @@ sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and
 Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
 ("Study apple iPhone best practice including space below and icon line
 size"): a capsule 62pt tall floating 21pt above the foot of the screen
-and in from its sides, icons in a 28pt box, labels 10pt semibold, the
-page you are on in a grey capsule, a narrow bar for two or three tabs
-and the compact one held sideways. The icons are Lucide's line icons,
-the owner's pick of four sets the same day (`mock-tab-icons.html`), with
-Lucide's checklist for the Dashboard and an alarm clock for Tasks, the
-"do it now" jobs. It parts from the phone four times: those line icons where the
-phone fills, grey selection not blue, solid white not glass, the menu's
-badge not red. STYLEGUIDE.md has the table of Apple's numbers and the
+and in from its sides, icons in a 28pt box, the page you are on in a
+grey capsule, a narrow bar for two or three tabs and the compact one
+held sideways. The icons are Lucide's line icons, the owner's pick of
+four sets the same day (`mock-tab-icons.html`), with `list-todo` for the
+Dashboard and `clock-alert` for Tasks, the "do it now" jobs, drawn
+thinner than Lucide's own and with no name under them, his asks too
+(the name stays in the link for a screen reader). Where it parts from
+the phone, he chose to - line icons, thinner, no names - or a rule of
+this app did: grey selection not blue, solid white not glass, the
+menu's badge not red. STYLEGUIDE.md has the table of Apple's numbers and the
 sources.
 
 The same day the owner cleared the footers it would have sat under:

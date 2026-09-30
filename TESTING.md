@@ -341,12 +341,11 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
 1. **Five icons along the foot**: Dashboard, Reservations, Cleans, Chat,
    Tasks. **Expect** a white capsule floating over the page, as the
    phone's own apps draw theirs now, with the home strip in the space
-   below it; the page you are on in a grey capsule, and every name whole -
-   "Reservations" is the long one, and the headless browser measures it
-   in Helvetica's widths, not San Francisco's. Set it beside the Clock or
-   the App Store: **expect** the same height, the same space below and
-   icons of the same size - line icons where theirs are filled, which is
-   the set you chose.
+   below it; the page you are on in a grey capsule, and icons only, no
+   names under them. Set it beside the Clock or the App Store: **expect**
+   the same height, the same space below and icons of the same size -
+   thinner line icons where theirs are filled, which is the set you chose.
+   With VoiceOver on, **expect** each icon read by its page's name.
 2. **Pull Reservations down from its top** and let go. **Expect** a grey
    arrow that turns ink as you pull, then the board reloading; a short pull
    does nothing. Same on Cleans and the Dashboard. The headless browser

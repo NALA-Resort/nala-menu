@@ -18,18 +18,19 @@ answer to each other, and whichever side a change misses fails by name.
      served, and no bar for a login with one page or no staff record. And
      drawn as the iPhone's own (iOS 26), the owner's ask the same day: a
      capsule 62pt tall floating 21pt above the foot and in from the sides,
-     icons in a 28pt box, labels 10pt semibold, the page you are on in a
-     grey capsule, and two or three tabs on a narrow bar. The icons are
-     Lucide's line icons, the owner's choice the same day, whole and at
-     Lucide's own weight.
+     icons in a 28pt box, the page you are on in a grey capsule, and two
+     or three tabs on a narrow bar. The icons are Lucide's line icons, the
+     owner's choice the same day, whole, drawn thinner than Lucide's own
+     and with no name under them, both his asks - the name kept out of
+     sight for a screen reader.
   4. Nothing sits under it: the page's footer stands on it - sticky, fixed,
      and Publish's bar - with no row showing between them, a sheet and the
      select and save bars cover it, the foot of a long page scrolls clear
      of it, and beside the capsule a finger still reaches the page.
   5. The menu's counts ride on its icons, and not on the page you are on.
-  6. It fits: every label whole at 390, no sideways scroll at 320, and held
-     sideways it is the phone's compact bar, while the Cleans board keeps
-     its villas on a screen.
+  6. It fits: no sideways scroll at 320, and held sideways it is the
+     phone's compact bar, while the Cleans board keeps its villas on a
+     screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
   8. Pull to refresh, which took the Refresh buttons' place the same day so
@@ -213,15 +214,16 @@ with sync_playwright() as p:
           parts=[...s.children].map(e=>{const c=getComputedStyle(e);
             return {dot:e.getAttribute('fill')==='currentColor', fill:c.fill, stroke:c.stroke,
                     w:px(c.strokeWidth)};}),
-          k=s.getBoundingClientRect(), g=s.getBBox(), m=s.getScreenCTM(), v=s.viewBox.baseVal;
+          k=s.getBoundingClientRect(), g=s.getBBox(), m=s.getScreenCTM(), v=s.viewBox.baseVal,
+          sw=px(getComputedStyle(s).strokeWidth);
         /* the drawing and half its line either side, inside the grid it is
            drawn on: nothing cut off at the box's edge */
         const whole=g.x-1>=v.x-0.01 && g.y-1>=v.y-0.01 &&
                     g.x+g.width+1<=v.x+v.width+0.01 && g.y+g.height+1<=v.y+v.height+0.01;
         return {id:t.id, box:[Math.round(k.width), Math.round(k.height)], whole,
           grid:[v.x, v.y, v.width, v.height],
-          glyph:[+((g.width+2)*m.a).toFixed(1), +((g.height+2)*m.d).toFixed(1)], parts,
-          size:cs.fontSize, weight:cs.fontWeight, gap:+(lr.top-i.bottom).toFixed(1),
+          glyph:[+((g.width+sw)*m.a).toFixed(1), +((g.height+sw)*m.d).toFixed(1)], parts,
+          name:l.textContent, shown:[Math.round(lr.width), Math.round(lr.height)],
           pill:{bg:getComputedStyle(t).backgroundColor, h:Math.round(t.getBoundingClientRect().height),
                 r:px(getComputedStyle(t).borderTopLeftRadius)}};});}""")
     ck("its icons stand in a 28pt box, the phone's", all(t["box"] == [28, 28] for t in look),
@@ -229,17 +231,18 @@ with sync_playwright() as p:
     ck("Lucide's line icons, the owner's choice: every part a line, nothing filled but Lucide's own dots",
        all(p["stroke"] != "none" and (p["fill"] == "none" or p["dot"]) for t in look for p in t["parts"]),
        [(t["id"], [(p["fill"], p["stroke"]) for p in t["parts"]]) for t in look])
-    ck("drawn at Lucide's weight, 2 on its 24 grid, and the grid fills the box",
-       all(p["w"] == 2 for t in look for p in t["parts"]) and all(t["grid"] == [0, 0, 24, 24] for t in look),
+    ck("drawn thinner than Lucide's own 2, at 1.5 on its 24 grid (the owner's ask), the grid filling the box",
+       all(p["w"] == 1.5 for t in look for p in t["parts"]) and all(t["grid"] == [0, 0, 24, 24] for t in look),
        [(t["id"], t["grid"], sorted({p["w"] for p in t["parts"]})) for t in look])
     ck("every icon whole: nothing cut off at the edge of its box",
        all(t["whole"] for t in look), [t["id"] for t in look if not t["whole"]])
     dash = [t for t in look if t["id"] == "tab-dashboard"]
     ck("the Dashboard's checklist stands 23pt wide: Apple's size for a square glyph on a tab",
        dash and 22.5 <= dash[0]["glyph"][0] <= 24, dash and dash[0]["glyph"])
-    ck("the names are 10pt semibold, 1pt under the icon",
-       all(t["size"] == "10px" and t["weight"] == "600" and 0.5 <= t["gap"] <= 1.5 for t in look),
-       [(t["id"], t["size"], t["weight"], t["gap"]) for t in look])
+    ck("no name under the icons (the owner's ask), each kept out of sight for a screen reader",
+       all(t["shown"][0] <= 1 and t["shown"][1] <= 1 for t in look) and
+       [t["name"] for t in look] == [LABEL[h] for h in TABS["roles"]["admin"]],
+       [(t["id"], t["name"], t["shown"]) for t in look])
     cur = [t for t in look if t["id"] == "tab-tally"]
     ck("the page you are on sits in a grey capsule as tall as the bar, the selection grey",
        cur and cur[0]["pill"]["bg"] == "rgba(28, 28, 26, 0.1)" and cur[0]["pill"]["h"] == 58
@@ -380,16 +383,6 @@ with sync_playwright() as p:
     ctx.close()
 
     # ── 6. it fits ────────────────────────────────────────────────────
-    # Measured in Liberation Sans, Helvetica's widths: the nearest here to
-    # the phone's own San Francisco. The sandbox's default, DejaVu, runs a
-    # fifth wider than either and would trim what the phone shows whole.
-    ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
-    pg.evaluate("""()=>document.body.style.setProperty('--ui-font', "'Liberation Sans', Arial, sans-serif")""")
-    pg.wait_for_timeout(100)
-    whole = pg.evaluate("""()=>[...document.querySelectorAll('#tabBar .tablbl')]
-        .filter(l=>l.scrollWidth>l.clientWidth+0.5).map(l=>l.textContent)""")
-    ck("at 390 every label reads whole", whole == [], whole)
-    ctx.close()
     for w in (360, 320):
         ctx, pg = open_as(b, EMAIL["admin"], "tally.html", w=w)
         m = pg.evaluate("""()=>{const t=[...document.querySelectorAll('#tabBar .tabrow > a')];
@@ -410,14 +403,13 @@ with sync_playwright() as p:
                 clear:g.getBoundingClientRect().bottom<=(t?t.getBoundingClientRect().top:innerHeight)+1};}""")
     ck("a phone on its side keeps the bar, and the Cleans board every villa on one screen",
        m["bar"] and m["page"] <= 1 and m["grid"] <= 1 and m["clear"], m)
-    # the phone's compact bar: shorter, nearer the foot, each icon beside its name
+    # the phone's compact bar: shorter, nearer the foot, smaller icons
     m = pg.evaluate("""()=>{const c=document.querySelector('#tabBar .tabrow').getBoundingClientRect();
         return {h:c.height, under:innerHeight-c.bottom,
-                beside:[...document.querySelectorAll('#tabBar .tabrow > a')].every(a=>
-                  a.querySelector('.tablbl').getBoundingClientRect().left>=
-                  a.querySelector('.tabic').getBoundingClientRect().right)};}""")
-    ck("held sideways it is the phone's compact bar: 44pt, 8pt off the foot, each icon beside its name",
-       m["h"] == 44 and m["under"] == 8 and m["beside"], m)
+                icons:[...new Set([...document.querySelectorAll('#tabBar .tabic')].map(i=>
+                  Math.round(i.getBoundingClientRect().width)))]};}""")
+    ck("held sideways it is the phone's compact bar: 44pt, 8pt off the foot, 22pt icons",
+       m["h"] == 44 and m["under"] == 8 and m["icons"] == [22], m)
     ctx.close()
 
     # ── 7. where it is drawn ──────────────────────────────────────────

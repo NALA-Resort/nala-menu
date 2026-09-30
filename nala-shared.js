@@ -3161,13 +3161,13 @@ var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
 
 /* The bar's icons, one per page on TABBAR (the suite fails a page on the
    bar that has none): Lucide's (lucide.dev), the set the owner chose on
-   30 Sep off mock-tab-icons.html - "Let's use lucid" - with its checklist
-   for the Dashboard, which "is actually a daily checklist", and an alarm
-   clock for Tasks, which "are important 'do it now' jobs". Line icons on
-   Lucide's 24 grid, stroked 2 as Lucide draws them (nala-ui2.css); each
-   is copied unchanged from its own file in lucide-static 1.49.0, named
-   beside it, so a swap is a name looked up at lucide.dev and its paths
-   pasted here.
+   30 Sep off mock-tab-icons.html - "Let's use lucid" - with list-todo
+   for the Dashboard, which "is actually a daily checklist", and a clock
+   with an alert for Tasks, which "are important 'do it now' jobs", both
+   his picks. Line icons on Lucide's 24 grid, drawn thinner than Lucide's
+   own at his ask (nala-ui2.css); each is copied unchanged from its own
+   file in lucide-static 1.49.0, named beside it, so a swap is a name
+   looked up at lucide.dev and its paths pasted here.
 
    Lucide's licence, which asks to travel with its icons:
 
@@ -3187,16 +3187,16 @@ var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
    ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.   */
 var TAB_ICONS = {
-  'dashboard.html':     /* list-checks, the day's checklist, which the Dashboard is */
-    '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
+  'dashboard.html':     /* list-todo, the day's checklist, which the Dashboard is */
+    '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/>',
   'tally.html':         /* utensils */
     '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
   'cleaners.html':      /* brush-cleaning */
     '<path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/>',
   'guest-contact.html': /* message-circle */
     '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
-  'tasks.html':         /* alarm-clock: Tasks are the important, do it now jobs */
-    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
+  'tasks.html':         /* clock-alert, the important, do it now jobs */
+    '<path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/>',
   'front-desk.html':    /* concierge-bell */
     '<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/>',
   'spa.html':           /* flower */
@@ -3272,6 +3272,9 @@ function buildTabs(role){
     else a.href = href;
     /* Lucide's 24 grid fills the icon's 28pt box, so its largest glyph,
        20 of the grid, stands 23pt: Apple's size for a square one. */
+    /* The name is in the link but not shown under the icon (nala-ui2.css):
+       a screen reader says it with the count, and a mouse sees it here. */
+    a.title = navEntry(href).label;
     a.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
                   TAB_ICONS[href] + '</svg></span>' +
                   '<span class="tablbl">' + navEntry(href).label + '</span>';

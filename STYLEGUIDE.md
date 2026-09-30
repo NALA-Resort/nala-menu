@@ -310,8 +310,8 @@ size". Apple's numbers, each held by `tabs_suite`:
 | Space beside | 21pt from each side, more from a notch | the same, capped at the page's width |
 | Inside | 2pt from the capsule to the tabs | the same |
 | Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | Lucide's line icons (below), in a 28pt box; the Dashboard's checklist 23pt |
-| Line weight | the symbol's weight matched to its label's | Lucide's own, 2 on its 24 grid |
-| Labels | 10pt semibold, 1pt under the icon | the same |
+| Line weight | the symbol's weight matched to its label's | thinner than Lucide's own 2: 1.5 on its 24 grid (below) |
+| Labels | 10pt semibold, 1pt under the icon | none shown (below), each kept for a screen reader |
 | Selected | a grey capsule as tall as the bar, the tint colour | the grey capsule, ink |
 | Two or three tabs | a narrow bar, 98pt a tab | the same, centred |
 | Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
@@ -323,13 +323,16 @@ Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interf
 system bar's measurements as taken for
 [FabBar](https://github.com/ryanashcraft/FabBar) (`Constants.swift`).
 
-Four places it parts from the phone. The icons are line icons where the
-phone fills its own: the owner chose [Lucide](https://lucide.dev)'s on 30
-Sep, from four sets in `mock-tab-icons.html` ("Let's use lucid"), with
-its checklist for the Dashboard, which "is actually a daily checklist",
-and an alarm clock for Tasks, which "are important 'do it now' jobs". Each is
-copied unchanged from Lucide's own file, named beside it in `TAB_ICONS`
-with Lucide's licence. And three for rules of this app: selection is grey
+Where it parts from the phone, the owner chose to, 30 Sep. Line icons
+where the phone fills its own: [Lucide](https://lucide.dev)'s, from four
+sets in `mock-tab-icons.html` ("Let's use lucid"), with `list-todo` for
+the Dashboard, which "is actually a daily checklist", and `clock-alert`
+for Tasks, which "are important 'do it now' jobs". Drawn thinner than
+Lucide's own ("Make icon line thinner"), and no name under them ("No
+text below icon"): the name stays in the link, out of sight, for a
+screen reader. Each icon is copied unchanged from Lucide's own file,
+named beside it in `TAB_ICONS` with Lucide's licence. And three for
+rules of this app: selection is grey
 and ink, never the phone's blue (above); the bar is solid white, not
 glass, as nothing on paper lets the page through; and a count is the
 menu's own badge, never the phone's red, which here means failure.
@@ -369,9 +372,9 @@ Publish - standing on the bar.
   footer holds the page's primary action; Refresh is never one (below).
 - **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
   nala-shared.js from `TABBAR`, never written into a page. The icons are
-  Lucide's, copied unchanged into `TAB_ICONS` and named there, the label
-  under each is the page's menu name,
-  and a count from `NAV_ACTIONS` rides on its icon. Its dress, to Apple's
+  Lucide's, copied unchanged into `TAB_ICONS` and named there, each
+  link's hidden name is the page's menu name, and a count from
+  `NAV_ACTIONS` rides on its icon. Its dress, to Apple's
   numbers, is under Header above.
 - **Pull to refresh** (since 30 Sep, in place of every Refresh button): a
   board asks for it with `pullToRefresh()`. In the Home Screen app a pull
