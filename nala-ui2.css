@@ -304,52 +304,88 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
    header law's ban on floating menus is answered here rather than
    ignored: nothing may sit under it.
 
+   Drawn to the iPhone's own bar (iOS 26), the owner's ask the same day:
+   "Study apple iPhone best practice including space below and icon line
+   size". So the staff meet the bar they already know:
+   - a capsule 62pt tall, floating 21pt above the foot of the screen and
+     21pt in from its sides (further in from a notch), with 2pt inside
+     it to the tabs. The home indicator lives in the 21pt below it.
+   - solid icons, as the phone's tab bars take them, in a 28pt box, a
+     line where the drawing is a line at the weight of the label beside
+     it; a label of 10pt semibold, 1pt under its icon.
+   - the page you are on in a grey capsule as tall as the bar.
+   - two or three tabs keep a narrow bar, 98pt a tab, centred; iOS 26
+     fills the width from four.
+   - held sideways, the compact bar: 44pt, the icon beside its name, and
+     nearer the foot, so the Cleans board keeps its villas on a screen.
+   Apple's numbers: the HIG (tab bars, SF Symbols) and the system bar as
+   measured for FabBar. STYLEGUIDE.md has the sources.
+
+   Three places it parts from the phone, each for a rule of this app:
+   selection is grey and ink, not the phone's blue ("Selected is grey,
+   never black and never blue", STYLEGUIDE.md); the bar is solid white,
+   not glass, as nothing on paper lets the page through; and a count is
+   the menu's blue badge, not the phone's red, which here means failure.
+
    - The page ends above it. body.hastabs::after is room for the bar at
      the end of every page, so the last row always scrolls clear.
    - The page's own footer stands ON it, never under it: .foot, sticky or
-     fixed, is lifted by the bar's height and gives the phone's home
-     strip back to the bar, which already keeps clear of it.
+     fixed, is lifted by the bar's room.
    - A sheet, a select bar or a save bar rising from the foot covers it,
      as a sheet covers the page: z-index 5 sits under all of theirs.
+   - #tabBar is the whole strip the bar floats in, and what scrolls under
+     it fades into the ground, as the phone's content does under its
+     bars, so a row is never cut by the capsule. The strip passes a
+     finger through to the page; only the capsule takes it.
 
-   --tabroom is the height the bar takes at the foot of the screen, and
-   0px where there is no bar, for a page's own fixed bar to stand on.
-
-   Grey for every page and ink for the one you are on, which also sits on
-   the selection grey: "Selected is grey, never black and never blue"
-   (STYLEGUIDE.md). A count is the menu's own badge. */
+   --tabroom is the height of that strip, and 0px where there is no bar,
+   for a page's own fixed bar to stand on. */
 body.ui2{ --tabroom:0px; }
-body.ui2.hastabs{ --tabroom:calc(56px + env(safe-area-inset-bottom)); }
+body.ui2.hastabs{ --tabroom:83px; }          /* 62 of bar and 21 under it */
 body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:5;
-                  background:var(--surface, #fff); border-top:1px solid var(--rule);
-                  padding-bottom:env(safe-area-inset-bottom); }
-body.ui2 .tabrow{ display:flex; height:55px; max-width:var(--appw); margin:0 auto; }
+                  height:var(--tabroom); pointer-events:none;
+                  background:linear-gradient(to bottom, transparent, var(--ground) 50%); }
+/* Under a page's own footer, or its own bar wearing onbar (Publish's),
+   the strip is solid ground instead: the two read as one band, and no row
+   shows between them. */
+body.ui2.hastabs:has(> .foot, > .onbar) .tabbar{ background:var(--ground); }
+body.ui2 .tabrow{ position:absolute; bottom:21px; left:max(21px, env(safe-area-inset-left));
+                  right:max(21px, env(safe-area-inset-right)); max-width:var(--appw);
+                  margin:0 auto; height:62px; padding:2px; display:flex;
+                  border-radius:var(--pill); background:var(--surface, #fff);
+                  box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06),
+                             0 6px 20px rgba(28,28,26,.10);
+                  pointer-events:auto; }
 body.ui2 .tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
-                    align-items:center; justify-content:center; gap:2px;
-                    color:var(--mid); text-decoration:none;
+                    align-items:center; justify-content:center; gap:1px;
+                    border-radius:var(--pill); color:var(--mid); text-decoration:none;
                     -webkit-tap-highlight-color:transparent; }
-body.ui2 .tabbar .tabic{ position:relative; display:flex; align-items:center;
-                         justify-content:center; width:52px; height:28px;
-                         border-radius:var(--pill); }
-body.ui2 .tabbar svg{ width:24px; height:24px; display:block; fill:none;
-                      stroke:currentColor; stroke-width:1.8;
-                      stroke-linecap:round; stroke-linejoin:round; }
-/* A label is a name, so it is the thing that may trim (the trim rule) -
-   but only at 320. --t1 from 387pt up, easing to 11px below it: five
-   labels share the width, 75pt each on a 375pt iPhone, and at 12px
-   "Reservations" needs about all of that (70px in Arial's metrics, and
-   San Francisco runs wider). The one size off the scale, for the one row
-   that has to fit five names across a phone, as the phone's own tab bars
-   do at 10pt. Not bold on the page you are on either: the grey behind
-   its icon says so, and bold is wider. */
-body.ui2 .tabbar .tablbl{ max-width:100%; font-size:clamp(11px, 3.1vw, var(--t1));
-                          line-height:1.2; white-space:nowrap; overflow:hidden;
+body.ui2 .tabbar.few .tabrow{ width:fit-content; }
+body.ui2 .tabbar.few a{ flex:0 0 98px; }
+body.ui2 .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
+body.ui2 .tabbar svg{ width:100%; height:100%; display:block;
+                      fill:currentColor; stroke:none; }
+body.ui2 .tabbar svg .ln{ fill:none; stroke:currentColor; stroke-width:1.7;
+                          stroke-linecap:round; stroke-linejoin:round; }
+/* A label is a name, so it is the thing that may trim (the trim rule):
+   five share the bar, 69pt each on a 390pt iPhone, and "Reservations"
+   needs about 65 of them at 10pt semibold. Below 375pt it trims. */
+body.ui2 .tabbar .tablbl{ max-width:100%; font-size:10px; font-weight:600;
+                          line-height:12px; white-space:nowrap; overflow:hidden;
                           text-overflow:ellipsis; }
-body.ui2 .tabbar a[aria-current]{ color:var(--ink); cursor:default; }
-body.ui2 .tabbar a[aria-current] .tabic{ background:var(--sel-bg); }
-body.ui2 .tabbar a[href]:active .tabic{ background:var(--card); }
-body.ui2 .tabbar .navbadge{ position:absolute; top:-4px; left:calc(50% + 4px);
+body.ui2 .tabbar a[aria-current]{ background:var(--sel-bg); color:var(--ink); cursor:default; }
+body.ui2 .tabbar a[href]:active{ background:var(--card); }
+body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
                             min-width:18px; height:18px; padding:0 5px; }
+@media (orientation:landscape) and (max-height:500px){
+  body.ui2.hastabs{ --tabroom:calc(44px + max(8px, env(safe-area-inset-bottom))); }
+  body.ui2 .tabrow{ height:44px; bottom:max(8px, env(safe-area-inset-bottom)); }
+  body.ui2 .tabbar a{ flex-direction:row; gap:7px; }
+  body.ui2 .tabbar .tabic{ width:22px; height:22px; }
+  /* on the icon's corner, clear of the name beside it */
+  body.ui2 .tabbar .navbadge{ top:-7px; left:auto; right:-7px; min-width:16px;
+                              height:16px; padding:0 4px; font-size:11px; }
+}
 body.ui2.hastabs::after{ content:''; display:block; flex:0 0 auto; height:var(--tabroom); }
 body.ui2.hastabs .foot{ bottom:var(--tabroom); padding-bottom:10px; }
 /* Pull to refresh's mark (pullToRefresh, nala-shared.js): a white disc

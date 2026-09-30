@@ -299,9 +299,41 @@ most. It answers the ban rather than ignoring it, with three rules that
 - **Anything that rises from the foot covers it** - a sheet, the select
   bar, a save bar - the way a sheet covers the page.
 
-Grey icons, and ink on the page you are on, which also sits on the
-selection grey and is not a link. It stays on every phone, held sideways
-too.
+It is drawn as the iPhone's own bar (iOS 26), the owner's ask the same
+day: "Study apple iPhone best practice including space below and icon line
+size". Apple's numbers, each held by `tabs_suite`:
+
+| | Apple | Here |
+|---|---|---|
+| The bar | a capsule floating over the page, 62pt tall | the same, `.tabrow` |
+| Space below | 21pt to the foot of the screen, where the home indicator lives | the same; the page keeps 83pt, `--tabroom` |
+| Space beside | 21pt from each side, more from a notch | the same, capped at the page's width |
+| Inside | 2pt from the capsule to the tabs | the same |
+| Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | solid drawings in a 28pt box, a square one 23pt |
+| Line weight | the symbol's weight matched to its label's | a line 2pt, only where the thing is a line |
+| Labels | 10pt semibold, 1pt under the icon | the same |
+| Selected | a grey capsule as tall as the bar, the tint colour | the grey capsule, ink |
+| Two or three tabs | a narrow bar, 98pt a tab | the same, centred |
+| Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
+
+Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)
+("Prefer filled symbols or icons") and
+[SF Symbols](https://developer.apple.com/design/human-interface-guidelines/sf-symbols)
+(a tab bar takes a symbol's fill variant, a toolbar its outline); the
+system bar's measurements as taken for
+[FabBar](https://github.com/ryanashcraft/FabBar) (`Constants.swift`).
+
+Three places it parts from the phone, each for a rule of this app:
+selection is grey and ink, never the phone's blue (above); the bar is
+solid white, not glass, as nothing on paper lets the page through; and a
+count is the menu's own badge, never the phone's red, which here means
+failure.
+
+What scrolls under the bar fades into the ground, as content does under
+the phone's bars, so a row is never cut by the capsule. Under a page's
+footer, or its own bar wearing `onbar` (Publish's), the strip is solid
+ground instead, so the footer and the bar read as one band. Beside the capsule a finger reaches
+the page. The page you are on is not a link.
 
 **A footer that only refreshes or lists is not kept for it** (the owner,
 30 Sep, the same day). Reservations and Cleans lost theirs: Refresh became
@@ -332,8 +364,10 @@ Publish - standing on the bar.
   footer holds the page's primary action; Refresh is never one (below).
 - **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
   nala-shared.js from `TABBAR`, never written into a page. The icons are
-  line drawings on a 24 grid in `TAB_ICONS`, the label under each is the
-  page's menu name, and a count from `NAV_ACTIONS` rides on its icon.
+  solid drawings on a 24 grid in `TAB_ICONS`, a line (class `ln`) only
+  where the thing is one, the label under each is the page's menu name,
+  and a count from `NAV_ACTIONS` rides on its icon. Its dress, to Apple's
+  numbers, is under Header above.
 - **Pull to refresh** (since 30 Sep, in place of every Refresh button): a
   board asks for it with `pullToRefresh()`. In the Home Screen app a pull
   down from the very top shows a turning arrow, grey until a release would

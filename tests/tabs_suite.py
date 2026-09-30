@@ -15,13 +15,19 @@ answer to each other, and whichever side a change misses fails by name.
      role in Settings leaves its bar.
   3. As drawn: the icons in order under their menu names, the page you are
      on marked and not a link, every other one a link to a page that is
-     served, and no bar for a login with one page or no staff record.
+     served, and no bar for a login with one page or no staff record. And
+     drawn as the iPhone's own (iOS 26), the owner's ask the same day: a
+     capsule 62pt tall floating 21pt above the foot and in from the sides,
+     solid icons in a 28pt box, labels 10pt semibold, the page you are on
+     in a grey capsule, and two tabs on a narrow bar.
   4. Nothing sits under it: the page's footer stands on it - sticky, fixed,
-     and Publish's bar - a sheet and the select and save bars cover it, and
-     the foot of a long page scrolls clear of it.
+     and Publish's bar - with no row showing between them, a sheet and the
+     select and save bars cover it, the foot of a long page scrolls clear
+     of it, and beside the capsule a finger still reaches the page.
   5. The menu's counts ride on its icons, and not on the page you are on.
   6. It fits: every label whole at 390, no sideways scroll at 320, and held
-     sideways it stays while the Cleans board keeps its villas on a screen.
+     sideways it is the phone's compact bar, while the Cleans board keeps
+     its villas on a screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
   8. Pull to refresh, which took the Refresh buttons' place the same day so
@@ -107,7 +113,9 @@ def press(pg, sel):
 BAR = """()=>{const b=document.getElementById('tabBar');
   if(!b) return null;
   const cs=getComputedStyle(b), r=b.getBoundingClientRect();
+  const c=b.querySelector('.tabrow').getBoundingClientRect();
   return {shown:cs.display!=='none', top:r.top, bottom:r.bottom, h:r.height,
+    cap:{top:c.top, bottom:c.bottom, left:c.left, right:c.right, h:c.height},
     hastabs:document.body.classList.contains('hastabs'),
     tabs:[...b.querySelectorAll('.tabrow > a')].map(a=>({id:a.id,
       href:a.getAttribute('href'), cur:a.getAttribute('aria-current'),
@@ -184,11 +192,63 @@ with sync_playwright() as p:
            not miss and pg.url.split("/")[-1].startswith("cleaners.html"), miss or pg.url)
     ctx.close()
 
+    # The iPhone's own bar, iOS 26: Apple's numbers (the HIG's tab bars and
+    # SF Symbols pages, and the system bar as measured for FabBar), so the
+    # staff meet the bar their phone already draws. On a 390 x 844 phone.
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
+    bar = pg.evaluate(BAR)
+    c = bar and bar["cap"]
+    ck("it floats as the phone's does: a capsule 62pt tall, 21pt above the foot of the screen",
+       bool(c) and c["h"] == 62 and c["bottom"] == 844 - 21, c)
+    ck("and 21pt in from either side", bool(c) and c["left"] == 21 and c["right"] == 390 - 21, c)
+    ck("the page keeps the 83pt the phone's bar keeps: 62 of bar and 21 under it",
+       pg.evaluate("()=>getComputedStyle(document.body).getPropertyValue('--tabroom').trim()") == "83px"
+       and bar["h"] == 83 and bar["top"] == c["top"], bar)
+    look = pg.evaluate("""()=>{const a=[...document.querySelectorAll('#tabBar .tabrow > a')];
+      const px=v=>parseFloat(v);
+      return a.map(t=>{const s=t.querySelector('svg'), i=t.querySelector('.tabic').getBoundingClientRect(),
+          l=t.querySelector('.tablbl'), lr=l.getBoundingClientRect(), cs=getComputedStyle(l),
+          parts=[...s.children].map(e=>{const c=getComputedStyle(e);
+            return {ln:e.classList.contains('ln'), fill:c.fill, stroke:c.stroke, w:px(c.strokeWidth)};}),
+          k=s.getBoundingClientRect(), g=s.getBBox(), m=s.getScreenCTM();
+        return {id:t.id, box:[Math.round(k.width), Math.round(k.height)],
+          glyph:[+(g.width*m.a).toFixed(1), +(g.height*m.d).toFixed(1)], parts,
+          size:cs.fontSize, weight:cs.fontWeight, gap:+(lr.top-i.bottom).toFixed(1),
+          pill:{bg:getComputedStyle(t).backgroundColor, h:Math.round(t.getBoundingClientRect().height),
+                r:px(getComputedStyle(t).borderTopLeftRadius)}};});}""")
+    ck("its icons stand in a 28pt box, the phone's", all(t["box"] == [28, 28] for t in look),
+       [(t["id"], t["box"]) for t in look])
+    ck("solid, as the phone's tab bars take their symbols: every part filled but a line",
+       all(p["fill"] != "none" for t in look for p in t["parts"] if not p["ln"]) and
+       all(p["fill"] == "none" and p["stroke"] != "none" for t in look for p in t["parts"] if p["ln"]),
+       [(t["id"], [(p["ln"], p["fill"], p["stroke"]) for p in t["parts"]]) for t in look])
+    lines = sorted({round(p["w"] * 28 / 22, 2) for t in look for p in t["parts"] if p["ln"]})
+    ck("a line is drawn about 2pt, the weight of the label beside it", lines and all(1.9 <= w <= 2.4 for w in lines),
+       lines)
+    dash = [t for t in look if t["id"] == "tab-dashboard"]
+    ck("a square glyph, the Dashboard's panels, stands 23pt: Apple's size for one on a tab",
+       dash and all(22 <= v <= 24 for v in dash[0]["glyph"]), dash and dash[0]["glyph"])
+    ck("the names are 10pt semibold, 1pt under the icon",
+       all(t["size"] == "10px" and t["weight"] == "600" and 0.5 <= t["gap"] <= 1.5 for t in look),
+       [(t["id"], t["size"], t["weight"], t["gap"]) for t in look])
+    cur = [t for t in look if t["id"] == "tab-tally"]
+    ck("the page you are on sits in a grey capsule as tall as the bar, the selection grey",
+       cur and cur[0]["pill"]["bg"] == "rgba(28, 28, 26, 0.1)" and cur[0]["pill"]["h"] == 58
+       and cur[0]["pill"]["r"] >= 29, cur and cur[0]["pill"])
+    ck("and no other page does", all(t["pill"]["bg"] == "rgba(0, 0, 0, 0)" for t in look if t["id"] != "tab-tally"),
+       [(t["id"], t["pill"]["bg"]) for t in look])
+    ctx.close()
+
     ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html")
     bar = pg.evaluate(BAR)
     ck("housekeeping on Cleans: Cleans and Calendar, Cleans marked",
        bool(bar) and [(t["label"], bool(t["cur"])) for t in bar["tabs"]] == [("Cleans", True), ("Calendar", False)],
        bar and [(t["label"], t["cur"]) for t in bar["tabs"]])
+    # Two tabs keep the phone's narrow bar rather than two long pills.
+    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > a')].map(a=>a.getBoundingClientRect().width)")
+    c = bar and bar["cap"]
+    ck("and two tabs keep a narrow bar, 98pt a tab, centred",
+       w == [98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html", perms=PREVIEW_OPEN)
@@ -196,6 +256,10 @@ with sync_playwright() as p:
     ck("and Tasks joins them once the owner opens it",
        bool(bar) and [t["label"] for t in bar["tabs"]] == ["Cleans", "Tasks", "Calendar"],
        bar and [t["label"] for t in bar["tabs"]])
+    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > a')].map(a=>a.getBoundingClientRect().width)")
+    c = bar and bar["cap"]
+    ck("three still keep the narrow bar, centred: the phone fills the width from four",
+       w == [98, 98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["spa"], "spa.html")
@@ -208,13 +272,21 @@ with sync_playwright() as p:
     ctx.close()
 
     # ── 4. nothing sits under it ──────────────────────────────────────
+    STRIP = """()=>{const t=document.getElementById('tabBar'), c=getComputedStyle(t);
+        return {image:c.backgroundImage.slice(0, 15), colour:c.backgroundColor,
+                ground:getComputedStyle(document.body).backgroundColor};}"""
     def foot_on_bar(page, sel, label):
         ctx, pg = open_as(b, EMAIL["admin"], page)
-        m = pg.evaluate("""(sel)=>{const f=document.querySelector(sel), t=document.getElementById('tabBar');
+        m = pg.evaluate("""(sel)=>{const f=document.querySelector(sel), t=document.querySelector('#tabBar .tabrow');
             if(!f||!t) return null;
             return {foot:f.getBoundingClientRect().bottom, bar:t.getBoundingClientRect().top};}""", sel)
         ck("%s: %s stands on the bar, not under it" % (page, label),
            bool(m) and abs(m["foot"] - m["bar"]) <= 1, m)
+        # and the strip the bar floats in is the ground, so no row shows
+        # between the footer and the capsule
+        g = pg.evaluate(STRIP)
+        ck("%s: with no row showing between them" % page,
+           g["image"] == "none" and g["colour"] == g["ground"], g)
         ctx.close()
     foot_on_bar("arrivals-sms.html", ".foot", "the sticky Send footer")
     foot_on_bar("invitations.html", "body > .foot", "the fixed Send footer")
@@ -239,6 +311,16 @@ with sync_playwright() as p:
 
     ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
     ck("the bar is what a finger meets at the foot of the board", "tabBar" in covered(pg), covered(pg))
+    # Where there is no footer, what scrolls under the capsule fades into the
+    # ground, as the phone's content does under its bars; and the strip
+    # beside the capsule is the page's, to a finger.
+    g = pg.evaluate(STRIP)
+    ck("on a page with no footer, what scrolls under it fades into the ground",
+       g["image"].startswith("linear-gradient"), g)
+    beside = pg.evaluate("""()=>{const c=document.querySelector('#tabBar .tabrow').getBoundingClientRect();
+        const e=document.elementFromPoint(c.left/2, c.top+c.height/2);
+        return !!e && !e.closest('#tabBar');}""")
+    ck("and beside the capsule a finger reaches the page, not the bar", beside)
     miss = press(pg, "#rooms .room >> nth=0"); pg.wait_for_timeout(600)
     ck("a villa's sheet covers it", not miss and "tabBar" not in covered(pg), miss or covered(pg))
     ctx.close()
@@ -278,6 +360,9 @@ with sync_playwright() as p:
 
     ctx, pg = open_as(b, EMAIL["admin"], "guest-contact.html")
     pg.wait_for_timeout(800)
+    g = pg.evaluate(STRIP)
+    ck("Chat's list, whose Send lives in a conversation, keeps the fade",
+       g["image"].startswith("linear-gradient"), g)
     bar = pg.evaluate(BAR)
     ck("on Chat, its own icon asks for no count, and Tasks still wears one",
        bool(bar) and [t["badge"] for t in bar["tabs"] if t["id"] == "tab-guest-contact"] == [""]
@@ -286,7 +371,12 @@ with sync_playwright() as p:
     ctx.close()
 
     # ── 6. it fits ────────────────────────────────────────────────────
+    # Measured in Liberation Sans, Helvetica's widths: the nearest here to
+    # the phone's own San Francisco. The sandbox's default, DejaVu, runs a
+    # fifth wider than either and would trim what the phone shows whole.
     ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
+    pg.evaluate("""()=>document.body.style.setProperty('--ui-font', "'Liberation Sans', Arial, sans-serif")""")
+    pg.wait_for_timeout(100)
     whole = pg.evaluate("""()=>[...document.querySelectorAll('#tabBar .tablbl')]
         .filter(l=>l.scrollWidth>l.clientWidth+0.5).map(l=>l.textContent)""")
     ck("at 390 every label reads whole", whole == [], whole)
@@ -311,6 +401,14 @@ with sync_playwright() as p:
                 clear:g.getBoundingClientRect().bottom<=(t?t.getBoundingClientRect().top:innerHeight)+1};}""")
     ck("a phone on its side keeps the bar, and the Cleans board every villa on one screen",
        m["bar"] and m["page"] <= 1 and m["grid"] <= 1 and m["clear"], m)
+    # the phone's compact bar: shorter, nearer the foot, each icon beside its name
+    m = pg.evaluate("""()=>{const c=document.querySelector('#tabBar .tabrow').getBoundingClientRect();
+        return {h:c.height, under:innerHeight-c.bottom,
+                beside:[...document.querySelectorAll('#tabBar .tabrow > a')].every(a=>
+                  a.querySelector('.tablbl').getBoundingClientRect().left>=
+                  a.querySelector('.tabic').getBoundingClientRect().right)};}""")
+    ck("held sideways it is the phone's compact bar: 44pt, 8pt off the foot, each icon beside its name",
+       m["h"] == 44 and m["under"] == 8 and m["beside"], m)
     ctx.close()
 
     # ── 7. where it is drawn ──────────────────────────────────────────
@@ -377,7 +475,8 @@ with sync_playwright() as p:
     ctx, pg = open_as(b, EMAIL["admin"], "tally.html", app=True)
     g = pulled(pg, dy=80)
     ck("a short pull only shows the mark, and reloads nothing", not g["armed"] and g["reloaded"] is False, g)
-    g = pulled(pg, y0=844 - 28)
+    mid = pg.evaluate("()=>{const r=document.querySelector('#tabBar .tabrow').getBoundingClientRect();return r.top+r.height/2;}")
+    g = pulled(pg, y0=mid)
     ck("nor does a pull that starts on the tab bar", g["reloaded"] is False, g)
     pg.evaluate("()=>window.scrollTo(0, 400)"); pg.wait_for_timeout(200)
     g = pulled(pg)

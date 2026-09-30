@@ -347,6 +347,16 @@ bar; sheets and the select and save bars cover it. Not on the printed
 sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and
 `tabs_suite` hold it.
 
+Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
+("Study apple iPhone best practice including space below and icon line
+size"): a capsule 62pt tall floating 21pt above the foot of the screen
+and in from its sides, solid icons in a 28pt box with 2pt lines, labels
+10pt semibold, the page you are on in a grey capsule, a narrow bar for
+two or three tabs and the compact one held sideways. It parts from the
+phone three times, each for a rule of this app: grey selection not blue,
+solid white not glass, the menu's badge not red. STYLEGUIDE.md has the
+table of Apple's numbers and the sources.
+
 The same day the owner cleared the footers it would have sat under:
 Refresh on Reservations, Cleans and the Dashboard became a pull from the
 top (`pullToRefresh`, the Home Screen app only - browser tabs have their

@@ -3149,8 +3149,11 @@ var TABBAR_MAX = 5;
 
 /* The massage mark: one centre petal and a mirrored pair, on the fork's own
    24 grid, stroked so it carries its state in the stroke colour. Drawn for
-   Front Desk's rows on 31 Aug and moved here 30 Sep, when the tab bar drew
-   Spa with it: one lotus, so the two cannot drift apart.               */
+   Front Desk's rows on 31 Aug and moved here 30 Sep for the tab bar's
+   Spa, which draws its fill variant, LOTUS_FILL: the same three petals,
+   solid, with the gaps between them kept open so it stays a lotus and
+   not a blot. Two variants of one mark, as a phone symbol has, kept side
+   by side so a change to one is made to both.                         */
 var LOTUS_PATHS =
   '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
   '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
@@ -3159,47 +3162,67 @@ var LOTUS_PATHS =
   '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
   'c-2.6-.3-5 .3-6.8 2.1"/>';
 var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
+var LOTUS_FILL =
+  '<path d="M12 3c2.7 3.1 4 5.9 4 8.4 0 2.6-1.3 4.8-4 6.6-2.7-1.8-4-4-4-6.6' +
+  ' 0-2.5 1.3-5.3 4-8.4z"/>' +
+  '<path d="M10.2 18.6c-3 .3-5.5-.6-7.2-2.5C1.3 14.2.9 11.6 1.3 9' +
+  'c2.2-.1 4.3.6 5.9 2.1.1 3 1.2 5.5 3 7.5z"/>' +
+  '<path d="M13.8 18.6c3 .3 5.5-.6 7.2-2.5 1.7-1.9 2.1-4.5 1.7-7.1' +
+  '-2.2-.1-4.3.6-5.9 2.1-.1 3-1.2 5.5-3 7.5z"/>';
 
-/* Line drawings on the same 24 grid, stroked in the colour of the label
-   under them (nala-ui2.css). One per page on TABBAR; the suite fails a
-   page on the bar that has none.                                        */
+/* The bar's drawings, one per page on TABBAR (the suite fails a page on
+   the bar that has none), on the same 24 grid. Solid, as the phone's own
+   tab bars draw theirs: Apple's tab bars take a symbol's fill variant
+   where a toolbar takes its outline (HIG, SF Symbols). A part that is a
+   line in the thing itself - a fork's tines, a broom's handle, a list's
+   rules - stays a line, class "ln", stroked at the weight nala-ui2.css
+   gives it. A hole is a hole (evenodd), so a key keeps its ring and a
+   calendar its days.                                                   */
 var TAB_ICONS = {
   /* panels: the page that lays the day out on one screen */
-  'dashboard.html': '<rect x="3.5" y="3.5" width="7" height="8.5" rx="1.6"/>' +
-    '<rect x="13.5" y="3.5" width="7" height="5" rx="1.6"/>' +
-    '<rect x="13.5" y="11.5" width="7" height="9" rx="1.6"/>' +
-    '<rect x="3.5" y="15" width="7" height="5.5" rx="1.6"/>',
-  /* the knife and fork, as the dining forks draw it */
-  'tally.html': '<path d="M5 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M7.5 3v5"/>' +
-    '<path d="M7.5 10.5V21"/><path d="M17 21V3c2 .6 3 3 3 5.6 0 2.5-1 4-3 4.6"/>',
+  'dashboard.html': '<rect x="3" y="3" width="8" height="9.5" rx="2.2"/>' +
+    '<rect x="13" y="3" width="8" height="5.5" rx="2.2"/>' +
+    '<rect x="13" y="10.5" width="8" height="10.5" rx="2.2"/>' +
+    '<rect x="3" y="14.5" width="8" height="6.5" rx="2.2"/>',
+  /* the fork, as the dining forks draw it, and a knife */
+  'tally.html': '<path class="ln" d="M4.8 3v4.6c0 1.9 1.2 3.1 2.7 3.1s2.7-1.2 2.7-3.1V3"/>' +
+    '<path class="ln" d="M7.5 3v4.8"/><path class="ln" d="M7.5 10.7V21"/>' +
+    '<path d="M16.1 3.1c2.5 1 3.8 3.5 3.8 6.3 0 2.4-1 4-2.8 4.6v6.2a1.1 1.1 0 0 1-2.2 0' +
+    'V4c0-.6.6-1.1 1.2-.9z"/>',
   /* a broom */
-  'cleaners.html': '<path d="M12 2.8v6.4"/>' +
-    '<path d="M9 9.2h6a2 2 0 0 1 2 2v1.6H7v-1.6a2 2 0 0 1 2-2z"/>' +
-    '<path d="M7 12.8 5.2 20.4a.6.6 0 0 0 .6.8h12.4a.6.6 0 0 0 .6-.8L17 12.8"/>' +
-    '<path d="M10.2 17v4.2"/><path d="M13.8 17v4.2"/>',
+  'cleaners.html': '<path class="ln" d="M12 2.4v6.2"/>' +
+    '<rect x="7.4" y="8.4" width="9.2" height="3.9" rx="1.5"/>' +
+    '<path fill-rule="evenodd" d="M7.2 13.4h9.6l2.1 7.3a.9.9 0 0 1-.9 1.1H6a.9.9 0 0 1-.9-1.1z' +
+    'M9.7 16.1h1.3v5.7H9.7zm3.3 0h1.3v5.7H13z"/>',
   /* a speech bubble */
-  'guest-contact.html': '<path d="M12 4c4.4 0 8 3.1 8 7s-3.6 7-8 7c-1 0-2-.2-2.9-.5' +
-    'L4.5 19.5l1.3-3.6C4.7 14.6 4 12.9 4 11c0-3.9 3.6-7 8-7z"/>',
-  /* a list, two of it ticked */
-  'tasks.html': '<path d="M4 6.6 5.8 8.4 9 5.2"/><path d="M12.5 7h8"/>' +
-    '<path d="M4 13.6l1.8 1.8L9 12.2"/><path d="M12.5 14h8"/>' +
-    '<path d="M4.5 19.5h4"/><path d="M12.5 20h8"/>',
+  'guest-contact.html': '<path d="M12 3.5c4.7 0 8.5 3.3 8.5 7.5s-3.8 7.5-8.5 7.5' +
+    'c-1.1 0-2.1-.2-3.1-.5l-4.8 2.3 1.4-4C4.3 15 3.5 13.1 3.5 11c0-4.2 3.8-7.5 8.5-7.5z"/>',
+  /* a list, two of it ticked: lines, as the phone's own checklist is */
+  'tasks.html': '<path class="ln" d="M3.8 6.7l1.9 1.9 3.4-3.4"/><path class="ln" d="M12.7 7h7.8"/>' +
+    '<path class="ln" d="M3.8 13.7l1.9 1.9 3.4-3.4"/><path class="ln" d="M12.7 14h7.8"/>' +
+    '<path class="ln" d="M4.6 20h3.6"/><path class="ln" d="M12.7 20h7.8"/>',
   /* the bell on the desk */
-  'front-desk.html': '<path d="M4.5 17a7.5 7.5 0 0 1 15 0"/><path d="M3 17h18"/>' +
-    '<path d="M4.5 20.5h15"/><path d="M12 9.5V7.6"/><circle cx="12" cy="6.2" r="1.4"/>',
-  'spa.html': LOTUS_PATHS,
-  'calendar.html': '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/>' +
-    '<path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/>',
-  'keys.html': '<circle cx="8" cy="15.5" r="4.5"/><path d="M11.2 12.3 20 3.5"/>' +
-    '<path d="M17 6.5l2.4 2.4"/><path d="M14.6 8.9l1.8 1.8"/>',
+  'front-desk.html': '<path d="M4.3 17.2a7.7 7.7 0 0 1 15.4 0z"/>' +
+    '<rect x="2.6" y="18.1" width="18.8" height="2.6" rx="1.3"/>' +
+    '<rect x="11.15" y="7.3" width="1.7" height="2.8" rx=".6"/><circle cx="12" cy="6.2" r="1.7"/>',
+  'spa.html': LOTUS_FILL,
+  'calendar.html': '<path fill-rule="evenodd" d="M5.8 4.6h12.4a2.3 2.3 0 0 1 2.3 2.3v11.8' +
+    'a2.3 2.3 0 0 1-2.3 2.3H5.8a2.3 2.3 0 0 1-2.3-2.3V6.9a2.3 2.3 0 0 1 2.3-2.3z' +
+    'M6.6 11h2.6v2.4H6.6zm4.1 0h2.6v2.4h-2.6zm4.1 0h2.6v2.4h-2.6z' +
+    'M6.6 15.3h2.6v2.4H6.6zm4.1 0h2.6v2.4h-2.6zm4.1 0h2.6v2.4h-2.6z"/>' +
+    '<path class="ln" d="M8 2.6v3.2M16 2.6v3.2"/>',
+  'keys.html': '<path fill-rule="evenodd" d="M8 10.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6z' +
+    'm0 3.4a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"/>' +
+    '<path class="ln" d="M11.6 12 19.8 3.8"/><path class="ln" d="M17.4 6.3l2.2 2.2M15 8.7l1.7 1.7"/>',
   /* a menu card: a title over the courses */
-  'publish.html': '<rect x="5" y="3" width="14" height="18" rx="2"/>' +
-    '<path d="M10 7.5h4"/><path d="M8.5 11.5h7"/><path d="M8.5 14.5h7"/>' +
-    '<path d="M10 17.5h4"/>',
+  'publish.html': '<path fill-rule="evenodd" d="M7.1 2.8h9.8a2.2 2.2 0 0 1 2.2 2.2v14' +
+    'a2.2 2.2 0 0 1-2.2 2.2H7.1A2.2 2.2 0 0 1 4.9 19V5a2.2 2.2 0 0 1 2.2-2.2z' +
+    'M9.7 6.6h4.6v1.6H9.7zM8.4 10.6h7.2v1.6H8.4zm0 3.1h7.2v1.6H8.4zm1.3 3.1h4.6v1.6H9.7z"/>',
   /* three bars on a baseline */
-  'stats.html': '<path d="M3.5 20.5h17"/><rect x="5" y="11" width="3.5" height="6.5" rx="1"/>' +
-    '<rect x="10.25" y="5" width="3.5" height="12.5" rx="1"/>' +
-    '<rect x="15.5" y="8.5" width="3.5" height="9" rx="1"/>'
+  'stats.html': '<rect x="4.3" y="11" width="4.2" height="7.8" rx="1.3"/>' +
+    '<rect x="9.9" y="4.8" width="4.2" height="14" rx="1.3"/>' +
+    '<rect x="15.5" y="8.4" width="4.2" height="10.4" rx="1.3"/>' +
+    '<path class="ln" d="M3.3 21.1h17.4"/>'
 };
 
 /* The menu's top-level entries by page, taken as this file loads - as
@@ -3247,7 +3270,9 @@ function buildTabs(role){
   var here = location.pathname.split('/').pop() || 'index.html';
   bar = document.createElement('nav');
   bar.id = 'tabBar';
-  bar.className = 'tabbar';
+  /* Two or three pages keep the phone's own narrow bar (nala-ui2.css),
+     centred, as iOS 26 draws a bar of fewer than four. */
+  bar.className = 'tabbar' + (tabs.length < 4 ? ' few' : '');
   bar.setAttribute('aria-label', 'Pages');
   bar.setAttribute('data-tabs', key);
   var row = document.createElement('div');
@@ -3259,7 +3284,9 @@ function buildTabs(role){
        and a reload throws away whatever was being typed there. */
     if (href === here) a.setAttribute('aria-current', 'page');
     else a.href = href;
-    a.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+    /* The 24 grid's central 22 fill the icon's 28pt box: a square glyph,
+       18 of the grid, then stands 23pt, Apple's size for one on a tab. */
+    a.innerHTML = '<span class="tabic"><svg viewBox="1 1 22 22" aria-hidden="true">' +
                   TAB_ICONS[href] + '</svg></span>' +
                   '<span class="tablbl">' + navEntry(href).label + '</span>';
     row.appendChild(a);
