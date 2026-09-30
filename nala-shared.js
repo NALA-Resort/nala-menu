@@ -412,7 +412,8 @@ function normalisePhone(raw){
       s = '+' + TRUNK_ZERO[i] + s.slice(TRUNK_ZERO[i].length + 2); break;
     }
   if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
-  if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
+  /* the plus went missing, and perhaps the national 0 was left in too */
+  if (/^610?4\d{8}$/.test(s)) return '+61' + s.slice(-9);
   /* Our own country we can judge: +61 must be a mobile, a landline is
      refused rather than sent. Any other full country code is not a guess -
      the guest typed where they live - and is sent as typed. Widened 25 Aug

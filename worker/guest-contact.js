@@ -90,7 +90,7 @@ export function normalisePhone(raw) {
   const cc = TRUNK_ZERO.find((c) => s.startsWith("+" + c + "0"));
   if (cc) s = "+" + cc + s.slice(cc.length + 2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
-  if (/^614\d{8}$/.test(s))   return "+" + s;
+  if (/^610?4\d{8}$/.test(s)) return "+61" + s.slice(-9);
   if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
   if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   return null;
