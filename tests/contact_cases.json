@@ -33,7 +33,7 @@
   },
 
   "row": {
-    "_note": "[thread, unsorted messages, open tasks, has a sendable mobile, the row's state]. fresh is white (work to do), task amber, sent the waiting grey, done green, none and nophone sunk.",
+    "_note": "[thread, unsorted messages, open tasks, has a sendable mobile, the row's state]. fresh is white (work to do), task amber, sent the waiting grey, done white too (the owner, 30 Sep: green would be nearly every card), none and nophone sunk.",
     "cases": [
       [null, 0, 0, false, "nophone"],
       [null, 0, 0, true,  "none"],

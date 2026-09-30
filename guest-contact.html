@@ -54,10 +54,12 @@
   .vrow .l3 .open { color:var(--law-amber-ink); }
   /* The states, colour-law tokens and nothing else (CLAUDE.md): a message
      nobody has sorted is work to do, white; a task still open is amber,
-     chase this; only we have written is the waiting grey; all sorted is
-     the done green; nothing sent, or no number, is sunk. */
+     chase this; only we have written is the waiting grey; nothing sent, or
+     no number, is sunk. All sorted is plain white too, not the done green
+     (the owner, 30 Sep: "Otherwise, all the cards would be green"): most
+     conversations end sorted, so green would paint nearly the whole list
+     and single nothing out. Its band, All done, tells it from New. */
   .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
-  .vrow.b-done { border-color:var(--law-green-b); }
   .vrow.b-none, .vrow.b-nophone { border-style:dashed; opacity:.62; }
   .vrow:disabled { cursor:default; }
 
@@ -141,6 +143,15 @@
 
   .compose { margin-top:18px; }
   .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
+  /* Templates sits on the line that says which way a message goes (the
+     owner, 30 Sep: "we should have access to all the templates from the
+     send area"). A button, so bordered as one. */
+  .winrow { display:flex; align-items:flex-start; gap:10px; margin:0 2px 8px; }
+  .winrow .win { flex:1; margin:0; }
+  .winrow .sbtn { flex:0 0 auto; }
+  .sheet .tg { font-size:var(--t2); font-weight:600; margin:16px 0 6px; }
+  .sheet .tw { font-size:var(--t2); color:var(--mid); line-height:1.45; margin:0 0 6px; }
+  .sheet .tbtns { display:flex; flex-wrap:wrap; gap:8px; }
   .win b { font-weight:600; color:var(--ink); }
   .compose textarea { min-height:96px; line-height:1.45; resize:vertical; display:block; }
   .tpls { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
@@ -209,7 +220,6 @@ body.paper .knob { background:var(--surface); }
 body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
 body.paper .vrow.b-task { background:var(--law-amber); }
 body.paper .vrow.b-sent { background:linear-gradient(var(--law-wait), var(--law-wait)), var(--surface); }
-body.paper .vrow.b-done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .vrow.b-none, body.paper .vrow.b-nophone { background:var(--surface); box-shadow:none; }
 body.paper .chip { background:var(--surface); }
 body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
@@ -249,13 +259,15 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
             aria-label="WhatsApp: the guest asked for it"></button></div>
   <div id="msgs"></div>
   <div class="compose" id="compose">
-    <div class="win" id="win"></div>
+    <div class="winrow"><div class="win" id="win"></div>
+      <button class="sbtn" id="tmplBtn" type="button" style="display:none">Templates</button></div>
     <div class="tpls" id="tpls"></div>
     <div id="tplPrev"></div>
     <textarea id="msgBox" aria-label="Message"></textarea>
   </div>
   <div class="savefail" id="sendErr"></div>
   <div class="foot" id="foot">
+    <button class="btn" id="backBtn" style="display:none">Write instead</button>
     <button class="btn" id="viaBtn" style="display:none">SMS instead</button>
     <button class="btn solid" id="sendBtn">Send</button>
   </div>
@@ -266,9 +278,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=8"></script>
+<script src="contact-demo.js?v=9"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=93"></script>
+<script src="nala-shared.js?v=94"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -302,6 +314,7 @@ var PICK = null;            /* the message whose Task picker is open */
 var NOTEED = null;          /* 'team/task' whose note is being written */
 var VIA = '';               /* 'sms' once the desk chose SMS over an approved message */
 var TPL = 'question';       /* the approved message chosen */
+var PICKT = null;           /* an SMS page's template, chosen to send from here */
 var READFAIL = false;
 
 function esc(t){
@@ -868,8 +881,10 @@ function drawCompose(){
   var tpls = document.getElementById('tpls'), prev = document.getElementById('tplPrev');
   var via = document.getElementById('viaBtn'), send = document.getElementById('sendBtn');
   var foot = document.getElementById('foot');
+  var tb = document.getElementById('tmplBtn'), back = document.getElementById('backBtn');
   tpls.innerHTML = ''; prev.innerHTML = '';
   box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
+  tb.style.display = 'none'; back.style.display = 'none';
   var name = TH.b ? TH.b.first : '';
   /* Reply to guests, a switch per role in Settings (30 Sep): switched off,
      this login reads and sorts, and the Worker refuses its sends. */
@@ -883,6 +898,20 @@ function drawCompose(){
     win.innerHTML = 'This guest texted <b>' + esc(t.optout.word || 'STOP') + '</b> ' +
       esc(stampOf(t.optout.at)) + '. Nothing can be sent until they text START.';
     box.style.display = 'none'; foot.style.display = 'none';
+    return;
+  }
+  tb.style.display = '';
+  send.disabled = !window.__idToken;
+  /* A template of an SMS page's, chosen from the sheet: its words as the
+     guest will read them, then Send, or back to typing. */
+  if (PICKT){
+    win.innerHTML = '<b>' + esc(PICKT.setName) + '</b> \u00b7 ' + esc(PICKT.label) + '. ' +
+      esc(PICKT.how) + (HELLO && HELLO.test ? ' <b>Test mode does not hold this back: it goes to ' +
+      esc(name || 'the guest') + '.</b>' : '');
+    prev.innerHTML = '<div class="msg out prev"><div class="bub">' +
+      esc(PICKT.preview).replace(/\n/g, '<br>') + '</div></div>';
+    box.style.display = 'none';
+    back.style.display = '';
     return;
   }
   if (c.ch === 'watpl'){
@@ -1064,8 +1093,177 @@ document.getElementById('viaBtn').onclick = function(){
   VIA = VIA === 'sms' ? '' : 'sms'; drawCompose();
 };
 
+/* ── the SMS pages' templates, from the send area ───────────────
+   The owner, 30 Sep: "we should have access to all the templates from the
+   send area". Every set the Templates page keeps, each sent the way its
+   own page sends it - through that page's Worker, INVITES_URL - so the
+   page records it as sent, this conversation shows it, and nobody texts a
+   guest a second time for want of knowing. The words are that page's,
+   edited on Templates; the link is minted for this guest as it goes.
+
+   Offered only where the page itself would send: the form to a guest
+   still to arrive; tonight's menu to a villa in house tonight, once the
+   menu is live (menuLive, the Invitations page's own gate); a spa reminder
+   for a treatment in Spa reminders' own list (spaReminderRows) that has
+   not begun. Anywhere else the sheet says why, in a line. */
+var TSETS = [
+  { key:'pre',  node:'/presmstemplates', name:'Pre-arrival form', page:'Pre-arrival SMS',
+    how:'Goes by SMS as Pre-arrival SMS sends it, with this guest\u2019s own form link, and ' +
+        'that page shows it as sent.' },
+  { key:'menu', node:'/smstemplates', name:'Tonight\u2019s menu', page:'Invitations',
+    how:'Goes by SMS as Invitations sends it, with this guest\u2019s own link to tonight\u2019s ' +
+        'menu, and that page shows it as sent.' },
+  { key:'spa',  node:'/spasmstemplates', name:'Spa reminder', page:'Spa reminders',
+    how:'Goes by SMS as Spa reminders sends it, and that page shows it as sent.' }
+];
+var TOFFER = null;          /* what the sheet offered: set key -> templates, and the treatments */
+function tmplList(db){
+  return Object.keys(db || {}).map(function(k){
+    var t = db[k] || {};
+    return { id:k, label:String(t.label || k), body:String(t.body || ''), order:+t.order || 999 };
+  }).filter(function(t){ return t.body; })
+    .sort(function(a, b){ return a.order - b.order; });
+}
+/* The link as the guest will see it, before the Worker mints its token:
+   the Templates page saves every link template with its marker at the end. */
+function withLink(body, link){
+  return /<(form|menu|link)>/.test(body) ? body.replace(/<(form|menu|link)>/, link)
+                                          : body.replace(/\s*$/, '') + '\n' + link;
+}
+function templatesFor(b){
+  var today = dkey(new Date());
+  var tonight = !!b && b.first_night <= today && b.last_night >= today;
+  var reads = TSETS.map(function(x){ return whole(x.node).catch(function(){ return undefined; }); });
+  reads.push(b ? whole('/spa/' + b.id).catch(function(){ return undefined; }) : null);
+  reads.push(b ? whole('/spareminders/' + b.id).catch(function(){ return undefined; }) : null);
+  reads.push(tonight ? fetchMenuAnywhere(today) : null);
+  return Promise.all(reads).then(function(r){
+    var out = { sets:{}, why:{}, spa:[] };
+    TSETS.forEach(function(x, i){
+      out.sets[x.key] = tmplList(r[i]);
+      if (r[i] === undefined) out.why[x.key] = 'The templates could not be read just now.';
+      else if (!out.sets[x.key].length) out.why[x.key] = 'None saved yet. They are written on the Templates page.';
+    });
+    if (!out.why.pre && b.arrive < today) out.why.pre = 'Only before a guest arrives.';
+    if (!out.why.menu){
+      var m = r[5];
+      if (!tonight) out.why.menu = 'Only for a guest in house tonight.';
+      else if (m && m.failed) out.why.menu = 'Tonight\u2019s menu could not be checked just now.';
+      else if (!menuLive(m)) out.why.menu = 'Tonight\u2019s menu is not published yet. It opens once the chef publishes.';
+    }
+    if (r[3] === undefined || r[4] === undefined) out.why.spa = out.why.spa || 'The spa bookings could not be read just now.';
+    else {
+      var spa = {}, rems = {}, bk = {};
+      spa[b.id] = r[3] || {}; rems[b.id] = r[4] || {};
+      bk[b.id] = { pms:{ first:b.first, last:b.last, phone:b.phoneRaw } };
+      spaRemindDays().forEach(function(d){
+        spaReminderRows(d, spa, rems, {}, bk, {}, Date.now()).forEach(function(row){
+          if (row.state !== 'late' && row.state !== 'nophone') out.spa.push(row);
+        });
+      });
+      if (!out.why.spa && !out.spa.length)
+        out.why.spa = 'No treatment booked in the next ' + SPA_REMIND_DAYS + ' days.';
+    }
+    return out;
+  });
+}
+function tbtns(set, list, tid){
+  return '<div class="tbtns">' + list.map(function(t){
+    return '<button class="sbtn" data-tset="' + set + '" data-tid="' + esc(t.id) + '"' +
+           (tid ? ' data-ttr="' + esc(tid) + '"' : '') + '>' + esc(t.label) + '</button>';
+  }).join('') + '</div>';
+}
+function openTemplates(){
+  var sh = document.getElementById('sheet'), b = TH.b;
+  document.getElementById('backdrop').className = 'backdrop show';
+  if (!b){
+    sh.innerHTML = '<div class="st">Templates</div><div class="sub">This number is on no booking. ' +
+      'Every template carries a booking\u2019s own form, menu link or treatment, so they go to ' +
+      'guests on one.</div><button class="btn" id="tmplClose">Close</button>';
+    document.getElementById('tmplClose').onclick = closeSheet;
+    return;
+  }
+  sh.innerHTML = '<div class="st">Templates</div><div class="sub">Reading the templates\u2026</div>';
+  templatesFor(b).then(function(o){
+    TOFFER = o;
+    var h = '<div class="st">Templates</div><div class="sub">For ' + esc(b.name) +
+      '. Each goes by SMS the way its own page sends it, and that page shows it as sent.</div>';
+    TSETS.forEach(function(x){
+      h += '<div class="tg">' + esc(x.name) + '</div>';
+      if (o.why[x.key]){ h += '<div class="tw">' + esc(o.why[x.key]) + '</div>'; return; }
+      if (x.key !== 'spa'){ h += tbtns(x.key, o.sets[x.key]); return; }
+      o.spa.forEach(function(row){
+        h += '<div class="tw">' + esc(spaBookingText(row.rec, null).replace(/\n/g, ' \u00b7 ')) +
+             (row.state === 'sent' ? ' \u00b7 already sent' :
+              row.state === 'changed' ? ' \u00b7 moved since the last text' : '') + '</div>' +
+             tbtns('spa', o.sets.spa, row.tid);
+      });
+    });
+    sh.innerHTML = h + '<button class="btn" id="tmplClose">Close</button>';
+    document.getElementById('tmplClose').onclick = closeSheet;
+  }, function(){
+    sh.innerHTML = '<div class="st">Templates</div><div class="err">The templates could not be ' +
+      'read just now. Try again in a moment.</div><button class="btn" id="tmplClose">Close</button>';
+    document.getElementById('tmplClose').onclick = closeSheet;
+  });
+}
+document.getElementById('tmplBtn').onclick = openTemplates;
+document.getElementById('sheet').addEventListener('click', function(e){
+  var btn = e.target.closest('button[data-tset]'); if (!btn || !TOFFER || !TH.b) return;
+  var key = btn.getAttribute('data-tset'), id = btn.getAttribute('data-tid'), tid = btn.getAttribute('data-ttr');
+  var set = TSETS.filter(function(x){ return x.key === key; })[0];
+  var t = (TOFFER.sets[key] || []).filter(function(x){ return x.id === id; })[0];
+  if (!set || !t) return;
+  var p = { set:key, id:t.id, label:t.label, body:t.body, setName:set.name, how:set.how };
+  if (key === 'spa'){
+    var row = TOFFER.spa.filter(function(r){ return r.tid === tid; })[0]; if (!row) return;
+    p.tid = tid; p.preview = spaReminderText(t.body, TH.b.first, row.rec, row.rem);
+  } else p.preview = withLink(t.body, 'https://menu.nalaresort.com/' +
+                              (key === 'pre' ? 'prearrival.html' : '') + '?t=\u2026');
+  PICKT = p;
+  document.getElementById('sendErr').textContent = '';
+  closeSheet(); drawCompose();
+});
+document.getElementById('backBtn').onclick = function(){ PICKT = null; drawCompose(); };
+
+/* Sent as its page sends it: the booking, the villa tonight, or the
+   treatment, and the template's words; the Worker reads everything else
+   itself and records the text where its page reads it. */
+function sendTemplate(btn){
+  var p = PICKT, b = TH.b, err = document.getElementById('sendErr');
+  var req = { idToken: window.__idToken, template: p.id, body: p.body }, key;
+  if (p.set === 'pre'){ req.kind = 'pre'; req.bookings = [b.id]; key = b.id; }
+  else if (p.set === 'spa'){ req.kind = 'spa'; req.treatments = [{ b: b.id, t: p.tid }]; key = b.id + '/' + p.tid; }
+  else { req.date = dkey(new Date()); req.villas = [String(b.villa)]; key = String(b.villa); }
+  var late = '';
+  saveFeedback(btn, function(){
+    return fetch(INVITES_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                                body: JSON.stringify(req) })
+      .then(function(r){ return r.json().catch(function(){ return {}; })
+        .then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(res){
+        var one = res.j && res.j.results && res.j.results[key];
+        var e;
+        if (!res.ok || !one){
+          e = new Error(res.j && res.j.error ? res.j.error : 'the sender did not answer'); e.said = true; throw e;
+        }
+        if (one.status === 'sent-unrecorded')
+          late = 'Sent, but the record did not save, so ' +
+                 (TSETS.filter(function(x){ return x.key === p.set; })[0] || {}).page + ' will not show it.';
+        else if (one.status !== 'sent'){
+          e = new Error(one.error || 'it did not send'); e.said = true; throw e;
+        }
+      });
+  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
+       then: function(){ PICKT = null; SENT_AT = 0; var s = document.getElementById('sendBtn');
+                         armSave(s); s.textContent = 'Send';
+                         if (late){ err.textContent = late; err.classList.add('show'); }
+                         refresh(); } });
+}
+
 /* ── sending ─────────────────────────────────────────────────── */
 document.getElementById('sendBtn').onclick = function(){
+  if (PICKT) return sendTemplate(this);
   var c = channelNow(), box = document.getElementById('msgBox');
   var err = document.getElementById('sendErr');
   var req = { idToken: window.__idToken, kind:'send', ck: CK, booking: TH.b ? TH.b.id : '' };

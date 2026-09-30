@@ -52,7 +52,31 @@
                 housekeeping:{ members:{} }, maintenance:{ members:{ 'ray@demo':true } },
                 spa:{ members:{ 'freya@demo':true } } } },
               stays:{}, contact:{}, contactmsgs:{}, contactnew:{}, tasks:{}, previnvites:{},
-              invites:{}, spareminders:{} };
+              invites:{}, spareminders:{}, spa:{},
+              /* The Templates page's three sets, as its built-ins seed them
+                 (templates.html), for Chat's Templates (30 Sep). */
+              presmstemplates:{
+                before:{ label:'Before you arrive', order:1, body:'Good afternoon. Ahead of your stay ' +
+                  'with us, a few questions so everything is ready when you arrive. Nala Resort\n<form>' },
+                nudge:{ label:'A gentle reminder', order:2, body:'A reminder, when you have a moment: a ' +
+                  'few questions ahead of your stay, so everything is ready when you arrive. Nala Resort\n<form>' } },
+              smstemplates:{
+                ready:{ label:'Menu is ready', order:1, body:'Tonight\u2019s menu is ready. Nala Resort\n<menu>' },
+                join:{ label:'Will you join us', order:2, body:'Good afternoon. Tonight\u2019s menu, and a ' +
+                  'place to tell us if you will join us. Nala Resort\n<menu>' },
+                reminder:{ label:'Reminder', order:3, body:'A reminder that we have not heard about dinner ' +
+                  'tonight. The menu, and the link to answer, is below. Nala Resort\n<menu>' } },
+              spasmstemplates:{
+                remind:{ label:'Gentle reminder', order:1, body:'Hello <first>, a gentle reminder of your ' +
+                  'booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this ' +
+                  'message. Nala Resort' },
+                short:{ label:'Short', order:2, body:'Hello <first>, a reminder of your booking:\n\n' +
+                  '<booking>\n\nTo change it, just reply. Nala Resort' } },
+              /* tonight's menu, published this afternoon, or just after
+                 midnight when the demo is opened before three */
+              menu:{ published:new Date(Math.max(new Date().setHours(0, 5, 0, 0), Date.now() - 3 * 3600000)).toISOString(),
+                     bread:{ name:'Sourdough, cultured butter' }, entree:{ name:'Kingfish crudo' },
+                     main:{ name:'Lamb shoulder, white beans' }, dessert:{ name:'Lemon tart' } } };
     PEOPLE.forEach(function(p){ t.staff[p.email] = { name:p.name, role:p.role }; });
     var BOOK = [
       ['b-sarah',  '7',  'Sarah', 'Whitfield', '+61412345678', -2, 3, 2],
@@ -166,6 +190,10 @@
       sorted:{ by:'desk@demo', at:ago(10) } });
     thread(P, { lastAt:ago(11), lastIn:ago(11), lastInCh:'wa', lastInWa:ago(11), dir:'in',
       preview:'Tanqueray with lime please. We\u2019re on the loungers by the pool steps.' });
+    /* her massage tomorrow morning, booked on the Spa board: Chat offers
+       its reminder from Templates */
+    t.spa['b-priya'] = { t7massage:{ status:'booked', day:day(1), time:'10:30', qty:1, dur:60,
+                                     name:'Priya Sharma' } };
     task('bar', 't2gandt', { ck:P, msg:'in-SMgin', villa:'9', name:'Priya Sharma',
       text:'Could we get two gin and tonics at the pool?', state:'open', at:ago(14), by:'desk@demo',
       note:'Charge to villa 9', noteBy:'desk@demo', noteAt:ago(10) });
@@ -213,7 +241,7 @@
   }
 
   /* ── the tab's copy of the database ─────────────────────────── */
-  var SEED = 4;   /* moved when the made-up guests change: a tab holding older ones starts again */
+  var SEED = 5;   /* moved when the made-up guests change: a tab holding older ones starts again */
   var TREE = null;
   try { TREE = JSON.parse(sessionStorage.getItem(DBK) || 'null'); } catch (e){}
   if (!TREE || TREE.demoSeed !== SEED){ TREE = seed(); save(); }
@@ -423,6 +451,72 @@
     return answer(200, { id:id, ch:ch, status:'sent', test:false });
   }
 
+  /* The SMS pages' sender (worker/send-invites.js), played here for Chat's
+     Templates (30 Sep): the form, tonight's menu and a spa reminder, each
+     recorded where its own page reads it, the text before kept under
+     earlier as the Worker keeps it. */
+  function sender(o){
+    var b = {};
+    try { b = JSON.parse((o && o.body) || '{}'); } catch (e){}
+    if (!can(WHO.role, 'editBookings')) return answer(403, { error:'this login may not send invitations' });
+    var text = String(b.body || '');
+    if (!text.trim()) return answer(400, { error:'bad message' });
+    var results = {}, now = new Date().toISOString();
+    function tok(){ return Math.random().toString(36).slice(2, 8); }
+    function record(path, rec){
+      var prev = get(path);
+      if (prev && prev.sentAt && prev.status === 'sent'){
+        var was = Object.assign({}, prev); delete was.earlier;
+        var older = prev.earlier ? Object.keys(prev.earlier).map(function(k){ return prev.earlier[k]; }) : [];
+        rec.earlier = [was].concat(older).slice(0, 5);
+      }
+      set(path, rec);
+      setTimeout(function(){ set(path + '/delivery', 'delivered'); save(); }, 3000);
+    }
+    function one(key, path, stay, bodyText, extra){
+      var phone = normalisePhone((stay && stay.phone) || '');
+      if (!phone){ results[key] = { status:'failed', error:'no phone number on the booking' }; return; }
+      record(path, Object.assign({ sentAt:now, template:b.template || '', by:WHO.email, status:'sent',
+                                   to:phone, body:bodyText, error:'' }, extra || {}));
+      results[key] = { status:'sent' };
+    }
+    function stayOf(id){
+      var stays = TREE.stays || {}, found = null;
+      Object.keys(stays).forEach(function(d){ Object.keys(stays[d]).forEach(function(v){
+        if (stays[d][v] && stays[d][v].id === id) found = stays[d][v]; }); });
+      return found;
+    }
+    var fill = function(link){
+      return /<(form|menu|link)>/.test(text) ? text.replace(/<(form|menu|link)>/, link) : text + '\n' + link;
+    };
+    if (b.kind === 'pre'){
+      (b.bookings || []).forEach(function(id){
+        var st = stayOf(id);
+        if (!st){ results[id] = { status:'failed', error:'no such booking in Mews' }; return; }
+        one(id, '/previnvites/' + id, st, fill('https://menu.nalaresort.com/prearrival.html?t=' + tok()),
+            { arrive:st.arrive });
+      });
+    } else if (b.kind === 'spa'){
+      (b.treatments || []).forEach(function(tr){
+        var key = tr.b + '/' + tr.t, rec = get('/spa/' + tr.b + '/' + tr.t), st = stayOf(tr.b);
+        if (!rec || rec.status !== 'booked'){ results[key] = { status:'failed', error:'not a booked treatment' }; return; }
+        var prev = get('/spareminders/' + tr.b + '/' + tr.t);
+        one(key, '/spareminders/' + tr.b + '/' + tr.t, st, spaReminderText(text, st && st.first, rec, prev),
+            { day:rec.day, time:rec.time || '', qty:rec.qty === 2 ? 2 : 1, dur:+rec.dur || 0 });
+      });
+    } else if (b.kind == null){
+      var m = get('/menu');
+      if (!menuLive(m)) return answer(409, { error:'no menu is published for tonight' });
+      (b.villas || []).forEach(function(v){
+        var st = ((TREE.stays || {})[b.date] || {})[v];
+        if (!st){ results[v] = { status:'failed', error:'no booking in this villa tonight' }; return; }
+        one(String(v), '/invites/' + b.date + '/' + v, st, fill('https://menu.nalaresort.com/?t=' + tok()));
+      });
+    } else return answer(400, { error:'not in the demo' });
+    save();
+    return answer(200, { results:results });
+  }
+
   /* A guest writing in, as the Worker files it when Twilio hands it over. */
   function arrive(ck, ch, text){
     var at = new Date().toISOString(), id = 'in-SMdemo' + Date.now().toString(36);
@@ -441,6 +535,7 @@
     var s = String(u && u.url ? u.url : u);
     if (s.indexOf('firebasedatabase.app') > -1) return database(s, o);
     if (s.indexOf('nala-contact.') > -1) return messenger(o);
+    if (s.indexOf('nala-invites.') > -1) return sender(o);
     if (s.indexOf('workers.dev') > -1) return answer(200, {});
     return realFetch.apply(this, arguments);
   };

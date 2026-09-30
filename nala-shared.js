@@ -1894,6 +1894,20 @@ function fetchMenuAnywhere(dayKey){
   });
 }
 
+/* Whether tonight's menu is live for a dinner invitation's link: published,
+   and before the midnight that ends its publish day. m is fetchMenuAnywhere's
+   answer; a read that failed is not live, and the caller says which it was.
+   The Invitations page's own gate until 30 Sep, moved here when Chat's
+   templates came to ask the same question: the Worker's backstop allows a
+   day's grace, so a morning's send against it alone would link last
+   night's menu. */
+function menuLive(m, now){
+  var pub = m && !m.failed && m.published ? parseISO(m.published) : null;
+  if (!pub || isNaN(pub)) return false;
+  var expiry = new Date(pub); expiry.setHours(24, 0, 0, 0);
+  return (now || new Date()) < expiry;
+}
+
 /* ── a dietary that outlives the booking ──────────────────────────────
    A dietary is about the person, not about a night or a reservation. Kept only
    on the booking, a guest who comes back next year arrives with an empty
@@ -2660,6 +2674,12 @@ function ensureNotifySettings(role){
    asks to send and Tasks asks for a task's conversation. One address for
    both pages. */
 var CONTACT_URL = 'https://nala-contact.ben-681.workers.dev';
+
+/* The SMS pages' sender (worker/send-invites.js): Invitations, Pre-arrival
+   SMS and Spa reminders, and since 30 Sep Chat's templates, which go
+   through it so the page that owns each text records it as sent. One
+   address for the four; it was typed into each of the first three. */
+var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
 
 /* The six teams the owner started with (29 Sep). The key is what the
    database stores; the label is what staff read. The list itself is

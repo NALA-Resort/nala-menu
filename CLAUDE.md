@@ -205,6 +205,9 @@ row for a valid key card): "If it's not green it looks like there is work
 to do. That is the case everywhere." A state with nothing left to do wears
 the done green; a plain white or cream row is work waiting. Before drawing
 a settled state plain because it is "only normal", read this line.
+Chat's list is his one exception (30 Sep): a conversation with everything
+sorted is plain white, "Otherwise, all the cards would be green", since
+most end that way. Its All done band says it; do not paint it back.
 
 ### Cleans keeps its own key
 

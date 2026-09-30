@@ -11,7 +11,8 @@ Worker is stubbed here and tested in worker/contact-test.mjs. Pinned down:
   1. The shared readers say what tests/contact_cases.json says, in the page,
      in two zones - the Worker's twins answer to the same table.
   2. Each guest's row is contactRowState's reading, in the colour law's
-     tokens: new white, task open amber, sent grey, all done green, sunk.
+     tokens: new white, task open amber, sent grey, sunk, and all done
+     white, not green (the owner, 30 Sep).
   3. Every guest message is sorted, No task or a task for a team, in ONE
      write that also takes it off the new list; a team's Done is its own.
   4. The box says which way a message goes before it goes, and past
@@ -191,9 +192,25 @@ EXTINVITES = {"2026-09-28": {"ext-k2m9": {"sentAt": "2026-09-28T16:20:00+10:00",
                                           "to": "+61423555019", "by": "ben@x",
                                           "body": "Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. Nala Resort\nhttps://menu.nalaresort.com/?t=k2m9pp"}}}
 
+# The Templates page's three sets (templates.html's built-ins), tonight's
+# menu, and a massage tomorrow for Priya: what Chat's Templates offers
+# (30 Sep).
+TMPL = {"/presmstemplates.json": {
+          "before": {"label": "Before you arrive", "order": 1, "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\n<form>"},
+          "nudge": {"label": "A gentle reminder", "order": 2, "body": "A reminder, when you have a moment: a few questions ahead of your stay, so everything is ready when you arrive. Nala Resort\n<form>"}},
+        "/smstemplates.json": {
+          "join": {"label": "Will you join us", "order": 2, "body": "Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. Nala Resort\n<menu>"},
+          "ready": {"label": "Menu is ready", "order": 1, "body": "Tonight\u2019s menu is ready. Nala Resort\n<menu>"}},
+        "/spasmstemplates.json": {
+          "remind": {"label": "Gentle reminder", "order": 1, "body": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort"}}}
+SPA = {"b-priya": {"t7": {"status": "booked", "day": "2026-09-30", "time": "10:30", "qty": 1, "dur": 60},
+                   "t6": {"status": "booked", "day": "2026-09-29", "time": "09:00", "qty": 1, "dur": 60}}}
+MENU = {"published": "2026-09-29T13:05:00+10:00", "bread": {"name": "Sourdough"}, "entree": {"name": "Crudo"},
+        "main": {"name": "Lamb shoulder"}, "dessert": {"name": "Lemon tart"}}
+
 STATE = {"hello": {"ready": True, "wa": True, "test": False, "buzz": False}, "send": None,
-         "readfail": False}
-WRITES, SENT, BUZZ, READS = [], [], [], []
+         "readfail": False, "menu": MENU, "inv": None}
+WRITES, SENT, BUZZ, READS, INV = [], [], [], [], []
 # a 1x1 photo in the mock's neutral grey: a red stand-in read as a fault
 PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c49444154789c633879783b00049c02442e077d7e0000000049454e44ae426082")
 
@@ -236,7 +253,24 @@ def fb(route, request):
     elif path.startswith("/previnvites/"): body = PREVINVITES.get(path[13:-5])
     elif path.startswith("/invites/"): body = INVITES.get(path[9:-5])
     elif path.startswith("/extinvites/"): body = EXTINVITES.get(path[12:-5])
+    elif path in TMPL: body = TMPL[path]
+    elif path.startswith("/spa/"): body = SPA.get(path[5:-5])
+    elif path == "/menu.json": body = STATE["menu"]
     route.fulfill(status=200, content_type="application/json", body=js(body))
+
+# The SMS pages' sender, worker/send-invites.js, stood in for Chat's
+# Templates: what it was asked, and its answer.
+def inv(route, request):
+    b = json.loads(request.post_data)
+    INV.append(b)
+    if STATE["inv"]:
+        st, rep = STATE["inv"]
+    else:
+        key = (b["bookings"][0] if b.get("kind") == "pre" else
+               b["treatments"][0]["b"] + "/" + b["treatments"][0]["t"] if b.get("kind") == "spa" else
+               b["villas"][0])
+        st, rep = 200, {"results": {key: {"status": "sent"}}}
+    route.fulfill(status=st, content_type="application/json", body=js(rep))
 
 def wk(route, request):
     b = json.loads(request.post_data)
@@ -305,6 +339,7 @@ with sync_playwright() as p:
         pg.route("**firebasedatabase.app/**", fb)
         pg.route("**nala-contact.ben-681.workers.dev/**", wk)
         pg.route("**nala-push.ben-681.workers.dev/**", push)
+        pg.route("**nala-invites.ben-681.workers.dev/**", inv)
         pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:%d/%s%s" % (PORT, file, q))
         pg.wait_for_timeout(1300)
@@ -380,7 +415,12 @@ with sync_playwright() as p:
     # .045 is drawn as .043: Chrome keeps alpha in 256 steps. inv_suite's reading.
     ck("only we have written is the law's waiting grey",
        shown(sty("61411000004")).startswith("rgba(28, 28, 26, 0.04"), sty("61411000004"))
-    ck("all done is the done green", shown(sty("61411000002")) == "rgba(122, 160, 130, 0.26)")
+    # The owner, 30 Sep: "Otherwise, all the cards would be green."
+    ck("all done is plain white, not the done green", shown(sty("61411000002")) == "rgb(255, 255, 255)",
+       sty("61411000002"))
+    ck("and nothing on the list is green", pg.evaluate("""()=>![...document.querySelectorAll('#board .vrow')].some(e=>{
+        const s=getComputedStyle(e);return /122, 160, 130|126, 147, 122|228, 237, 226/.test(
+        s.backgroundColor+s.backgroundImage+s.borderTopColor);})"""))
     ck("nothing sent and no number are sunk and dashed",
        all(sty(k)["borderStyle"] == "dashed" and float(sty(k)["opacity"]) < 0.7 for k in ("61411000016", "b-hana")))
     ck("and no status here is red", pg.evaluate("""()=>![...document.querySelectorAll('#board *')].some(e=>
@@ -1088,6 +1128,129 @@ with sync_playwright() as p:
     ck("the desk's waiter taps and gets no Delete: the admin's alone",
        not pg.query_selector('[data-act="delask"]'))
     done(pg)
+
+    # ── 12. every template, from the send area (30 Sep) ──────────────
+    # The owner: "we should have access to all the templates from the send
+    # area". Each set goes as its own page sends it, through that page's
+    # Worker, so the page records it and this conversation shows it.
+    PRIYA = "61411000009"
+    tsheet = lambda pg: pg.evaluate("""()=>({
+        groups:[...document.querySelectorAll('#sheet .tg')].map(e=>e.textContent),
+        why:[...document.querySelectorAll('#sheet .tw')].map(e=>e.textContent),
+        btns:[...document.querySelectorAll('#sheet button[data-tset]')].map(e=>
+          e.dataset.tset+':'+e.dataset.tid+(e.dataset.ttr?':'+e.dataset.ttr:''))})""")
+    for tz in ZONES:
+        del INV[:]
+        pg = page("?c=%s&b=b-priya" % PRIYA, tz=tz); pg.wait_for_timeout(600)
+        tb = pg.evaluate("""()=>{const b=document.getElementById('tmplBtn'),s=getComputedStyle(b);
+          return {shown:b.offsetParent!==null, border:s.borderTopStyle+' '+s.borderTopWidth,
+          cls:b.className}}""")
+        ck("[%s] the send area has Templates, a button bordered as one" % tz,
+           tb["shown"] and tb["border"] == "solid 1px" and "sbtn" in tb["cls"], tb)
+        pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+        o = tsheet(pg)
+        ck("[%s] the sheet holds every set: the form, tonight's menu, the spa reminder" % tz,
+           o["groups"] == ["Pre-arrival form", "Tonight\u2019s menu", "Spa reminder"], o)
+        ck("[%s] and offers only what its page would send: no form to a guest in house" % tz,
+           "Only before a guest arrives." in o["why"] and not [x for x in o["btns"] if x.startswith("pre:")], o)
+        ck("[%s] tonight's menu, live, in the Templates page's order" % tz,
+           [x for x in o["btns"] if x.startswith("menu:")] == ["menu:ready", "menu:join"], o)
+        ck("[%s] tomorrow's massage, Spa reminders' own row; this morning's, begun, is not offered" % tz,
+           [x for x in o["btns"] if x.startswith("spa:")] == ["spa:remind:t7"] and
+           any("Wednesday 30 September at 10:30 am" in w for w in o["why"]), o)
+        pg.click('#sheet button[data-tset="menu"][data-tid="ready"]'); pg.wait_for_timeout(200)
+        cmp = pg.evaluate("""()=>({win:document.getElementById('win').textContent,
+          prev:(document.querySelector('#tplPrev .bub')||{}).innerText,
+          box:getComputedStyle(document.getElementById('msgBox')).display,
+          back:document.getElementById('backBtn').offsetParent!==null,
+          sheet:document.getElementById('backdrop').className})""")
+        ck("[%s] picked, the box shows its words as the guest will read them, and says how it goes" % tz,
+           cmp["prev"] == "Tonight\u2019s menu is ready. Nala Resort\nhttps://menu.nalaresort.com/?t=\u2026" and
+           "Goes by SMS as Invitations sends it" in cmp["win"] and cmp["box"] == "none" and
+           cmp["back"] and "show" not in cmp["sheet"], cmp)
+        before = len([r for r in READS if r[0] == "/invites/2026-09-29.json"])
+        pg.click("#sendBtn"); pg.wait_for_timeout(900)
+        ck("[%s] Send asks the SMS pages' sender for tonight's villa, as Invitations would" % tz,
+           len(INV) == 1 and INV[0].get("kind") is None and INV[0].get("date") == TODAY and
+           INV[0].get("villas") == ["9"] and INV[0].get("template") == "ready" and
+           INV[0].get("body") == TMPL["/smstemplates.json"]["ready"]["body"] and INV[0].get("idToken") == "T",
+           INV)
+        ck("[%s] and nothing through Chat's own Worker" % tz,
+           not [b for b in SENT if b.get("kind") == "send"])
+        after = len([r for r in READS if r[0] == "/invites/2026-09-29.json"])
+        ck("[%s] then the conversation re-reads the page's record, and the box is back to typing" % tz,
+           after > before and pg.evaluate("()=>getComputedStyle(document.getElementById('msgBox')).display") != "none"
+           and not pg.evaluate("()=>PICKT"), [before, after])
+        done(pg)
+
+    del INV[:]
+    pg = page("?c=%s&b=b-priya" % PRIYA); pg.wait_for_timeout(600)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+    pg.click('#sheet button[data-tset="spa"][data-tid="remind"]'); pg.wait_for_timeout(200)
+    want = pg.evaluate("""()=>spaReminderText(TOFFER.sets.spa[0].body,'Priya',TOFFER.spa[0].rec,null)""")
+    ck("a spa reminder's preview is the shared builder's text, the Worker's twin",
+       pg.inner_text("#tplPrev .bub") == want and "Hello Priya" in want and "10:30 am" in want,
+       [pg.inner_text("#tplPrev .bub"), want])
+    shot(pg, "gc-template")
+    pg.click("#sendBtn"); pg.wait_for_timeout(900)
+    ck("and goes as a spa reminder for that treatment",
+       len(INV) == 1 and INV[0].get("kind") == "spa" and INV[0].get("treatments") == [{"b": "b-priya", "t": "t7"}]
+       and INV[0].get("template") == "remind", INV)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+    pg.click('#sheet button[data-tset="menu"][data-tid="join"]'); pg.wait_for_timeout(200)
+    pg.click("#backBtn"); pg.wait_for_timeout(150)
+    ck("Write instead goes back to typing, nothing sent",
+       len(INV) == 1 and pg.is_visible("#msgBox") and not pg.evaluate("()=>PICKT"))
+    done(pg)
+
+    # James arrives on the 3rd: the form, and a failure said in red
+    del INV[:]
+    STATE["inv"] = (200, {"results": {"b-james": {"status": "failed", "error": "no phone number on the booking"}}})
+    STATE["hello"] = {"ready": True, "wa": True, "test": True, "buzz": False}
+    pg = page("?c=%s&b=b-james" % JAMES); pg.wait_for_timeout(600)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+    o = tsheet(pg)
+    ck("a guest still to arrive is offered the form; not tonight's menu",
+       [x for x in o["btns"] if x.startswith("pre:")] == ["pre:before", "pre:nudge"] and
+       "Only for a guest in house tonight." in o["why"], o)
+    pg.click('#sheet button[data-tset="pre"][data-tid="nudge"]'); pg.wait_for_timeout(200)
+    ck("in test mode the box says a template is not held back",
+       "Test mode does not hold this back: it goes to James." in pg.text_content("#win"),
+       pg.text_content("#win"))
+    pg.click("#sendBtn"); pg.wait_for_timeout(900)
+    ck("the form goes as Pre-arrival SMS sends it, by booking",
+       len(INV) == 1 and INV[0].get("kind") == "pre" and INV[0].get("bookings") == ["b-james"] and
+       INV[0].get("template") == "nudge", INV)
+    ck("and a text that did not go says why, in failure's red, and stays picked to try again",
+       "no phone number on the booking" in pg.text_content("#sendErr") and
+       pg.evaluate("()=>getComputedStyle(document.getElementById('sendErr')).color") == "rgb(168, 50, 30)" and
+       pg.evaluate("()=>!!PICKT"), pg.text_content("#sendErr"))
+    done(pg)
+    STATE["inv"] = None
+    STATE["hello"] = {"ready": True, "wa": True, "test": False, "buzz": False}
+
+    # yesterday's menu is not tonight's; a number on no booking has none
+    STATE["menu"] = dict(MENU, published="2026-09-28T13:05:00+10:00")
+    pg = page("?c=%s&b=b-priya" % PRIYA); pg.wait_for_timeout(600)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+    o = tsheet(pg)
+    ck("last night's menu offers no invitation: the Invitations page's own gate, menuLive",
+       not [x for x in o["btns"] if x.startswith("menu:")] and
+       any("not published yet" in w for w in o["why"]), o)
+    done(pg)
+    STATE["menu"] = MENU
+    pg = page("?c=%s" % UNK); pg.wait_for_timeout(600)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(300)
+    ck("a number on no booking is told why there are none",
+       "This number is on no booking" in pg.text_content("#sheet") and not pg.query_selector("#sheet [data-tset]"))
+    done(pg)
+    for w in (360, 320):
+        pg = page("?c=%s&b=b-priya" % PRIYA, w=w); pg.wait_for_timeout(600)
+        pg.click("#tmplBtn"); pg.wait_for_timeout(500)
+        pg.click('#sheet button[data-tset="spa"][data-tid="remind"]'); pg.wait_for_timeout(200)
+        ck("at %d, the send area with a template picked does not bleed sideways" % w,
+           pg.evaluate("()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth"))
+        done(pg)
 
     br.close()
 

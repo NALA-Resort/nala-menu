@@ -258,7 +258,9 @@ each; every message a guest sends sorted into no task or a team's task,
 which the team closes on its own login, and may answer from if Settings
 lets its role reply (Reply to guests, 30 Sep). Its own Worker
 (`worker/guest-contact.js`), so the SMS pages' ClickSend Worker is
-untouched until the switch-over. `GUEST-CONTACT.md` is the brief, the
+untouched until the switch-over. The send area's Templates (30 Sep) are
+the SMS pages' own - the form, tonight's menu, the spa reminder - sent
+through those pages' Worker, so each page records what Chat sent. `GUEST-CONTACT.md` is the brief, the
 decisions and the setup; open item 18 is what waits on the owner.
 
 **Spa reminders** (`spa-reminders.html`, SMS menu, 28 Sep): a text to each

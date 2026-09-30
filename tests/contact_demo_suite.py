@@ -119,6 +119,28 @@ with sync_playwright() as p:
     ck("James wrote six days ago, so the box offers only the approved words, or SMS",
        pg.is_visible("#tplPrev") and not pg.is_visible("#msgBox"), pg.text_content("#compose") if pg.query_selector("#compose") else "")
 
+    # every template, from the send area (the owner, 30 Sep), sent as its
+    # own page sends it and recorded where that page reads it
+    go("guest-contact.html?c=61411000009")
+    pg.click("#tmplBtn"); pg.wait_for_timeout(600)
+    groups = pg.evaluate("()=>[...document.querySelectorAll('#sheet .tg')].map(e=>e.textContent)")
+    btns = pg.evaluate("()=>[...document.querySelectorAll('#sheet [data-tset]')].map(e=>e.dataset.tset+':'+e.dataset.tid)")
+    ck("Priya's Templates: tonight's menu, tomorrow's massage, and why not the form",
+       groups == ["Pre-arrival form", "Tonight\u2019s menu", "Spa reminder"] and
+       "menu:ready" in btns and "spa:remind" in btns and not [b for b in btns if b.startswith("pre:")], [groups, btns])
+    pg.click('#sheet [data-tset="menu"][data-tid="ready"]'); pg.wait_for_timeout(200)
+    pg.click("#sendBtn"); pg.wait_for_timeout(1500)
+    pg.click("#tmplBtn"); pg.wait_for_timeout(600)
+    pg.click('#sheet [data-tset="spa"][data-tid="remind"]'); pg.wait_for_timeout(200)
+    pg.click("#sendBtn"); pg.wait_for_timeout(1500)
+    lastout = pg.evaluate("""()=>[...document.querySelectorAll('#msgs .msg.out')].slice(-2).map(e=>
+        [(e.querySelector('.meta')||{}).textContent||'', e.querySelector('.bub').textContent])""")
+    ck("Menu is ready, then her spa reminder, each joins the conversation under its page's name",
+       len(lastout) == 2 and lastout[0][0].startswith("Dinner invitation") and
+       lastout[0][1].startswith("Tonight\u2019s menu is ready.") and
+       lastout[1][0].startswith("Spa reminder") and lastout[1][1].startswith("Hello Priya, a gentle reminder"),
+       lastout)
+
     # ── 3. a team's login closes it ────────────────────────────────
     pg.select_option("#demoWho", "ray@demo"); pg.wait_for_timeout(1800)
     ck("looking as Ray, Maintenance, the demo opens Tasks", pg.url.split("?")[0].endswith("tasks.html"), pg.url)

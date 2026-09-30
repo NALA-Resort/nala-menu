@@ -176,15 +176,15 @@ body.paper .vrow.selall { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=93"></script>
+<script src="nala-shared.js?v=94"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-/* The sender: the same Worker as Invitations, asked with kind "pre". The
-   page proposes booking ids and message words; the Worker re-reads Mews'
-   record, takes the phone off it, refuses past arrivals, mints the short
-   token and does the sending. worker/send-invites.js. */
-var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
+/* The sender: the same Worker as Invitations, INVITES_URL (nala-shared.js),
+   asked with kind "pre". The page proposes booking ids and message words;
+   the Worker re-reads Mews' record, takes the phone off it, refuses past
+   arrivals, mints the short token and does the sending.
+   worker/send-invites.js. */
 
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');

@@ -190,17 +190,16 @@ body.paper .knob { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=93"></script>
+<script src="nala-shared.js?v=94"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-/* The sender: the same Worker as the other two SMS pages, asked with kind
-   "spa". The page proposes treatments and the words around <first> and
-   <booking>; the Worker re-reads each /spa record, refuses anything not
-   booked within SPA_REMIND_DAYS of today, takes the name and number off the
-   booking, writes the details itself and records what went.
-   worker/send-invites.js. */
-var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
+/* The sender: the same Worker as the other two SMS pages, INVITES_URL
+   (nala-shared.js), asked with kind "spa". The page proposes treatments and
+   the words around <first> and <booking>; the Worker re-reads each /spa
+   record, refuses anything not booked within SPA_REMIND_DAYS of today,
+   takes the name and number off the booking, writes the details itself and
+   records what went. worker/send-invites.js. */
 
 /* The page's state, declared before anything that reads it: the template
    box fills, and counts, the moment the script runs. */

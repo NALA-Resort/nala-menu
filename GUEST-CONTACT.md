@@ -96,7 +96,7 @@ of where the conversation stands (`contactRowState`, the colour law):
 | New | white, with a count | a message nobody has sorted yet |
 | Task open | amber | sorted, and a team's task still open |
 | Sent, no reply | the waiting grey | only we have written |
-| All done | done green | everything they sent is sorted, nothing open |
+| All done | plain white, not green (the owner, 30 Sep: "Otherwise, all the cards would be green") | everything they sent is sorted, nothing open |
 | No messages | sunk, dashed | nothing either way, or no mobile on the booking |
 
 A number on no booking - a caller about dinner, a guest from months ago -
@@ -300,6 +300,42 @@ commit, and `contact_demo_suite.py` checks it there.
 The demo needs the pages published to be opened on a phone; without
 `?demo` the pages are the real ones, the admin's alone until opened.
 
+## Templates, from the send area
+
+The owner, 30 Sep: "we should have access to all the templates from the
+send area". **Templates**, beside the line that says how a message goes,
+opens every set the Templates page keeps: the pre-arrival form, tonight's
+menu (the dinner invitations) and the spa reminder. Pick one and the box
+shows its words as the guest will read them; **Send**, or **Write
+instead** to go back to typing. The words are edited on the Templates
+page, not here.
+
+Each goes **the way its own page sends it**: through that page's Worker,
+`worker/send-invites.js` (`INVITES_URL`, nala-shared.js), which mints the
+guest's own link, sends, and records the text where its page reads it -
+`/previnvites`, `/invites/<night>`, `/spareminders`. So Pre-arrival SMS,
+Invitations and Spa reminders show it as sent, the conversation shows it
+under that page's name, and nobody texts the guest again for want of
+knowing. Nothing new in the Worker, the rules or the database.
+
+Offered only where the page itself would send, and the sheet says why
+not in a line:
+
+| Set | Offered when |
+|---|---|
+| Pre-arrival form | the guest has not arrived yet |
+| Tonight's menu | they are in house tonight, and the menu is live (`menuLive`, the Invitations page's own gate, moved to nala-shared.js for this) |
+| Spa reminder | a treatment in Spa reminders' own list for the next 7 days (`spaReminderRows`) that has not begun; one set of buttons per treatment |
+
+A number on no booking has none: every template carries a booking's own
+form, link or treatment.
+
+Two things to know. These go **by SMS**, from whichever number the SMS
+pages use - ClickSend's until `SMS_VIA=twilio` (Going live, below), so until then a
+guest's reply to one lands at ClickSend, not here. And **test mode does
+not hold them back**: TEST_NUMBERS is the Chat Worker's, and the SMS pages'
+sender is live, so the box says so in test mode before Send.
+
 ## Deleting a message
 
 The admin's alone (the owner, 30 Sep: "is it possible to delete individual
@@ -414,7 +450,8 @@ Only the test phones can be messaged. From them:
   team's reply, only with the switch, only to its open task's guest.
 - `tests/contact_suite.py` (`contact`): both pages at the fixture's 3:20pm,
   in two zones, against the same table; and the team list as all three
-  pages offer it, Settings' Teams tab included.
+  pages offer it, Settings' Teams tab included; and Templates, each set
+  offered where its page would send it and sent through its page's Worker.
 - `tests/rules_test.js`: every write the Worker, the desk and a team make,
   and what each may not.
 - `tests/dash_suite.py` (`dash`): the Dashboard's Guest messages card.

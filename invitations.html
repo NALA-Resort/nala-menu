@@ -284,15 +284,15 @@ body.paper .sheet .btn.terra { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=93"></script>
+<script src="nala-shared.js?v=94"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-/* The sender. A Cloudflare Worker holding the ClickSend credential, which is
-   never in the browser and never in this repo. The page proposes villas and a
-   message; the Worker verifies the login, re-reads the stays itself, rebuilds
-   every link server side and does the sending. worker/send-invites.js. */
-var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
+/* The sender, INVITES_URL (nala-shared.js). A Cloudflare Worker holding the
+   ClickSend credential, which is never in the browser and never in this
+   repo. The page proposes villas and a message; the Worker verifies the
+   login, re-reads the stays itself, rebuilds every link server side and
+   does the sending. worker/send-invites.js. */
 
 /* Locked to today on purpose: the guests to invite are the guests in house
    tonight, and a page that could browse to another date could send for it. */
@@ -947,12 +947,7 @@ function menuGate(){
         'the connection, not the menu. Nothing sends until it can be checked.';
       gate.className = 'show';
     } else {
-      var pub = m && m.published ? parseISO(m.published) : null;
-      var live = false;
-      if (pub && !isNaN(pub)){
-        var expiry = new Date(pub); expiry.setHours(24, 0, 0, 0);
-        live = new Date() < expiry;
-      }
+      var live = menuLive(m);
       MENU_STATE = live ? 'live' : 'none';
       if (live){
         /* The opposite state of the amber pill, said out loud: silence read as
