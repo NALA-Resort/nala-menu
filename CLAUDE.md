@@ -151,7 +151,9 @@ The full run waits until the feature is finished and the owner is ready
 to publish, not the end of each step (the owner, 30 Sep, after one was
 started after every change to Guest Contact). A change to nala-shared.js
 makes `--changed` select everything, so while building, name the
-feature's suites instead.
+feature's suites instead. And a publish for Guest Contact's demo, while the
+module is the admin's alone, needs the suites that cover the change, not
+the full run (the owner, 30 Sep: "It's just a demo").
 
 `run.py` has a `COVERS` map for exactly this. Use it. Running everything after
 every small edit is what burns the session and hangs the tool.
