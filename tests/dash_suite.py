@@ -349,7 +349,11 @@ with sync_playwright() as p:
     pg.wait_for_timeout(150)
     ck("and the hamburger opens it",
        pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))
-    pg.click("#board")
+    #  On the date, which is plain type and beside the menu rather than
+    #  under it: the middle of #board is wherever the cards put it, and once
+    #  the Refresh row went (30 Sep) it was the FOH Sheet's print link, so
+    #  the tap went there instead.
+    pg.click("#title")
     pg.wait_for_timeout(150)
     ck("and a tap anywhere else shuts it again",
        not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))

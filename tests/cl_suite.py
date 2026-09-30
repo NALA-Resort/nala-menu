@@ -632,8 +632,9 @@ with sync_playwright() as p:
     # Select multiple would lead it to an Options sheet holding only Close.
     hkcell = pg.evaluate("""()=>{const c=document.getElementById('grid').lastElementChild;
       return {id:c&&c.id, sel:!!(document.getElementById('selToggle')||{}).isConnected};}""")
+    print("   housekeeping's eighteenth cell:", hkcell)
     ck("housekeeping finds the key in the eighteenth cell, and no Select multiple",
-       hkcell["id"] == "legend" and not hkcell["sel"], hkcell)
+       hkcell["id"] == "legend" and not hkcell["sel"])
     # The key is drawn at the size the tiles use. A key smaller than the thing
     # it explains teaches nothing, which is what it was: five marks wrapped
     # across two lines at 22 by 3, all looking the same.
