@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Menu from the bar</title>
+<!-- Mock, 30 Sep. The owner, of mock-menu-tab.html's B: "Mock it up first
+     ... Counter is blue. Show html UX of pressing the menu icon and it
+     rising from the bottom. It doesn't need to be full width, same as
+     before is ok", and "5 pages plus the menu".
+
+     The admin's bar: Dashboard, Reservations, Cleans, Chat and Tasks, then
+     the menu, six icons. The page you are on is its icon in blue, no pill,
+     and the counts are blue. The menu icon raises the menu from the foot,
+     the size the dropdown is today, beside the icon, over a light shade;
+     the icon, the shade or a row shuts it. Everything here can be pressed:
+     the icons and the rows move "the page" (its name at the top), and the
+     menu's groups open. A page that is in the menu and not on the bar
+     marks the menu icon blue while you are on it, as the phone's More tab
+     does. Nothing here is in the app.
+
+     Labels and order are the menu's own (tests/nav_canon.json, bfeabda).
+     The icons are Lucide's (lucide.dev), under its licence:
+     ISC License
+
+     Copyright (c) 2026 Lucide Icons and Contributors
+
+     Permission to use, copy, modify, and/or distribute this software for any
+     purpose with or without fee is hereby granted, provided that the above
+     copyright notice and this permission notice appear in all copies.
+
+     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+     WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+     MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+     ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+     WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+     ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+-->
+<style>
+  :root{ --ground:#FBFBF9; --surface:#FFFFFF; --rule:#E1E1DF; --card:#F0EFEC;
+         --ink:#1B1B19; --mid:#5F5F58; --accent:#1A66C2; --pill:999px;
+         --lift:0 1px 2px rgba(28,28,26,.06), 0 2px 10px rgba(28,28,26,.035);
+         --col:390px;          /* the phone */
+         --barw:min(calc(var(--col) - 42px), calc(100vw - 42px));
+         --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ min-height:100%; }
+  body{ background:var(--ground); color:var(--ink); font-family:var(--ui-font);
+        -webkit-tap-highlight-color:transparent; }
+  .screen{ max-width:var(--col); margin:0 auto; padding:18px 18px 120px; }
+  .note{ font-size:12px; color:var(--mid); line-height:1.45; background:var(--surface);
+         border-radius:8px; box-shadow:var(--lift); padding:8px 10px; margin-bottom:18px; }
+  .head{ display:flex; align-items:baseline; justify-content:space-between; margin:6px 2px 16px; }
+  .head h1{ font-size:22px; font-weight:600; }
+  .head .date{ font-size:14px; color:var(--mid); }
+  .card{ background:var(--surface); border-radius:10px; box-shadow:var(--lift); padding:14px;
+         margin-bottom:10px; }
+  .card .l1{ height:12px; width:62%; background:var(--card); border-radius:6px; }
+  .card .l2{ height:10px; width:38%; background:var(--card); border-radius:5px; margin-top:9px; }
+
+  /* the tab bar, as the app draws it: a capsule 62 tall, 21 off the foot
+     and the sides; six icons now */
+  .tabbar{ position:fixed; z-index:30; bottom:21px; left:50%; width:var(--barw);
+           transform:translateX(-50%); height:62px; padding:2px; display:flex;
+           background:var(--surface); border-radius:var(--pill);
+           box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06), 0 6px 20px rgba(28,28,26,.10); }
+  .tab{ flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center;
+        border:0; background:none; color:var(--mid); cursor:pointer; border-radius:var(--pill); }
+  .tab:active{ opacity:.55; }
+  .tab.on{ color:var(--accent); }
+  .ic{ position:relative; width:28px; height:28px; display:flex; }
+  svg{ width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.5;
+       stroke-linecap:round; stroke-linejoin:round; }
+  .badge{ position:absolute; top:-3px; left:calc(50% + 5px); min-width:18px; height:18px; padding:0 5px;
+          border-radius:var(--pill); background:var(--accent); color:#fff; font-size:12px;
+          display:flex; align-items:center; justify-content:center; }
+
+  /* the menu, risen from the foot beside its icon, the dropdown's size */
+  .shade{ position:fixed; inset:0; z-index:20; background:rgba(28,28,26,.16);
+          opacity:0; pointer-events:none; transition:opacity .2s ease; }
+  .shade.open{ opacity:1; pointer-events:auto; }
+  .menu{ position:fixed; z-index:40; bottom:calc(21px + 62px + 10px);
+         right:calc((100vw - var(--barw)) / 2); width:260px;
+         max-height:calc(100vh - 21px - 62px - 10px - 24px); overflow-y:auto;
+         background:var(--surface); border-radius:16px; padding:6px 0;
+         box-shadow:0 2px 6px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14);
+         transform-origin:calc(100% - 28px) 100%;
+         transform:translateY(18px) scale(.94); opacity:0; pointer-events:none;
+         transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease; }
+  .menu.open{ transform:none; opacity:1; pointer-events:auto; }
+  .row{ display:flex; align-items:center; gap:12px; width:100%; padding:11px 16px;
+        border:0; background:none; font:inherit; font-size:15px; color:var(--ink);
+        text-align:left; cursor:pointer; }
+  .row:active{ background:var(--card); }
+  .row .ic{ width:22px; height:22px; color:var(--mid); }
+  .row .lbl{ flex:1 1 auto; }
+  .row .count{ min-width:20px; height:20px; padding:0 6px; border-radius:var(--pill);
+               background:var(--accent); color:#fff; font-size:12px;
+               display:flex; align-items:center; justify-content:center; }
+  .row.grp{ border-top:1px solid var(--rule); }
+  .row.grp .lbl{ padding-left:34px; }
+  .row.grp .chev{ width:16px; height:16px; color:var(--mid); transition:transform .15s ease; }
+  .row.grp.open .chev{ transform:rotate(180deg); }
+  .sub{ display:none; }
+  .sub.open{ display:block; }
+  .sub .row{ padding-left:28px; }
+  .row.out{ border-top:1px solid var(--rule); color:var(--mid); }
+  @media (prefers-reduced-motion:reduce){ .menu, .shade{ transition:none; } }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="note">Mock. Press the icons, and the last one, the menu: it rises from the
+    foot, the size it is today. Press a row to go there, or the page to shut it.
+    Nothing here is live.</div>
+  <div class="head"><h1 id="title"></h1><div class="date">Sat 26th Sep</div></div>
+  <div id="cards"></div>
+</div>
+<div class="shade" id="shade"></div>
+<div class="menu" id="menu" role="menu" aria-label="Menu"></div>
+<nav class="tabbar" id="bar" aria-label="Pages"></nav>
+<script>
+var M = {"icon":{"dashboard.html":"list-todo","tally.html":"utensils","cleaners.html":"brush-cleaning","guest-contact.html":"messages-square","tasks.html":"clock-alert","front-desk.html":"concierge-bell","spa.html":"flower","calendar.html":"calendar-days","keys.html":"key-round","publish.html":"book-open-text","stats.html":"chart-gantt","list.html":"clipboard-list","housekeeping.html":"clipboard-check","registration.html":"plane-landing","menu-print.html":"scroll-text","past-menus.html":"history","invitations.html":"send","arrivals-sms.html":"clipboard-pen","spa-reminders.html":"bell","staff.html":"users","tag.html":"wheat-off","flags.html":"flag","pages.html":"files"},"paths":{"brush-cleaning":"<path d=\"m16 22-1-4\"/><path d=\"M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1\"/><path d=\"M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z\"/><path d=\"m8 22 1-4\"/>","clipboard-pen":"<path d=\"M16 4h2a2 2 0 0 1 2 2v2\"/><path d=\"M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\"/><path d=\"M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/>","concierge-bell":"<path d=\"M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z\"/><path d=\"M20 16a8 8 0 1 0-16 0\"/><path d=\"M12 4v4\"/><path d=\"M10 4h4\"/>","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\"/><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\"/>","menu":"<path d=\"M4 5h16\"/><path d=\"M4 12h16\"/><path d=\"M4 19h16\"/>","bell-ring":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\"/><path d=\"M22 8c0-2.3-.8-4.3-2-6\"/><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\"/><path d=\"M4 2C2.8 3.7 2 5.7 2 8\"/>","send":"<path d=\"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z\"/><path d=\"m21.854 2.147-10.94 10.939\"/>","scroll-text":"<path d=\"M15 12h-5\"/><path d=\"M15 8h-5\"/><path d=\"M19 17V5a2 2 0 0 0-2-2H4\"/><path d=\"M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3\"/>","flag":"<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/><path d=\"M12 7v5l4 2\"/>","clipboard-list":"<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><path d=\"M12 11h4\"/><path d=\"M12 16h4\"/><path d=\"M8 11h.01\"/><path d=\"M8 16h.01\"/>","flower":"<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5\"/><path d=\"M12 7.5V9\"/><path d=\"M7.5 12H9\"/><path d=\"M16.5 12H15\"/><path d=\"M12 16.5V15\"/><path d=\"m8 8 1.88 1.88\"/><path d=\"M14.12 9.88 16 8\"/><path d=\"m8 16 1.88-1.88\"/><path d=\"M14.12 14.12 16 16\"/>","wheat-off":"<path d=\"m2 22 10-10\"/><path d=\"m16 8-1.17 1.17\"/><path d=\"M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z\"/><path d=\"m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97\"/><path d=\"M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62\"/><path d=\"M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z\"/><path d=\"M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z\"/><path d=\"m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98\"/><path d=\"M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28\"/><line x1=\"2\" x2=\"22\" y1=\"2\" y2=\"22\"/>","list-todo":"<path d=\"M13 5h8\"/><path d=\"M13 12h8\"/><path d=\"M13 19h8\"/><path d=\"m3 17 2 2 4-4\"/><rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\"/>","files":"<path d=\"M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8\"/><path d=\"M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z\"/><path d=\"M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1\"/>","plane-landing":"<path d=\"M2 22h20\"/><path d=\"M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z\"/>","chevron-down":"<path d=\"m6 9 6 6 6-6\"/>","clock-alert":"<path d=\"M12 6v6l4 2\"/><path d=\"M20 12v5\"/><path d=\"M20 21h.01\"/><path d=\"M21.25 8.2A10 10 0 1 0 16 21.16\"/>","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/>","messages-square":"<path d=\"M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/><path d=\"M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1\"/>","clipboard-check":"<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><path d=\"m9 14 2 2 4-4\"/>","calendar-days":"<path d=\"M8 2v3\"/><path d=\"M16 2v3\"/><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18\"/><path d=\"M8 13h.01\"/><path d=\"M12 13h.01\"/><path d=\"M16 13h.01\"/><path d=\"M8 17h.01\"/><path d=\"M12 17h.01\"/><path d=\"M16 17h.01\"/>","book-open-text":"<path d=\"M12 5v16\"/><path d=\"M16 13h2\"/><path d=\"M16 9h2\"/><path d=\"M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z\"/><path d=\"M6 13h2\"/><path d=\"M6 9h2\"/>","log-out":"<path d=\"m16 17 5-5-5-5\"/><path d=\"M21 12H9\"/><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/>","key-round":"<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\"/><circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","chart-gantt":"<path d=\"M10 6h8\"/><path d=\"M12 16h6\"/><path d=\"M3 3v16a2 2 0 0 0 2 2h16\"/><path d=\"M8 11h7\"/>","utensils":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\"/><path d=\"M7 2v20\"/><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\"/>"},"top":[{"href":"dashboard.html","label":"Dashboard"},{"href":"calendar.html","label":"Calendar"},{"href":"front-desk.html","label":"Front Desk"},{"href":"guest-contact.html","label":"Chat"},{"href":"tasks.html","label":"Tasks"},{"href":"keys.html","label":"Keys"},{"href":"tally.html","label":"Reservations"},{"href":"cleaners.html","label":"Cleans"},{"href":"spa.html","label":"Spa"},{"href":"publish.html","label":"Publish Menu"},{"href":"stats.html","label":"Statistics"}],"groups":[{"group":"Print","items":[{"href":"list.html","label":"FOH Sheet"},{"href":"housekeeping.html","label":"Clean Sheet"},{"href":"registration.html","label":"Arrivals"},{"href":"menu-print.html","label":"Menu"},{"href":"past-menus.html","label":"Past Menus"}]},{"group":"SMS","items":[{"href":"invitations.html","label":"Invitations"},{"href":"arrivals-sms.html","label":"Pre-arrival"},{"href":"spa-reminders.html","label":"Spa reminders"}]},{"group":"Settings","items":[{"href":"staff.html","label":"General"},{"href":"tag.html","label":"Dietary"},{"href":"flags.html","label":"Flags"},{"href":"pages.html","label":"Pages"}]}],"bar":["dashboard.html","tally.html","cleaners.html","guest-contact.html","tasks.html"],"counts":{"guest-contact.html":1,"tasks.html":2,"spa.html":3},"signout":"Logout"};
+var here = 'tally.html', open = false, folded = {};
+var LABEL = {};
+M.top.forEach(function(p){ LABEL[p.href] = p.label; });
+M.groups.forEach(function(g){ g.items.forEach(function(i){ LABEL[i.href] = i.label; }); });
+function svg(name){ return '<svg viewBox="0 0 24 24" aria-hidden="true">' + M.paths[name] + '</svg>'; }
+function ic(href){ return '<span class="ic">' + svg(M.icon[href]) + '</span>'; }
+
+function drawBar(){
+  var onBar = M.bar.indexOf(here) > -1, h = '';
+  M.bar.forEach(function(p){
+    var n = p !== here && M.counts[p];
+    h += '<button class="tab' + (p === here ? ' on' : '') + '" data-go="' + p + '" aria-label="' + LABEL[p] + '">' +
+         '<span class="ic">' + svg(M.icon[p]) + (n ? '<span class="badge">' + n + '</span>' : '') + '</span></button>';
+  });
+  /* the menu icon: blue while it is open, or while you are on a page it
+     holds; it carries the counts the bar does not show */
+  var rest = 0;
+  Object.keys(M.counts).forEach(function(p){ if (M.bar.indexOf(p) < 0 && p !== here) rest += M.counts[p]; });
+  h += '<button class="tab' + (open || !onBar ? ' on' : '') + '" id="menuBtn" aria-label="Menu" aria-expanded="' + open + '">' +
+       '<span class="ic">' + svg('menu') + (rest ? '<span class="badge">' + rest + '</span>' : '') + '</span></button>';
+  document.getElementById('bar').innerHTML = h;
+}
+function row(href){
+  var n = M.counts[href];
+  return '<button class="row" data-go="' + href + '">' + ic(href) + '<span class="lbl">' + LABEL[href] +
+         '</span>' + (n ? '<span class="count">' + n + '</span>' : '') + '</button>';
+}
+function drawMenu(){
+  var h = '';
+  M.top.forEach(function(p){ if (p.href !== here) h += row(p.href); });
+  M.groups.forEach(function(g){
+    var items = g.items.filter(function(i){ return i.href !== here; });
+    h += '<button class="row grp' + (folded[g.group] ? ' open' : '') + '" data-grp="' + g.group + '">' +
+         '<span class="lbl">' + g.group + '</span><span class="chev">' + svg('chevron-down') + '</span></button>' +
+         '<div class="sub' + (folded[g.group] ? ' open' : '') + '">' + items.map(function(i){ return row(i.href); }).join('') +
+         (g.group === 'Settings' ? '<button class="row" data-none="1"><span class="ic">' + svg('bell-ring') +
+            '</span><span class="lbl">Notifications</span></button>' : '') + '</div>';
+  });
+  h += '<button class="row out" data-none="1"><span class="ic">' + svg('log-out') + '</span><span class="lbl">' +
+       M.signout + '</span></button>';
+  document.getElementById('menu').innerHTML = h;
+}
+function drawPage(){
+  document.getElementById('title').textContent = LABEL[here];
+  var c = '';
+  for (var i = 0; i < 9; i++) c += '<div class="card"><div class="l1"></div><div class="l2"></div></div>';
+  document.getElementById('cards').innerHTML = c;
+}
+function setOpen(v){
+  open = v;
+  document.getElementById('menu').classList.toggle('open', v);
+  document.getElementById('shade').classList.toggle('open', v);
+  drawBar();
+}
+function go(href){ here = href; setOpen(false); drawMenu(); drawPage(); window.scrollTo(0, 0); }
+
+document.getElementById('bar').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'menuBtn') setOpen(!open);
+  else go(b.getAttribute('data-go'));
+});
+document.getElementById('menu').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.getAttribute('data-grp')){
+    var g = b.getAttribute('data-grp'); folded[g] = !folded[g]; drawMenu(); return;
+  }
+  if (b.getAttribute('data-go')) go(b.getAttribute('data-go'));
+  else setOpen(false);
+});
+document.getElementById('shade').addEventListener('click', function(){ setOpen(false); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') setOpen(false); });
+drawBar(); drawMenu(); drawPage();
+</script>
+</body>
+</html>
