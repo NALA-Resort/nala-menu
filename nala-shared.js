@@ -3162,11 +3162,12 @@ var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
 /* The bar's icons, one per page on TABBAR (the suite fails a page on the
    bar that has none): Lucide's (lucide.dev), the set the owner chose on
    30 Sep off mock-tab-icons.html - "Let's use lucid" - with its checklist
-   for the Dashboard, which "is actually a daily checklist", and another
-   idea for Tasks. Line icons on Lucide's 24 grid, stroked 2 as Lucide
-   draws them (nala-ui2.css); each is copied unchanged from its own file
-   in lucide-static 1.49.0, named beside it, so a swap is a name looked up
-   at lucide.dev and its paths pasted here.
+   for the Dashboard, which "is actually a daily checklist", and an alarm
+   clock for Tasks, which "are important 'do it now' jobs". Line icons on
+   Lucide's 24 grid, stroked 2 as Lucide draws them (nala-ui2.css); each
+   is copied unchanged from its own file in lucide-static 1.49.0, named
+   beside it, so a swap is a name looked up at lucide.dev and its paths
+   pasted here.
 
    Lucide's licence, which asks to travel with its icons:
 
@@ -3194,8 +3195,8 @@ var TAB_ICONS = {
     '<path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/>',
   'guest-contact.html': /* message-circle */
     '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
-  'tasks.html':         /* hand-platter, service: a guest's request, carried out by a team */
-    '<path d="M12 3V2"/><path d="m15.4 17.4 3.2-2.8a2 2 0 1 1 2.8 2.9l-3.6 3.3c-.7.8-1.7 1.2-2.8 1.2h-4c-1.1 0-2.1-.4-2.8-1.2l-1.302-1.464A1 1 0 0 0 6.151 19H5"/><path d="M2 14h12a2 2 0 0 1 0 4h-2"/><path d="M4 10h16"/><path d="M5 10a7 7 0 0 1 14 0"/><path d="M5 14v6a1 1 0 0 1-1 1H2"/>',
+  'tasks.html':         /* alarm-clock: Tasks are the important, do it now jobs */
+    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
   'front-desk.html':    /* concierge-bell */
     '<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/>',
   'spa.html':           /* flower */

@@ -354,8 +354,8 @@ and in from its sides, icons in a 28pt box, labels 10pt semibold, the
 page you are on in a grey capsule, a narrow bar for two or three tabs
 and the compact one held sideways. The icons are Lucide's line icons,
 the owner's pick of four sets the same day (`mock-tab-icons.html`), with
-Lucide's checklist for the Dashboard and a hand carrying a platter for
-Tasks. It parts from the phone four times: those line icons where the
+Lucide's checklist for the Dashboard and an alarm clock for Tasks, the
+"do it now" jobs. It parts from the phone four times: those line icons where the
 phone fills, grey selection not blue, solid white not glass, the menu's
 badge not red. STYLEGUIDE.md has the table of Apple's numbers and the
 sources.

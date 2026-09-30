@@ -327,7 +327,7 @@ Four places it parts from the phone. The icons are line icons where the
 phone fills its own: the owner chose [Lucide](https://lucide.dev)'s on 30
 Sep, from four sets in `mock-tab-icons.html` ("Let's use lucid"), with
 its checklist for the Dashboard, which "is actually a daily checklist",
-and a hand carrying a platter for Tasks, the guests' requests. Each is
+and an alarm clock for Tasks, which "are important 'do it now' jobs". Each is
 copied unchanged from Lucide's own file, named beside it in `TAB_ICONS`
 with Lucide's licence. And three for rules of this app: selection is grey
 and ink, never the phone's blue (above); the bar is solid white, not
