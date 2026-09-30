@@ -193,7 +193,7 @@ async function machineToken(env) {
   TOKEN = j.idToken; TOKEN_AT = Date.now();
   return TOKEN;
 }
-export function forgetToken() { TOKEN = null; TOKEN_AT = 0; REFUSED = null; }   /* for the test */
+export function forgetToken() { TOKEN = null; TOKEN_AT = 0; REFUSED = null; TW_ERRORS = []; }   /* for the test */
 
 async function db(env, path, method, body) {
   const t = await machineToken(env);
@@ -324,6 +324,32 @@ async function villaOf(env, phone) {
    setup check (30 Sep). Kept in the Worker's memory only: it holds no
    message, and a restart forgets it, which costs one more test text. */
 let REFUSED = null;
+
+/* Twilio's own error reports, from its Debugger webhook (Monitor,
+   Settings: the owner found it, 30 Sep, and asked for an error webhook).
+   The last five, in memory only, for the setup check: the error's number,
+   what the Worker answered, and Twilio's own words. Not signature-checked,
+   because a wrong Auth Token is one of the things it reports; so only
+   this account's events are kept, nothing is written anywhere, and no
+   message text is kept. */
+let TW_ERRORS = [];
+async function debugEvent(request, env) {
+  const p = await formOf(request);
+  const acct = (env.TWILIO_ACCOUNT_SID || "").trim();
+  if (!acct || p.AccountSid !== acct) return new Response("", { status: 403 });
+  let pl = {};
+  try { pl = JSON.parse(p.Payload || "{}") || {}; } catch { pl = {}; }
+  const more = pl.more_info || {};
+  const resp = (pl.webhook && pl.webhook.response) || {};
+  TW_ERRORS.unshift({
+    at: String(p.Timestamp || new Date().toISOString()).slice(0, 40),
+    code: String(pl.error_code || more.ErrorCode || "").slice(0, 10),
+    status: String(resp.status_code || more.httpResponse || "").slice(0, 5),
+    body: String(resp.body || "").replace(/\s+/g, " ").slice(0, 120),
+    msg: String(more.Msg || more.msg || "").replace(/\s+/g, " ").slice(0, 200) });
+  TW_ERRORS = TW_ERRORS.slice(0, 5);
+  return new Response("", { status: 200 });
+}
 async function inbound(request, env, ctx) {
   const p = await formOf(request);
   if (!(await fromTwilio(request, env, p))) {
@@ -528,6 +554,11 @@ export async function setupCheck(request, env) {
   /* 4. the last text refused, while the Worker remembers it */
   if (REFUSED)
     add("inbound", false, "The last text Twilio passed here was refused: " + REFUSED.why + ".", REFUSED.at);
+  const te = TW_ERRORS[0];
+  if (te)
+    add("twilioerror", false, "Twilio reports error " + (te.code || "(no number)") +
+      (te.status ? ": the Worker answered " + te.status + (te.body ? ", " + te.body : "") : "") +
+      (te.msg ? ". Twilio says: " + te.msg : "") + ".", te.at);
 
   /* 5. only so you know */
   const tl = testList(env);
@@ -810,6 +841,7 @@ export default {
     try {
       if (path === "/twilio/in") return await inbound(request, env, ctx);
       if (path === "/twilio/status") return await receipt(request, env);
+      if (path === "/twilio/debug") return await debugEvent(request, env);
       return await desk(request, env);
     } catch (e) {
       const why = String((e && e.message) || e).slice(0, 200);

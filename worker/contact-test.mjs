@@ -729,5 +729,25 @@ ck("a setting left out is named by its name, and test mode counts its phones",
    c.by.twilio.ok === false && /TWILIO_AUTH_TOKEN is not set/.test(c.by.twilio.say) &&
    /only message 1 phone/.test(c.by.test.say) && /not set up yet/.test(c.by.whatsapp.say), c.list);
 
+/* Twilio's Debugger webhook (Monitor, Settings), which the owner found:
+   its error reports join the check. */
+const debugHook = (params) => worker.fetch(new Request(BASE + "/twilio/debug", { method: "POST",
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams(params).toString() }), envOf(), { waitUntil: () => {} });
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+r = await debugHook({ AccountSid: "AC123", Sid: "NO1", Level: "Error", Timestamp: "2026-09-30T03:46:31Z",
+  PayloadType: "application/json", Payload: JSON.stringify({ resource_sid: "SMx", error_code: "11200",
+    more_info: { Msg: "An attempt to retrieve content returned the HTTP status code 403", httpResponse: "403" },
+    webhook: { response: { status_code: 403, body: "not from Twilio" } } }) });
+c = await check();
+ck("Twilio's own error report joins the check: its number, the Worker's answer, Twilio's words",
+   r.status === 200 && c.by.twilioerror && c.by.twilioerror.ok === false &&
+   /error 11200: the Worker answered 403, not from Twilio\. Twilio says: An attempt to retrieve/.test(c.by.twilioerror.say) &&
+   c.by.twilioerror.at === "2026-09-30T03:46:31Z", c.by.twilioerror);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+r = await debugHook({ AccountSid: "ACsomeoneelse", Level: "Error", Payload: JSON.stringify({ error_code: "11200" }) });
+ck("another account's report is refused and kept nowhere",
+   r.status === 403 && !(await check()).by.twilioerror && WRITES.length === 0);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);
