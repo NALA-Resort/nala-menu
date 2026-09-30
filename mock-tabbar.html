@@ -20,10 +20,11 @@
      the grey capsule for the page you are on); and each login's bar as
      it is drawn today and once Chat and Tasks are opened. And, at his
      "Show full list of all pages now", every other page in the menu, with
-     a Lucide icon proposed for each: none of those is in the app.
+     its icon; and, at "B but with 4 icons, no grey pill, just change icon
+     colour to blue. Counters to red", four pages and the menu on each bar.
 
      Taken from the app, not retyped: the icons are TAB_ICONS and the names
-     NAV's, read out of nala-shared.js at 813073f; who is offered each is
+     NAV's, read out of nala-shared.js at bfeabda; who is offered each is
      tabsFor's answer on the shipped settings; each bar is the #tabBar the
      page drew on tests/paper_night.json (Saturday 26 Sep, 3:20 pm Brisbane),
      copied out of the page, its counts included; its dress is the tab bar
@@ -80,7 +81,7 @@
   .irow .st{ display:flex; align-items:center; justify-content:center; width:56px; height:44px;
              border-radius:var(--pill); color:var(--mid); }
   .irow .st svg{ width:28px; height:28px; }
-  .irow .st.on{ background:var(--sel-bg); color:var(--ink); }
+  .irow .st.now{ color:var(--accent); }
   .irow.off .big{ color:var(--mid); }
   .subl{ font-size:var(--t1); color:var(--mid); margin:14px 2px 6px; }
   .tag{ display:inline-block; vertical-align:2px; font-size:var(--t1); color:var(--mid);
@@ -112,8 +113,8 @@
 
   /* the tab bar's own dress, from nala-ui2.css */
 .phone .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
-                    border-radius:var(--pill); background:var(--accent);
-                    color:var(--accent-ink); font-size:var(--t1);
+                    border-radius:var(--pill); background:var(--law-red);
+                    color:#FFFFFF; font-size:var(--t1);
                     display:inline-flex; align-items:center; justify-content:center; }
 .phone{ --tabroom:0px; }
 .phone{ --tabroom:83px; }          /* 62 of bar and 21 under it */
@@ -130,12 +131,13 @@
                   box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06),
                              0 6px 20px rgba(28,28,26,.10);
                   pointer-events:auto; }
-.phone .tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
-                    align-items:center; justify-content:center;
+.phone .tabbar a, .phone .tabbar .tabmenu{ flex:1 1 0; min-width:0; display:flex;
+                    flex-direction:column; align-items:center; justify-content:center;
+                    padding:0; border:0; background:none; font:inherit; cursor:pointer;
                     border-radius:var(--pill); color:var(--mid); text-decoration:none;
                     -webkit-tap-highlight-color:transparent; }
 .phone .tabbar.few .tabrow{ width:fit-content; }
-.phone .tabbar.few a{ flex:0 0 98px; }
+.phone .tabbar.few a, .phone .tabbar.few .tabmenu{ flex:0 0 98px; }
 .phone .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
 /* Lucide's line drawn thinner than its own 2, at the owner's ask: 1.5 on
    its 24 grid, 1.75pt on the bar. Round ends, as Lucide's. */
@@ -147,8 +149,9 @@
    "Chat, 1" (and a mouse has the link's title). */
 .phone .tabbar .tablbl{ position:absolute; width:1px; height:1px; overflow:hidden;
                           clip-path:inset(50%); white-space:nowrap; }
-.phone .tabbar a[aria-current]{ background:var(--sel-bg); color:var(--ink); cursor:default; }
-.phone .tabbar a[href]:active{ background:var(--card); }
+.phone .tabbar a[aria-current],
+.phone .tabbar .tabmenu[aria-expanded="true"]{ color:var(--accent); cursor:default; }
+.phone .tabbar a[href]:active, .phone .tabbar .tabmenu:active{ opacity:.55; }
 .phone .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
                             min-width:18px; height:18px; padding:0 5px; }
 @media (orientation:landscape) and (max-height:500px){
@@ -158,6 +161,24 @@
   .phone .tabbar .navbadge{ top:-7px; left:auto; right:-7px; min-width:16px;
                               height:16px; padding:0 4px; font-size:11px; }
 }
+/* The menu from the foot. Where the bar is drawn its fifth icon opens the
+   menu (the owner, 30 Sep, off mock-menu-tab.html, "B"): a sheet rising
+   from the foot of the screen within a thumb's reach, over a shade that a
+   tap shuts it from, and the hamburger at the top stands down. A page
+   without the bar keeps the hamburger, and its menu drops from it. */
+.phone .navbtn{ display:none; }
+.phone .navdrop{ position:fixed; top:auto; left:0; right:0; bottom:0; z-index:1;
+                           margin:0 auto; max-width:calc(var(--appw) + 2*var(--appgut));
+                           min-width:0; max-height:calc(100dvh - 56px); overflow-y:auto;
+                           overscroll-behavior:contain; border:0;
+                           border-radius:16px 16px 0 0; background:var(--surface, #fff);
+                           padding:var(--s2) 0 calc(var(--s3) + env(safe-area-inset-bottom));
+                           box-shadow:0 -2px 24px rgba(28,28,26,.14); }
+.phone .navdrop a, .phone .navgrp{ font-size:var(--t3); padding:var(--s3) 22px; }
+.phone .navsub a{ padding-left:calc(22px + var(--s4)); }
+.phone .menushade{ display:none; }
+.phone .navdrop.open + .menushade{ display:block; position:fixed; inset:0; z-index:0;
+                                            background:rgba(28,28,26,.28); }
 .phone .tabbar{ position:absolute; }
 .phone::after{ content:''; position:absolute; z-index:6; bottom:8px; left:50%; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); }
 
@@ -166,145 +187,144 @@
 <body>
 <div class="wrap">
   <h1>Tab bar icons</h1>
-  <p class="lede">One icon a page, five at most: each login gets the first five of
-    this list it may open, in this order. Lucide's icons, the set chosen on
-    30 Sep, drawn thinner and with no name under them: grey, and ink in a
-    grey capsule on the page you are on.</p>
+  <p class="lede">One icon a page, four at most and the menu as the fifth: each login
+    gets the first four of this list it may open, in this order. Lucide's icons,
+    the set chosen on 30 Sep, drawn thinner and with no name under them: grey,
+    the page you are on in blue, and the counts in red.</p>
 
   <div class="seclabel">Every page</div>
-  <div class="secnote">The eleven that ride on the bar, as built, in its order, with
-    who is offered each. Then the rest of the menu, which has no icons in the app:
-    each is given a Lucide icon here, proposed, so the whole list reads as one
-    set.</div>
+  <div class="secnote">The eleven that can ride on the bar, in its order, with who is
+    offered each: four at most, and the menu as the fifth. Then the rest of the
+    menu, which draws every page with its icon too.</div>
   <div class="subl">On the bar</div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></div>
     <div class="mid"><div class="nm">Dashboard</div><div class="who">Admin &middot; Manager &middot; Waiter &middot; Chef</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
     <div class="mid"><div class="nm">Reservations</div><div class="who">Admin &middot; Manager &middot; Waiter &middot; Chef</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></div>
     <div class="mid"><div class="nm">Cleans</div><div class="who">Admin &middot; Manager &middot; Waiter &middot; Housekeeping</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></div>
     <div class="mid"><div class="nm">Chat</div><div class="who">Today: Admin<br>Once Chat and Tasks are opened: Admin &middot; Manager &middot; Waiter</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></div>
-    <div class="mid"><div class="nm">Tasks</div><div class="who">Today: Admin<br>Once Chat and Tasks are opened: Admin &middot; Manager &middot; Waiter &middot; Chef &middot; Housekeeping &middot; Masseuse</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></span></div>
+    <div class="mid"><div class="nm">Tasks</div><div class="who">Nobody today<br>Once Chat and Tasks are opened: Chef &middot; Housekeeping &middot; Masseuse</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></div>
     <div class="mid"><div class="nm">Front Desk</div><div class="who">Today: Manager &middot; Waiter<br>Once Chat and Tasks are opened: nobody</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></div>
-    <div class="mid"><div class="nm">Spa</div><div class="who">Today: Manager &middot; Waiter<br>Once Chat and Tasks are opened: Masseuse</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></span></div>
+    <div class="mid"><div class="nm">Spa</div><div class="who">Nobody today<br>Once Chat and Tasks are opened: Masseuse</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></div>
     <div class="mid"><div class="nm">Calendar</div><div class="who">Housekeeping</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></div>
     <div class="mid"><div class="nm">Keys</div><div class="who">No login on the shipped settings. It stands in for one whose other pages are switched off.</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></div>
     <div class="mid"><div class="nm">Publish Menu</div><div class="who">Chef</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></span></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></span></div>
   </div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></div>
-    <div class="mid"><div class="nm">Statistics</div><div class="who">Chef</div></div>
-    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></span></div>
+    <div class="mid"><div class="nm">Statistics</div><div class="who">Today: Chef<br>Once Chat and Tasks are opened: nobody</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></span><span class="st now"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></span></div>
   </div>
   <div class="subl">Print</div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></div>
-    <div class="mid"><div class="nm">FOH Sheet <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Print, not on the bar. Lucide's clipboard-list.</div></div>
+    <div class="mid"><div class="nm">FOH Sheet</div>
+      <div class="who">In the menu under Print, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
-    <div class="mid"><div class="nm">Clean Sheet <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Print, not on the bar. Lucide's clipboard-check.</div></div>
+    <div class="mid"><div class="nm">Clean Sheet</div>
+      <div class="who">In the menu under Print, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 22h20"/><path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z"/></svg></div>
-    <div class="mid"><div class="nm">Arrivals <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Print, not on the bar. Lucide's plane-landing.</div></div>
+    <div class="mid"><div class="nm">Arrivals</div>
+      <div class="who">In the menu under Print, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 22h20"/><path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
-    <div class="mid"><div class="nm">Menu <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Print, not on the bar. Lucide's scroll-text.</div></div>
+    <div class="mid"><div class="nm">Menu</div>
+      <div class="who">In the menu under Print, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></div>
-    <div class="mid"><div class="nm">Past Menus <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Print, not on the bar. Lucide's history.</div></div>
+    <div class="mid"><div class="nm">Past Menus</div>
+      <div class="who">In the menu under Print, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span></div>
   </div>
   <div class="subl">SMS</div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></div>
-    <div class="mid"><div class="nm">Invitations <span class="tag">proposed</span></div>
-      <div class="who">In the menu under SMS, not on the bar. Lucide's send.</div></div>
+    <div class="mid"><div class="nm">Invitations</div>
+      <div class="who">In the menu under SMS, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
-    <div class="mid"><div class="nm">Pre-arrival <span class="tag">proposed</span></div>
-      <div class="who">In the menu under SMS, not on the bar. Lucide's clipboard-pen.</div></div>
+    <div class="mid"><div class="nm">Pre-arrival</div>
+      <div class="who">In the menu under SMS, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></div>
-    <div class="mid"><div class="nm">Spa reminders <span class="tag">proposed</span></div>
-      <div class="who">In the menu under SMS, not on the bar. Lucide's bell.</div></div>
+    <div class="mid"><div class="nm">Spa reminders</div>
+      <div class="who">In the menu under SMS, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
   </div>
   <div class="subl">Settings</div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div>
-    <div class="mid"><div class="nm">General <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Settings, not on the bar. Lucide's users.</div></div>
+    <div class="mid"><div class="nm">General</div>
+      <div class="who">In the menu under Settings, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg></div>
-    <div class="mid"><div class="nm">Dietary <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Settings, not on the bar. Lucide's wheat-off.</div></div>
+    <div class="mid"><div class="nm">Dietary</div>
+      <div class="who">In the menu under Settings, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg></div>
-    <div class="mid"><div class="nm">Flags <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Settings, not on the bar. Lucide's flag.</div></div>
+    <div class="mid"><div class="nm">Flags</div>
+      <div class="who">In the menu under Settings, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg></span></div>
   </div>
   <div class="irow off">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg></div>
-    <div class="mid"><div class="nm">Pages <span class="tag">proposed</span></div>
-      <div class="who">In the menu under Settings, not on the bar. Lucide's files.</div></div>
+    <div class="mid"><div class="nm">Pages</div>
+      <div class="who">In the menu under Settings, not on the bar.</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg></span></div>
   </div>
 
@@ -314,40 +334,40 @@
     indicator lives, and 21pt in from its sides.</div>
   <div class="case">
     <div class="cap">The admin, on Reservations</div>
-    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Chat"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"></path></svg><span class="navbadge">1</span></span><span class="tablbl">Chat</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg><span class="navbadge">2</span></span><span class="tablbl">Tasks</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Chat"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"></path></svg><span class="navbadge">1</span></span><span class="tablbl">Chat</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg><span class="navbadge">5</span></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">A manager or waiter today, on Reservations</div>
-    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Front Desk"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"></path><path d="M20 16a8 8 0 1 0-16 0"></path><path d="M12 4v4"></path><path d="M10 4h4"></path></svg></span><span class="tablbl">Front Desk</span></a><a title="Spa"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"></path><path d="M12 7.5V9"></path><path d="M7.5 12H9"></path><path d="M16.5 12H15"></path><path d="M12 16.5V15"></path><path d="m8 8 1.88 1.88"></path><path d="M14.12 9.88 16 8"></path><path d="m8 16 1.88-1.88"></path><path d="M14.12 14.12 16 16"></path></svg><span class="navbadge">3</span></span><span class="tablbl">Spa</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Front Desk"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"></path><path d="M20 16a8 8 0 1 0-16 0"></path><path d="M12 4v4"></path><path d="M10 4h4"></path></svg></span><span class="tablbl">Front Desk</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg><span class="navbadge">3</span></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">A manager or waiter once Chat and Tasks are opened</div>
-    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Chat"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"></path></svg><span class="navbadge">1</span></span><span class="tablbl">Chat</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg><span class="navbadge">2</span></span><span class="tablbl">Tasks</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a aria-current="page" title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Chat"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"></path></svg><span class="navbadge">1</span></span><span class="tablbl">Chat</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg><span class="navbadge">5</span></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">The chef today, on Publish Menu</div>
-    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a aria-current="page" title="Publish Menu"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"></path><path d="M16 13h2"></path><path d="M16 9h2"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path><path d="M6 13h2"></path><path d="M6 9h2"></path></svg></span><span class="tablbl">Publish Menu</span></a><a title="Statistics"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"></path><path d="M12 16h6"></path><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 11h7"></path></svg></span><span class="tablbl">Statistics</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a aria-current="page" title="Publish Menu"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"></path><path d="M16 13h2"></path><path d="M16 9h2"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path><path d="M6 13h2"></path><path d="M6 9h2"></path></svg></span><span class="tablbl">Publish Menu</span></a><a title="Statistics"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"></path><path d="M12 16h6"></path><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 11h7"></path></svg></span><span class="tablbl">Statistics</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">The chef once Tasks is opened</div>
-    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a aria-current="page" title="Publish Menu"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"></path><path d="M16 13h2"></path><path d="M16 9h2"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path><path d="M6 13h2"></path><path d="M6 9h2"></path></svg></span><span class="tablbl">Publish Menu</span></a><a title="Statistics"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"></path><path d="M12 16h6"></path><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 11h7"></path></svg></span><span class="tablbl">Statistics</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a title="Dashboard"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"></path><path d="M13 12h8"></path><path d="M13 19h8"></path><path d="m3 17 2 2 4-4"></path><rect x="3" y="4" width="6" height="6" rx="1"></rect></svg></span><span class="tablbl">Dashboard</span></a><a title="Reservations"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg></span><span class="tablbl">Reservations</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a aria-current="page" title="Publish Menu"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"></path><path d="M16 13h2"></path><path d="M16 9h2"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path><path d="M6 13h2"></path><path d="M6 9h2"></path></svg></span><span class="tablbl">Publish Menu</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">Housekeeping today, on Cleans</div>
-    <div class="phone"><nav class="tabbar few" aria-label="Pages"><div class="tabrow"><a aria-current="page" title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Calendar"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg></span><span class="tablbl">Calendar</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar few" aria-label="Pages"><div class="tabrow"><a aria-current="page" title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Calendar"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg></span><span class="tablbl">Calendar</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">Housekeeping once Tasks is opened</div>
-    <div class="phone"><nav class="tabbar few" aria-label="Pages"><div class="tabrow"><a aria-current="page" title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a title="Calendar"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg></span><span class="tablbl">Calendar</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar" aria-label="Pages"><div class="tabrow"><a aria-current="page" title="Cleans"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"></path><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"></path><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"></path><path d="m8 22 1-4"></path></svg></span><span class="tablbl">Cleans</span></a><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a title="Calendar"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg></span><span class="tablbl">Calendar</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
   <div class="case">
     <div class="cap">The masseuse once Tasks is opened, on Spa</div>
-    <div class="phone"><nav class="tabbar few" aria-label="Pages"><div class="tabrow"><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a aria-current="page" title="Spa"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"></path><path d="M12 7.5V9"></path><path d="M7.5 12H9"></path><path d="M16.5 12H15"></path><path d="M12 16.5V15"></path><path d="m8 8 1.88 1.88"></path><path d="M14.12 9.88 16 8"></path><path d="m8 16 1.88-1.88"></path><path d="M14.12 14.12 16 16"></path></svg></span><span class="tablbl">Spa</span></a></div></nav></div>
+    <div class="phone"><nav class="tabbar few" aria-label="Pages"><div class="tabrow"><a title="Tasks"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"></path><path d="M20 12v5"></path><path d="M20 21h.01"></path><path d="M21.25 8.2A10 10 0 1 0 16 21.16"></path></svg></span><span class="tablbl">Tasks</span></a><a aria-current="page" title="Spa"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"></path><path d="M12 7.5V9"></path><path d="M7.5 12H9"></path><path d="M16.5 12H15"></path><path d="M12 16.5V15"></path><path d="m8 8 1.88 1.88"></path><path d="M14.12 9.88 16 8"></path><path d="m8 16 1.88-1.88"></path><path d="M14.12 14.12 16 16"></path></svg></span><span class="tablbl">Spa</span></a><button type="button" class="tabmenu" title="Menu" aria-expanded="false"><span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></span><span class="tablbl">Menu</span></button></div></nav></div>
   </div>
 
 
 
-  <p class="end">A picture, frozen 30 Sep from the built bar (813073f). Nothing
+  <p class="end">A picture, frozen 30 Sep from the built bar (bfeabda). Nothing
     on it works.</p>
 </div>
 </body>

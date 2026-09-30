@@ -122,7 +122,10 @@ sat beside a blue segment on the same sheet.
   to read.
 - **Destructive always asks**, and names the guest and the thing.
 - **Selected is grey, never black and never blue.** A pill saying "you
-  picked me" must not spend a colour that means something.
+  picked me" must not spend a colour that means something. The tab bar is
+  the one exception (the owner, 30 Sep: "no grey pill, just change icon
+  colour to blue"): the page you are on is its icon in the accent blue,
+  as the phone draws it.
 
 A page may set the LAYOUT of the row its buttons sit in. It may not dress
 them again. The roles live in `nala-ui2.css` and the aliases for each
@@ -287,8 +290,8 @@ Floating corner menus remain banned: a fixed element pinned over in-flow
 content is guaranteed to collide with something at some width.
 
 **The one pinned element is the tab bar** (the owner's ask, 30 Sep): icons
-along the foot of the screen, one per page a login uses most, five at
-most. It answers the ban rather than ignoring it, with three rules that
+along the foot of the screen, one per page a login uses most, four at
+most, and the menu as the fifth. It answers the ban rather than ignoring it, with three rules that
 `tabs_suite` measures:
 
 - **The page ends above it.** Every page gets room at its end for the bar,
@@ -312,7 +315,9 @@ size". Apple's numbers, each held by `tabs_suite`:
 | Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | Lucide's line icons (below), in a 28pt box; the Dashboard's checklist 23pt |
 | Line weight | the symbol's weight matched to its label's | thinner than Lucide's own 2: 1.5 on its 24 grid (below) |
 | Labels | 10pt semibold, 1pt under the icon | none shown (below), each kept for a screen reader |
-| Selected | a grey capsule as tall as the bar, the tint colour | the grey capsule, ink |
+| Selected | a grey capsule as tall as the bar, the tint colour | the tint alone: the icon blue, no capsule (below) |
+| Counts | a red badge on the icon | the same, the law's red (below) |
+| More pages than fit | the More tab, last, opening the rest | the menu, fifth, rising from the foot (below) |
 | Two or three tabs | a narrow bar, 98pt a tab | the same, centred |
 | Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
 
@@ -327,15 +332,24 @@ Where it parts from the phone, the owner chose to, 30 Sep. Line icons
 where the phone fills its own: [Lucide](https://lucide.dev)'s, from four
 sets in `mock-tab-icons.html` ("Let's use lucid"), with `list-todo` for
 the Dashboard, which "is actually a daily checklist", and `clock-alert`
-for Tasks, which "are important 'do it now' jobs". Drawn thinner than
-Lucide's own ("Make icon line thinner"), and no name under them ("No
-text below icon"): the name stays in the link, out of sight, for a
-screen reader. Each icon is copied unchanged from Lucide's own file,
-named beside it in `TAB_ICONS` with Lucide's licence. And three for
-rules of this app: selection is grey
-and ink, never the phone's blue (above); the bar is solid white, not
-glass, as nothing on paper lets the page through; and a count is the
-menu's own badge, never the phone's red, which here means failure.
+for Tasks, which "are important 'do it now' jobs", `messages-square` for
+Chat, `chart-gantt` for Statistics. Drawn thinner than Lucide's own
+("Make icon line thinner"), and no name under them ("No text below
+icon"): the name stays in the link, out of sight, for a screen reader.
+Each icon is copied unchanged from Lucide's own file, named beside it in
+`PAGE_ICONS` with Lucide's licence, and the menu draws every page with
+its own. And one for a rule of this app: the bar is solid white, not
+glass, as nothing on paper lets the page through.
+
+Where it follows the phone at his word, 30 Sep, off `mock-menu-tab.html`
+("B but with 4 icons, no grey pill, just change icon colour to blue.
+Counters to red"): four pages and the menu as the fifth, the phone's
+More tab, which opens the whole menu as a sheet from the foot - within a
+thumb's reach, over a shade a tap shuts it from - while the hamburger at
+the top stands down; the page you are on in blue; and the counts in red,
+the colour law's second exception (CLAUDE.md). What the menu holds and
+the bar does not show adds to the menu icon's count - Tasks', for the
+admin - so urgent work does not wait behind a closed menu.
 
 What scrolls under the bar fades into the ground, as content does under
 the phone's bars, so a row is never cut by the capsule. Under a page's
@@ -355,7 +369,9 @@ Publish - standing on the bar.
 
 ## Controls - identical on every staff page
 
-- **Nav menu**: three-bar button, fixed top right. Dropdown lists the other
+- **Nav menu**: where the tab bar is drawn, its fifth icon, opening the
+  menu from the foot with every row's icon (30 Sep); elsewhere a
+  three-bar button, fixed top right. It lists the other
   staff screens by their working names: Reservations (tally.html),
   Reservations Sheet (list.html), Cleans (cleaners.html), Clean sheet
   (housekeeping.html), always in that order - live board then its sheet,
@@ -372,10 +388,10 @@ Publish - standing on the bar.
   footer holds the page's primary action; Refresh is never one (below).
 - **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
   nala-shared.js from `TABBAR`, never written into a page. The icons are
-  Lucide's, copied unchanged into `TAB_ICONS` and named there, each
+  Lucide's, copied unchanged into `PAGE_ICONS` and named there, each
   link's hidden name is the page's menu name, and a count from
-  `NAV_ACTIONS` rides on its icon. Its dress, to Apple's
-  numbers, is under Header above.
+  `NAV_ACTIONS` rides on its icon; the menu is the fifth. Its dress, to
+  Apple's numbers, is under Header above.
 - **Pull to refresh** (since 30 Sep, in place of every Refresh button): a
   board asks for it with `pullToRefresh()`. In the Home Screen app a pull
   down from the very top shows a turning arrow, grey until a release would
@@ -383,8 +399,9 @@ Publish - standing on the bar.
   under a sheet, the menu or the bar.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 - **The action icon** (`.navbadge`, since 25 Aug): a number beside a menu
-  entry meaning "something in there waits on you". Amber, the colour law's
-  word for attention. It is never stored - `NAV_ACTIONS` in nala-shared.js
+  entry, and on its tab bar icon, meaning "something in there waits on
+  you". Red since 30 Sep, the phone's own badge (the owner: "Counters to
+  red"), the colour law's second exception. It is never stored - `NAV_ACTIONS` in nala-shared.js
   recomputes it from the queue it counts on every page load, which is how it
   "stays until the action is done" with nothing to remember to clear. First
   carried by Spa, counting suggestions awaiting the desk; add an entry to

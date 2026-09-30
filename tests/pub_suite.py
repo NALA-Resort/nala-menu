@@ -334,15 +334,24 @@ with sync_playwright() as p:
     #  is plainly visible. Assert the thing it stood in for, and all three
     #  bars rather than the first.
     ck("and is actually visible, not drawn in colours that resolve to nothing",
-       pg.evaluate("""()=>{const b=document.getElementById('navBtn');
-          const r=b.getBoundingClientRect();
-          const bars=[...b.querySelectorAll('span')];
+       pg.evaluate("""()=>{
+          /* Since 30 Sep the way off is the tab bar's menu icon wherever the
+             bar is drawn, the hamburger standing down; the hamburger where
+             it is not. Whichever shows must really show. */
+          const way=[...document.querySelectorAll('#tab-menu, #navBtn')].find(e=>{
+            const r=e.getBoundingClientRect(); return r.width>20 && r.height>20;});
+          if (!way) return false;
+          if (way.id==='tab-menu'){
+            const s=way.querySelector('svg'), c=getComputedStyle(s).stroke, r=s.getBoundingClientRect();
+            return r.width>20 && c!=='none' && c!=='rgba(0, 0, 0, 0)';
+          }
+          const bars=[...way.querySelectorAll('span')];
           const lit=bars.every(s=>{
             const sr=s.getBoundingClientRect();
             const sc=getComputedStyle(s).backgroundColor;
             return sr.width>0 && sr.height>0 &&
                    sc!=='rgba(0, 0, 0, 0)' && sc!=='transparent';});
-          return r.width>20 && r.height>20 && bars.length===3 && lit;}"""))
+          return bars.length===3 && lit;}"""))
     pg.close()
 
     # ── the rehearsal ───────────────────────────────────────────

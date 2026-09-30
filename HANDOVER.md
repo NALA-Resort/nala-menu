@@ -333,15 +333,22 @@ keeps one.
 
 **The tab bar** (30 Sep, the owner's ask): icons along the foot of every
 ui2 page with a menu for the pages a login uses most - one icon a page,
-five at most, and only pages the login may open. `TABBAR` in
-`nala-shared.js` is the order of preference and a login gets the first
-five it may open (`tabsFor`, asking `canOpen`, so a page switched off in
-Settings leaves the bar and the menu together). The admin's five lead it,
-as ruled: Dashboard, Reservations, Cleans, Chat, Tasks. The waiter and the
-manager reach more than five too, so they get those same five once Chat
-and Tasks are opened (until then Front Desk and Spa stand in); the chef,
-housekeeping and the masseuse get what they can open (the chef's includes
-Statistics, last in the order), and a login with one page gets no bar.
+four at most and the menu as the fifth, and only pages the login may
+open. `TABBAR` in `nala-shared.js` is the order of preference and a
+login gets the first four it may open (`tabsFor`, asking `canOpen`, so a
+page switched off in Settings leaves the bar and the menu together). The
+admin's five lead it, as ruled: Dashboard, Reservations, Cleans, Chat,
+Tasks - the first four on the bar, and Tasks in the menu since the owner
+made the menu the fifth icon ("B but with 4 icons", `mock-menu-tab.html`),
+its count carried on the menu's icon. The waiter and the manager get the
+same four once Chat is opened (until then Front Desk stands in); the
+chef, housekeeping and the masseuse get what they can open, and a login
+with one page gets no bar and keeps the hamburger. The menu icon opens
+the whole menu as a sheet from the foot, every row with its page's icon
+(`PAGE_ICONS`), and the hamburger at the top stands down where the bar
+is. The page you are on is its icon in blue and the counts are red, both
+his rulings of the same day, the red written into the colour law as its
+second exception.
 The menu's counts ride on the icons. The page's footer stands on the
 bar; sheets and the select and save bars cover it. Not on the printed
 sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and

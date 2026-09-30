@@ -123,15 +123,16 @@
     "_comment": [
       "The tab bar along the foot of every ui2 page with a menu, as buildTabs",
       "in nala-shared.js draws it (TABBAR, TABBAR_MAX). The owner, 30 Sep: one",
-      "icon a page, five at most, only pages the login may open, and the",
-      "admin's five are Dashboard, Reservations, Cleans, Chat and Tasks. A",
-      "login gets the first five of the order it may open, in that order; one",
-      "page alone draws no bar. Statistics came last the same day, for the",
-      "chef ('could become one of the icons for the chef'). 'roles' is what",
-      "each role is offered on the shipped grants while Chat and Tasks are",
-      "still the admin's alone (PREVIEW_PAGES), 'roles_open' once the owner",
-      "has opened them. Change the bar in TABBAR and here, and tabs_suite",
-      "names whichever was missed."
+      "icon a page, only pages the login may open, and the admin's five are",
+      "Dashboard, Reservations, Cleans, Chat and Tasks - then the same day the",
+      "menu as the fifth icon ('B but with 4 icons', mock-menu-tab.html), so a",
+      "login gets the first four of the order it may open, in that order, and",
+      "the menu after them; one page alone draws no bar. Statistics came last",
+      "the same day, for the chef ('could become one of the icons for the",
+      "chef'). 'roles' is what each role is offered on the shipped grants while",
+      "Chat and Tasks are still the admin's alone (PREVIEW_PAGES), 'roles_open'",
+      "once the owner has opened them. Change the bar in TABBAR and here, and",
+      "tabs_suite names whichever was missed."
     ],
     "order": [
       "dashboard.html",
@@ -146,21 +147,19 @@
       "publish.html",
       "stats.html"
     ],
-    "max": 5,
+    "max": 4,
     "roles": {
       "admin": [
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "guest-contact.html",
-        "tasks.html"
+        "guest-contact.html"
       ],
       "manager": [
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "front-desk.html",
-        "spa.html"
+        "front-desk.html"
       ],
       "chef": [
         "dashboard.html",
@@ -172,8 +171,7 @@
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "front-desk.html",
-        "spa.html"
+        "front-desk.html"
       ],
       "housekeeping": [
         "cleaners.html",
@@ -186,29 +184,25 @@
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "guest-contact.html",
-        "tasks.html"
+        "guest-contact.html"
       ],
       "manager": [
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "guest-contact.html",
-        "tasks.html"
+        "guest-contact.html"
       ],
       "chef": [
         "dashboard.html",
         "tally.html",
         "tasks.html",
-        "publish.html",
-        "stats.html"
+        "publish.html"
       ],
       "waiter": [
         "dashboard.html",
         "tally.html",
         "cleaners.html",
-        "guest-contact.html",
-        "tasks.html"
+        "guest-contact.html"
       ],
       "housekeeping": [
         "cleaners.html",

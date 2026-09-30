@@ -37,6 +37,12 @@
     ]
   },
 
+  "counter": {
+    "_note": "Red's second exception, ruled 30 Sep ('Counters to red'): the count of what waits on you, the badge on a tab bar icon and a menu row, the phone's own. The law's red, nothing new; a count drawn on a board as a number stays ink.",
+    "values": [
+      {"value": "#A8321E", "means": "a count of what waits on you: the badge on the tab bar and in the menu"}
+    ]
+  },
   "page_keys": {
     "cleaners.html": {
       "why": "Cleans' colours say WHICH JOB, not how it stands: blue a clean, green a service, orange a pre-arrival, and a clock that goes green, amber, red as the guest's return nears. The owner, 27 Sep, shown that its green and orange mean something else on every other board: keep its job colours. Written into the colour law as Cleans' own key.",

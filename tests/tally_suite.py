@@ -344,12 +344,14 @@ with sync_playwright() as p:
     ck("the text sits centred in the pill", abs(float(pubPill["inkOff"])) < 0.2)
     pg.evaluate("(h)=>{document.querySelector('.menustate').innerHTML=h;}", realPill)
     pg.wait_for_timeout(120)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     ck("nav menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
     #  Closed by clicking well clear of the menu rather than on a named block.
     #  The drop-down grew a row on 23 Aug and covered the one this used to aim
     #  at, so the click landed on a link inside the menu instead of outside it.
-    pg.mouse.click(8, 500); pg.wait_for_timeout(150)
+    #  Near the top-left corner since 30 Sep: the menu can rise from the foot
+    #  now, as a sheet over the lower screen, and a tap at 500 lands on it.
+    pg.mouse.click(8, 20); pg.wait_for_timeout(150)
     ck("and closes on a tap outside it",
        not pg.evaluate("()=>navDrop.classList.contains('open')"))
 

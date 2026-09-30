@@ -54,10 +54,12 @@ Already done this way — follow these:
   `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
   tests expect, and whichever side a change misses fails by name.
 - `nala-shared.js` → `TABBAR` - the tab bar along the foot of every ui2
-  page with a menu (the owner, 30 Sep): one icon a page, five at most, the
-  first of `TABBAR` a login may open (`tabsFor`, asking `canOpen`),
-  labelled from `NAV`. The admin's five lead it. `nav_canon.json`'s "tabs"
-  is what each role is offered, as `tabs_suite` asserts.
+  page with a menu (the owner, 30 Sep): one icon a page, four at most and
+  the menu as the fifth, the first four of `TABBAR` a login may open
+  (`tabsFor`, asking `canOpen`), labelled from `NAV`. The admin's five
+  lead it: four ride the bar, and Tasks sits in the menu, whose icon
+  carries its count. `nav_canon.json`'s "tabs" is what each role is
+  offered, as `tabs_suite` asserts.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `tests/form_dinner_cases.json` — the guest's pre-arrival dinner answer as
   every screen must read it (`formDinnerCell`, nala-shared.js). Added 4 Sep,
@@ -117,20 +119,24 @@ while the app is wrong.
 The 28-edit story below is over: the menu markup left the pages on 26 Aug,
 when the hamburger was redesigned (submenus, non-caps) and generated in the
 same stroke. A new page is one entry in `NAV`, the same line in
-`tests/nav_canon.json`, and the `?v=` bumps — which are still hand-
-maintained, see below.
+`tests/nav_canon.json`, its icon in `PAGE_ICONS` (the menu draws every
+page with one since 30 Sep, and `tabs_suite` names a page without), and
+the `?v=` bumps — which are still hand-maintained, see below.
 
 Two things the generator gets right that you would get wrong pasting: each
 page omits its own link, and the permission keys are `resSheet` and
 `cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
 
-A board on the tab bar (30 Sep) is its place in `TABBAR`, a drawing in
-`TAB_ICONS` and the same line in the canon's "tabs"; no page changes, as
+A board on the tab bar (30 Sep) is its place in `TABBAR`, its icon in
+`PAGE_ICONS` and the same line in the canon's "tabs"; no page changes, as
 the bar draws itself into every ui2 page with a menu and `nala-ui2.css`
 stands each page's `.foot` on it. The drawing is Lucide's, copied
 unchanged from its file and named beside it (the owner's choice, 30 Sep);
 the bar is otherwise the iPhone's own, to Apple's numbers (STYLEGUIDE.md).
-A page's own fixed
+Its fifth icon is the menu, which opens from the foot, and where the bar
+is drawn the hamburger at the top stands down (the owner, 30 Sep, off
+`mock-menu-tab.html`); the page's own `#navBtn` still does the opening,
+hidden, so a page's menu code is untouched. A page's own fixed
 bar at the foot stands on `var(--tabroom)` and wears `onbar`, so the
 strip under it is solid, as Publish's does, or rises over the bar with a
 z-index above 5, as Dietary's save bar does - never under it. A board
@@ -276,6 +282,21 @@ Three things this exception does NOT extend to, all settled already:
   diner's, the line Publish's rings already draw (red confirmed, amber only
   staying). The pill still says what they cannot have; the red arrives the
   moment they confirm.
+
+### Red's second exception: a count
+
+Ruled by the owner, 30 Sep, with the tab bar: "Counters to red". The
+count of what waits on you - the badge on a tab bar icon and on a menu
+row, `.navbadge` - wears the law's red, as the phone's own badges do. It
+is neither a failure nor a hazard; it is the one place red says "waiting
+on you", and it is held to the badge. A count drawn on a board as a
+number stays ink (Reservations' villas awaiting, `tally_suite`), and
+nothing else that waits turns red with it. `tests/colour_law.json`
+records it beside the allergy.
+
+The same day he ruled the tab bar's selection blue ("no grey pill, just
+change icon colour to blue"): the page you are on is its icon in the
+accent. The grey selection pill is for pills; the bar is the phone's.
 
 ### Paper: a ground, not a colour
 
