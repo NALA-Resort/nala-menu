@@ -749,5 +749,47 @@ r = await debugHook({ AccountSid: "ACsomeoneelse", Level: "Error", Payload: JSON
 ck("another account's report is refused and kept nowhere",
    r.status === 403 && !(await check()).by.twilioerror && WRITES.length === 0);
 
+/* ── the admin deletes a message (30 Sep) ─────────────────────────
+   The owner: "is it possible to delete individual items from a message
+   stream?" The admin's alone; the thread is re-read from what is left. */
+function deleteWorld() {
+  install();
+  STORE["/staff/admin@nala,x"] = { role: "admin" };
+  STATE.email = "admin@nala.x";
+  const T0 = Date.now() - 60 * 60000, at = (min) => new Date(T0 + min * 60000).toISOString();
+  STORE["/contactmsgs/" + SARAH + "/in-SMa"] = { dir: "in", ch: "sms", body: "Test 3", at: at(0) };
+  STORE["/contactmsgs/" + SARAH + "/oA"] = { dir: "out", ch: "sms", body: "Do you need towels?", at: at(5), by: "admin@nala.x" };
+  STORE["/contactmsgs/" + SARAH + "/in-MMb"] = { dir: "in", ch: "sms", body: "Nope.", at: at(9),
+    media: { 0: { url: "https://api.twilio.com/x/Media/ME1", type: "image/jpeg" } } };
+  STORE["/contactnew/" + SARAH + "/in-MMb"] = true;
+  STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: at(9), lastIn: at(9), lastInCh: "sms",
+    lastOut: at(5), dir: "in", preview: "Nope.", wa: { on: true, by: "admin@nala.x", at: at(0) } };
+  return at;
+}
+at = deleteWorld();
+r = await desk({ kind: "delete", ck: SARAH, m: "in-MMb" });
+let th = STORE["/contact/" + SARAH];
+ck("the admin deletes a message: it goes from the conversation and from the new list",
+   r.status === 200 && !STORE["/contactmsgs/" + SARAH + "/in-MMb"] && !STORE["/contactnew/" + SARAH + "/in-MMb"] &&
+   !!STORE["/contactmsgs/" + SARAH + "/oA"]);
+ck("and the thread is re-read from what is left: its preview, its order, WhatsApp's clock",
+   th.lastAt === at(5) && th.preview === "Do you need towels?" && th.dir === "out" &&
+   th.lastIn === at(0) && th.lastInCh === "sms" && th.lastOut === at(5) && !("lastInWa" in th), th);
+ck("what no message says is kept: the number, the guest's WhatsApp consent",
+   th.phone === "+61412345678" && th.wa && th.wa.on === true);
+ck("written as the Worker", WRITES.length > 0 && WRITES.every((w) => w.token === "MACHINE"));
+await desk({ kind: "delete", ck: SARAH, m: "oA" });
+await desk({ kind: "delete", ck: SARAH, m: "in-SMa" });
+th = STORE["/contact/" + SARAH];
+ck("the last one deleted, the thread has no messages to point at, and keeps its guest",
+   !("lastAt" in th) && !("preview" in th) && !("lastIn" in th) && th.phone === "+61412345678", th);
+at = deleteWorld();
+ck("a message that is not there is a 404", (await desk({ kind: "delete", ck: SARAH, m: "nosuch" })).status === 404);
+STATE.email = "mgr@nala.x";
+ck("the manager may not delete", (await desk({ kind: "delete", ck: SARAH, m: "in-MMb" })).status === 403 &&
+   !!STORE["/contactmsgs/" + SARAH + "/in-MMb"]);
+STATE.email = "waiter@nala.x";
+ck("nor the desk", (await desk({ kind: "delete", ck: SARAH, m: "in-MMb" })).status === 403);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);

@@ -300,6 +300,23 @@ commit, and `contact_demo_suite.py` checks it there.
 The demo needs the pages published to be opened on a phone; without
 `?demo` the pages are the real ones, the admin's alone until opened.
 
+## Deleting a message
+
+The admin's alone (the owner, 30 Sep: "is it possible to delete individual
+items from a message stream?"): tap a message in a conversation, **Delete
+message**, and a sheet asks first, in the button law's terracotta. Only
+Chat's own messages - never a text an SMS page sent, which that page owns.
+The Worker does it (`kind: "delete"`), so the rules keep every message the
+Worker's alone to write: the message and its New mark go, and the thread is
+re-read from what is left, so its preview, its place in the list and
+WhatsApp's 24 hours never point at a message that has gone. The guest keeps
+their copy, Twilio keeps its log, and a task made from the message keeps its
+words.
+
+A guest's photo is fetched once per page and drawn from that copy on every
+redraw, and the conversation redraws only when it has moved: before, the
+8-second refresh blanked the photo and fetched it again, so it flashed.
+
 ## The setup check
 
 Built 30 Sep, when the owner's first test text was refused and Twilio's

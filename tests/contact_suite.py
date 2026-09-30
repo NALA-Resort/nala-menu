@@ -241,6 +241,8 @@ def fb(route, request):
 def wk(route, request):
     b = json.loads(request.post_data)
     SENT.append(b)
+    if b.get("kind") == "delete":
+        route.fulfill(status=200, content_type="application/json", body=js({"deleted": b.get("m")})); return
     if b.get("kind") == "check":
         route.fulfill(status=200, content_type="application/json", body=js({"check": STATE.get("check") or [
             {"key": "twilio", "ok": True, "say": "Twilio accepts the Account SID and the Auth Token."},
@@ -1044,6 +1046,48 @@ with sync_playwright() as p:
        not any(b.get("kind") == "check" for b in SENT))
     done(pg)
     STATE["check"] = None
+
+    # ── 11. a photo drawn once, and the admin's delete (30 Sep) ────────
+    # The owner, testing: a guest's photo "flashing on and off", and "is it
+    # possible to delete individual items from a message stream?"
+    del SENT[:]
+    pg = page("?c=%s&b=b-sarah" % SARAH, email="staff@x"); pg.wait_for_timeout(800)
+    media = lambda: len([b for b in SENT if b.get("kind") == "media"])
+    first = media()
+    pg.evaluate("()=>refresh()"); pg.wait_for_timeout(500)
+    pg.evaluate("()=>{TH.sent=TH.sent.slice(); DRAWN_SIG=''; return refresh()}"); pg.wait_for_timeout(500)
+    ck("a guest's photo is fetched once, and a redraw draws it at once rather than blanking it",
+       first == 1 and media() == 1 and
+       pg.evaluate("()=>document.querySelector('.msg[data-m=\"in-SMumbrella\"] img.photo').src.startsWith('blob:')"),
+       [first, media()])
+    ck("and the 8-second refresh redraws only when the conversation has moved",
+       pg.evaluate("""()=>{const a=document.querySelector('.msg[data-m="in-SMthanks"]');
+         return refresh().then(()=>a===document.querySelector('.msg[data-m="in-SMthanks"]'))}"""))
+    pg.click('.msg[data-m="oreply1"] .bub'); pg.wait_for_timeout(150)
+    ck("the admin taps a message for Delete message, the button law's terracotta",
+       pg.is_visible("#dl-oreply1") and "terra" in pg.get_attribute("#dl-oreply1", "class"))
+    pg.click('.msg[data-m="page0"] .bub'); pg.wait_for_timeout(150)
+    ck("never on an SMS page's text, which that page owns",
+       not pg.query_selector('.msg[data-m="page0"] [data-act="delask"]'))
+    del SENT[:]
+    pg.click("#dl-oreply1"); pg.wait_for_timeout(150)
+    sh = pg.text_content("#sheet") if pg.is_visible("#sheet") else ""
+    ck("and a sheet asks first, quoting it, and saying the guest keeps their copy",
+       "Delete this message?" in sh and "The guest keeps it on their phone" in sh and
+       not [b for b in SENT if b.get("kind") == "delete"], sh)
+    pg.click("#delKeep"); pg.wait_for_timeout(150)
+    ck("Keep it deletes nothing", not pg.is_visible("#sheet") and not [b for b in SENT if b.get("kind") == "delete"])
+    pg.click("#dl-oreply1"); pg.wait_for_timeout(150)
+    pg.click("#delGo"); pg.wait_for_timeout(700)
+    ck("Delete asks the Worker, which alone writes the messages",
+       [(b.get("ck"), b.get("m")) for b in SENT if b.get("kind") == "delete"] == [(SARAH, "oreply1")] and
+       not pg.is_visible("#sheet"))
+    done(pg)
+    pg = page("?c=%s&b=b-sarah" % SARAH, email="ben@x"); pg.wait_for_timeout(600)
+    pg.click('.msg[data-m="oreply1"] .bub'); pg.wait_for_timeout(150)
+    ck("the desk's waiter taps and gets no Delete: the admin's alone",
+       not pg.query_selector('[data-act="delask"]'))
+    done(pg)
 
     br.close()
 

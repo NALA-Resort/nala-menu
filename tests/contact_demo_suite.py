@@ -72,6 +72,14 @@ with sync_playwright() as p:
     ck("on the iPhone's grey and blue",
        pg.evaluate("()=>getComputedStyle(document.querySelector('.msg.in .bub')).backgroundColor") == "rgb(233, 233, 235)" and
        pg.evaluate("()=>getComputedStyle(document.querySelector('.msg.out .bub')).color") == "rgb(255, 255, 255)")
+    # Delete (30 Sep): Reception is the demo's admin
+    pg.click('.msg[data-m="in-SMthanks"] .bub'); pg.wait_for_timeout(150)
+    pg.click("#dl-in-SMthanks"); pg.wait_for_timeout(150)
+    asked = pg.is_visible("#sheet") and "Delete this message?" in pg.text_content("#sheet")
+    pg.click("#delGo"); pg.wait_for_timeout(1500)
+    ck("Reception, the demo's admin, taps a message and deletes it, asked first",
+       asked and not pg.query_selector('.msg[data-m="in-SMthanks"]') and
+       pg.query_selector('.msg[data-m="in-SMmassage"]') is not None)
     go("guest-contact.html?demo")
     ck("and nothing tried to reach the database, the messenger or Firebase",
        not [u for u in LEFT if "firebasedatabase" in u or "workers.dev" in u or "identitytoolkit" in u],

@@ -173,6 +173,25 @@
   .setup .sr.bad, .setup .sr.bad .mk { color:var(--law-red); }
   .setup .sr.info .mk, .setup .sr.info { color:var(--mid); }
   .setup .sbtn { margin-top:10px; }
+  /* Delete, the admin's (30 Sep): tap a message for it, and a sheet asks
+     first - the button law's terracotta, which always confirms. */
+  .msg .bub { cursor:default; }
+  .msg.pick-del .bub { outline:2px solid var(--law-terra-b); outline-offset:2px; }
+  .delrow { display:flex; gap:6px; margin:6px 0 0; }
+  .delrow .btn { width:auto; min-height:36px; padding:0 14px; font-size:var(--t2); }
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
+              align-items:flex-end; z-index:50; }
+  .backdrop.show { display:flex; }
+  .sheet { background:var(--surface, #fff); width:100%; max-width:var(--appw); margin:0 auto;
+           border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+           max-height:88vh; overflow-y:auto; }
+  .sheet .st { font-size:var(--t3); font-weight:600; margin-bottom:6px; }
+  .sheet .sub { font-size:var(--t2); color:var(--mid); line-height:1.45; margin-bottom:14px; }
+  .sheet .said { margin:0 0 16px; padding:8px 13px; border-radius:18px; background:#E9E9EB;
+                 color:#000; font-size:var(--t3); line-height:1.36; overflow-wrap:anywhere;
+                 white-space:pre-wrap; width:fit-content; max-width:85%; }
+  .sheet .btn { margin-top:8px; }
+  .sheet .err { font-size:var(--t2); color:var(--law-red); line-height:1.45; margin-top:10px; }
   #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
   /* A conversation's box and its Send sit at the END of the conversation,
      where the newest message is, not pinned to the screen: a pinned Send
@@ -210,6 +229,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <div class="noaccess" id="noAccess"></div>
 <div class="testbar" id="testBar"></div>
 <div class="setup" id="setupBox"></div>
+<div class="backdrop" id="backdrop"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 
 <div id="listView" style="display:none">
   <div class="knob" id="knob">
@@ -246,7 +266,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=7"></script>
+<script src="contact-demo.js?v=8"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=93"></script>
 <script>
@@ -742,7 +762,13 @@ function msgHTML(id, m, end){
   var kind = kindOf(m);
   var photos = '';
   Object.keys(m.media || {}).forEach(function(i){
-    photos += '<img class="photo wait" alt="Photo from the guest" data-m="' + esc(id) + '" data-i="' + esc(i) + '">';
+    /* Drawn from the page's own copy once it has one, so a redraw does not
+       fetch it again or blank it while it loads (the owner, 30 Sep: a
+       guest's photo "flashing on and off"). */
+    var got = PHOTOS[id + '/' + i];
+    photos += got ? '<img class="photo" alt="Photo from the guest" src="' + got + '">'
+            : got === null ? '<img class="photo" alt="A photo that could not be loaded">'
+            : '<img class="photo wait" alt="Photo from the guest" data-m="' + esc(id) + '" data-i="' + esc(i) + '">';
   });
   var meta = [];
   if (kind) meta.push(esc(kind));
@@ -750,14 +776,25 @@ function msgHTML(id, m, end){
   meta.push(m.ch === 'wa' ? 'WhatsApp' : 'SMS');
   if (m.dir === 'out' && statusWords(m)) meta.push(statusWords(m));
   var bad = m.status === 'failed' || m.status === 'undelivered';
+  var del = DELSEL === id && !m.page && isAdmin()
+    ? '<div class="delrow"><button class="btn terra" id="dl-' + esc(id) + '" data-act="delask" data-m="' +
+      esc(id) + '">Delete message</button><button class="btn" data-act="delcancel" data-m="' + esc(id) +
+      '">Cancel</button></div>' : '';
   return '<div class="msg ' + (m.dir === 'in' ? 'in' : 'out') + (end ? ' end' : ' run') +
-    '" data-m="' + esc(id) + '">' +
+    (del ? ' pick-del' : '') + '" data-m="' + esc(id) + '">' +
     '<div class="bub">' + photos + esc(m.body).replace(/\n/g, '<br>') + '</div>' +
-    (end || bad ? '<div class="meta">' + meta.join(' · ') + '</div>' : '') + triHTML(id, m) + '</div>';
+    (end || bad ? '<div class="meta">' + meta.join(' · ') + '</div>' : '') + del + triHTML(id, m) + '</div>';
 }
 
 var DRAWN = false;
+/* What the conversation was last drawn from: the 8-second refresh redraws
+   only when it has moved, so nothing on screen blinks for no reason. */
+var DRAWN_SIG = '';
+function threadSig(){
+  return JSON.stringify([TH.t, TH.msgs, TH.tasks, TH.fresh, TH.sent, TH.b && TH.b.id, HELLO]);
+}
 function drawThread(){
+  DRAWN_SIG = threadSig();
   /* Stay at the newest message if that is where the desk was reading. */
   var el = document.scrollingElement || document.documentElement;
   var atEnd = !DRAWN || el.scrollTop + window.innerHeight >= el.scrollHeight - 80;
@@ -876,15 +913,26 @@ function drawCompose(){
 
 /* Photos come through the Worker, which fetches them from Twilio with the
    account's credentials; the page never holds those. */
+var PHOTOS = {};             /* 'message/index': the photo's object URL once fetched, null if it failed */
 function loadPhotos(){
   [].forEach.call(document.querySelectorAll('img.photo.wait'), function(img){
     img.classList.remove('wait');
+    var key = img.getAttribute('data-m') + '/' + img.getAttribute('data-i');
+    if (key in PHOTOS) return;           /* already on its way */
+    PHOTOS[key] = undefined;
     fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ idToken: window.__idToken, kind:'media', ck: CK,
                              m: img.getAttribute('data-m'), i: img.getAttribute('data-i') }) })
       .then(function(r){ if (!r.ok) throw new Error(); return r.blob(); })
-      .then(function(b){ img.src = URL.createObjectURL(b); })
-      .catch(function(){ img.alt = 'A photo that could not be loaded'; });
+      .then(function(b){ PHOTOS[key] = URL.createObjectURL(b); })
+      .catch(function(){ PHOTOS[key] = null; })
+      .then(function(){
+        /* whichever copy of the img the page holds now */
+        [].forEach.call(document.querySelectorAll('img.photo'), function(x){
+          if (x.getAttribute('data-m') + '/' + x.getAttribute('data-i') !== key) return;
+          if (PHOTOS[key]) x.src = PHOTOS[key]; else x.alt = 'A photo that could not be loaded';
+        });
+      });
   });
 }
 
@@ -895,9 +943,50 @@ function sortWrite(patch){
                                 body: JSON.stringify(patch) })
     .then(function(r){ if (!r.ok) throw new Error('rejected ' + r.status); });
 }
+/* Delete (30 Sep, the owner: "is it possible to delete individual items
+   from a message stream?"): the admin taps a message of Chat's own - never
+   an SMS page's text - for Delete message, and a sheet asks first. */
+var DELSEL = null;           /* the message the admin tapped for Delete */
+function isAdmin(){ return normaliseRole(window.NALA_ROLE) === 'admin'; }
+function closeSheet(){ document.getElementById('backdrop').className = 'backdrop'; }
+document.getElementById('backdrop').onclick = function(e){
+  if (e.target.id === 'backdrop') closeSheet();
+};
+function askDelete(id){
+  var m = TH.msgs[id]; if (!m) return;
+  document.getElementById('sheet').innerHTML =
+    '<div class="st">Delete this message?</div>' +
+    '<div class="sub">It goes from Chat, for everyone who sees this conversation. The guest keeps ' +
+    'it on their phone, and a task made from it keeps its words.</div>' +
+    '<div class="said">' + (esc(m.body || '') || (m.media ? 'A photo' : '')) + '</div>' +
+    '<button class="btn terra" id="delGo">Delete</button>' +
+    '<button class="btn" id="delKeep">Keep it</button>' +
+    '<div class="err" id="delErr"></div>';
+  document.getElementById('backdrop').className = 'backdrop show';
+  document.getElementById('delKeep').onclick = closeSheet;
+  document.getElementById('delGo').onclick = function(){
+    saveFeedback(this, function(){
+      return fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ idToken: window.__idToken, kind:'delete', ck: CK, m: id }) })
+        .then(function(r){ return r.json().catch(function(){ return {}; })
+          .then(function(j){
+            if (!r.ok){ var er = new Error(j.error || 'the messenger did not answer'); er.said = true; throw er; }
+          }); });
+    }, { busy:'Deleting', done:'Deleted', hold:300, fail: document.getElementById('delErr'),
+         then: function(){ closeSheet(); DELSEL = null; refresh(); } });
+  };
+}
 document.getElementById('msgs').onclick = function(e){
-  var btn = e.target.closest('button[data-act]'); if (!btn) return;
+  var btn = e.target.closest('button[data-act]');
+  if (!btn){
+    var bub = e.target.closest('.msg .bub'), row = bub && bub.closest('.msg');
+    var mid = row && row.getAttribute('data-m');
+    if (!mid || !isAdmin() || !TH.msgs[mid]) return;
+    DELSEL = DELSEL === mid ? null : mid; drawThread(); return;
+  }
   var act = btn.getAttribute('data-act'), id = btn.getAttribute('data-m');
+  if (act === 'delask') return askDelete(id);
+  if (act === 'delcancel'){ DELSEL = null; drawThread(); return; }
   var m = TH.msgs[id]; if (!m) return;
   var fail = document.getElementById('tf-' + id);
   var now = new Date().toISOString(), sorted = { by: me(), at: now };
@@ -1005,7 +1094,8 @@ document.getElementById('sendBtn').onclick = function(){
 /* ── the whole page ──────────────────────────────────────────── */
 function refresh(){
   var err = document.getElementById('errBar');
-  var p = CK ? loadThread().then(drawThread) : loadAll().then(drawList);
+  var p = CK ? loadThread().then(function(){ if (threadSig() !== DRAWN_SIG) drawThread(); })
+             : loadAll().then(drawList);
   return p.then(function(){
     if (READFAIL){ err.textContent = ''; READFAIL = false; }
   }).catch(function(){
@@ -1078,7 +1168,9 @@ function hello(){
    while the desk is typing into the box or choosing a team. */
 function busy(){
   var box = document.getElementById('msgBox');
-  return document.hidden || PICK || NOTEED || (document.activeElement === box && box.value);
+  return document.hidden || PICK || NOTEED || DELSEL ||
+         document.getElementById('backdrop').className.indexOf('show') > -1 ||
+         (document.activeElement === box && box.value);
 }
 setInterval(function(){ if (window.__idToken && !busy()) refresh(); }, CK ? 8000 : 15000);
 document.addEventListener('visibilitychange', function(){

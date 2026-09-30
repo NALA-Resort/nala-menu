@@ -360,6 +360,25 @@
       return Promise.resolve(new Response(new Blob([UMBRELLA], { type:'image/svg+xml' }),
         { status:200, headers:{ 'Content-Type':'image/svg+xml' } }));
     }
+    /* Delete (30 Sep): the admin's, as the Worker does it - the message and
+       its New mark go, and the thread is re-read from what is left. */
+    if (b.kind === 'delete'){
+      if (normaliseRole(WHO.role) !== 'admin') return answer(403, { error:'Only the admin may delete a message' });
+      var dk = String(b.ck || ''), dm = String(b.m || '');
+      if (!get('/contactmsgs/' + dk + '/' + dm)) return answer(404, { error:'That message is not there' });
+      set('/contactmsgs/' + dk + '/' + dm, null); set('/contactnew/' + dk + '/' + dm, null);
+      var left = get('/contactmsgs/' + dk) || {}, all = Object.keys(left).map(function(k){ return left[k]; })
+        .sort(function(x, y){ return Date.parse(x.at) - Date.parse(y.at); });
+      var last = all[all.length - 1], ins = all.filter(function(x){ return x.dir === 'in'; });
+      var lin = ins[ins.length - 1], lwa = ins.filter(function(x){ return x.ch === 'wa'; }).pop();
+      var lout = all.filter(function(x){ return x.dir === 'out'; }).pop();
+      update('/contact/' + dk, { lastAt: last ? last.at : null, dir: last ? last.dir : null,
+        preview: last ? String(last.body || (last.media ? 'Photo' : '')).replace(/\s+/g, ' ').slice(0, 120) : null,
+        lastIn: lin ? lin.at : null, lastInCh: lin ? lin.ch : null, lastInWa: lwa ? lwa.at : null,
+        lastOut: lout ? lout.at : null });
+      save();
+      return answer(200, { deleted: dm });
+    }
     if (b.kind !== 'send') return answer(400, { error:'unknown kind' });
     /* As the Worker: a reply only from a role Settings lets reply, and a
        login that is not the desk only to the guest of its own open task. */

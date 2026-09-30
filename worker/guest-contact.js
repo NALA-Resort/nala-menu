@@ -467,6 +467,24 @@ function statusUrl(base, ck, m) {
   return new URL(base).origin + "/twilio/status?ck=" + ck + "&m=" + encodeURIComponent(m);
 }
 
+/* A thread's own record, as its messages say it: the newest for the list's
+   preview and order, the newest from the guest for WhatsApp's 24 hours.
+   A field with no message behind it is taken away (null). */
+export function threadFields(msgs) {
+  const all = Object.keys(msgs || {}).map((id) => msgs[id])
+    .filter((x) => x && typeof x === "object" && stampMs(x.at) != null)
+    .sort((a, b) => stampMs(a.at) - stampMs(b.at));
+  const last = all[all.length - 1] || null;
+  const ins = all.filter((x) => x.dir === "in");
+  const lastIn = ins[ins.length - 1] || null;
+  const lastWa = ins.filter((x) => x.ch === "wa").pop() || null;
+  const lastOut = all.filter((x) => x.dir === "out").pop() || null;
+  return { lastAt: last ? last.at : null, dir: last ? (last.dir === "out" ? "out" : "in") : null,
+           preview: last ? previewOf(last.body || "", last.media) : null,
+           lastIn: lastIn ? lastIn.at : null, lastInCh: lastIn ? (lastIn.ch === "wa" ? "wa" : "sms") : null,
+           lastInWa: lastWa ? lastWa.at : null, lastOut: lastOut ? lastOut.at : null };
+}
+
 /* ── the setup check ─────────────────────────────────────────────
    Each line: ok true (working), false (to fix, and how) or null (only so
    you know). In the order the setup steps set them. */
@@ -578,7 +596,7 @@ async function desk(request, env) {
   catch { return reply(400, { error: "not JSON" }); }
   const { idToken, kind } = body || {};
   if (!idToken) return reply(401, { error: "no idToken" });
-  if (["hello", "send", "media", "tasklog", "taskmedia", "check"].indexOf(kind) < 0)
+  if (["hello", "send", "media", "tasklog", "taskmedia", "check", "delete"].indexOf(kind) < 0)
     return reply(400, { error: "unknown kind" });
 
   /* 1. Who is asking, from the token: accounts:lookup checks the signature,
@@ -742,6 +760,28 @@ async function desk(request, env) {
     return new Response(r.body, { status: 200, headers: {
       "Content-Type": r.headers.get("Content-Type") || md.type || "application/octet-stream",
       "Cache-Control": "private, max-age=3600", ...CORS } });
+  }
+
+  /* ── kind "delete" (30 Sep) ──────────────────────────────────────
+     The owner, testing: "is it possible to delete individual items from a
+     message stream?" The admin's alone, one message at a time, and only
+     Chat's own record: the guest keeps their copy, and a task made from
+     the message keeps its words. The thread is re-read from what is left,
+     so its preview and WhatsApp's 24 hours never point at a message that
+     has gone. Done by the Worker, so the rules keep every message the
+     Worker's to write. */
+  if (kind === "delete") {
+    if ((role === "staff" ? "admin" : role) !== "admin")
+      return reply(403, { error: "Only the admin may delete a message" });
+    const m = String(body.m || "");
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(m)) return reply(400, { error: "bad message" });
+    const msgs = (await db(env, "/contactmsgs/" + ck, "GET")) || {};
+    if (!msgs[m]) return reply(404, { error: "That message is not there" });
+    await db(env, "/contactmsgs/" + ck + "/" + m, "DELETE");
+    await db(env, "/contactnew/" + ck + "/" + m, "DELETE").catch(() => {});
+    delete msgs[m];
+    await db(env, "/contact/" + ck, "PATCH", threadFields(msgs));
+    return reply(200, { deleted: m });
   }
 
   /* ── kind "send" ── */
