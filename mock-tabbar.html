@@ -18,10 +18,12 @@
      Three things on one page: every icon on the bar, in the bar's order,
      with the logins it is offered to and its two states (grey, and ink in
      the grey capsule for the page you are on); and each login's bar as
-     it is drawn today and once Chat and Tasks are opened.
+     it is drawn today and once Chat and Tasks are opened. And, at his
+     "Show full list of all pages now", every other page in the menu, with
+     a Lucide icon proposed for each: none of those is in the app.
 
      Taken from the app, not retyped: the icons are TAB_ICONS and the names
-     NAV's, read out of nala-shared.js at cdfd9bb; who is offered each is
+     NAV's, read out of nala-shared.js at de7c62c; who is offered each is
      tabsFor's answer on the shipped settings; each bar is the #tabBar the
      page drew on tests/paper_night.json (Saturday 26 Sep, 3:20 pm Brisbane),
      copied out of the page, its counts included; its dress is the tab bar
@@ -79,6 +81,10 @@
              border-radius:var(--pill); color:var(--mid); }
   .irow .st svg{ width:28px; height:28px; }
   .irow .st.on{ background:var(--sel-bg); color:var(--ink); }
+  .irow.off .big{ color:var(--mid); }
+  .subl{ font-size:var(--t1); color:var(--mid); margin:14px 2px 6px; }
+  .tag{ display:inline-block; vertical-align:2px; font-size:var(--t1); color:var(--mid);
+        border:1px solid var(--rule); border-radius:var(--pill); padding:0 7px; }
 
   /* each login's bar, in a phone-width frame */
   .case{ margin-bottom:14px; }
@@ -165,7 +171,12 @@
     30 Sep, drawn thinner and with no name under them: grey, and ink in a
     grey capsule on the page you are on.</p>
 
-  <div class="seclabel">The icons, in the bar's order</div>
+  <div class="seclabel">Every page</div>
+  <div class="secnote">The eleven that ride on the bar, as built, in its order, with
+    who is offered each. Then the rest of the menu, which has no icons in the app:
+    each is given a Lucide icon here, proposed, so the whole list reads as one
+    set.</div>
+  <div class="subl">On the bar</div>
   <div class="irow">
     <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></div>
     <div class="mid"><div class="nm">Dashboard</div><div class="who">Admin &middot; Manager &middot; Waiter &middot; Chef</div></div>
@@ -221,6 +232,81 @@
     <div class="mid"><div class="nm">Statistics</div><div class="who">Chef</div></div>
     <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span><span class="st on"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span></div>
   </div>
+  <div class="subl">Print</div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></div>
+    <div class="mid"><div class="nm">FOH Sheet <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Print, not on the bar. Lucide's clipboard-list.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
+    <div class="mid"><div class="nm">Clean Sheet <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Print, not on the bar. Lucide's clipboard-check.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 19a4 4 0 00-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg></div>
+    <div class="mid"><div class="nm">Arrivals <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Print, not on the bar. Lucide's id-card.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 19a4 4 0 00-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
+    <div class="mid"><div class="nm">Menu <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Print, not on the bar. Lucide's scroll-text.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></div>
+    <div class="mid"><div class="nm">Past Menus <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Print, not on the bar. Lucide's history.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span></div>
+  </div>
+  <div class="subl">SMS</div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></div>
+    <div class="mid"><div class="nm">Invitations <span class="tag">proposed</span></div>
+      <div class="who">In the menu under SMS, not on the bar. Lucide's send.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
+    <div class="mid"><div class="nm">Pre-arrival <span class="tag">proposed</span></div>
+      <div class="who">In the menu under SMS, not on the bar. Lucide's clipboard-pen.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></div>
+    <div class="mid"><div class="nm">Spa reminders <span class="tag">proposed</span></div>
+      <div class="who">In the menu under SMS, not on the bar. Lucide's bell.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+  </div>
+  <div class="subl">Settings</div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div>
+    <div class="mid"><div class="nm">General <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Settings, not on the bar. Lucide's users.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg></div>
+    <div class="mid"><div class="nm">Dietary <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Settings, not on the bar. Lucide's wheat-off.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg></div>
+    <div class="mid"><div class="nm">Flags <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Settings, not on the bar. Lucide's flag.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg></span></div>
+  </div>
+  <div class="irow off">
+    <div class="big"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg></div>
+    <div class="mid"><div class="nm">Pages <span class="tag">proposed</span></div>
+      <div class="who">In the menu under Settings, not on the bar. Lucide's files.</div></div>
+    <div class="states"><span class="st"><svg class="" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg></span></div>
+  </div>
 
   <div class="seclabel">Each login's bar</div>
   <div class="secnote">As the app draws it at 390, counts from the test night
@@ -261,7 +347,7 @@
 
 
 
-  <p class="end">A picture, frozen 30 Sep from the built bar (cdfd9bb). Nothing
+  <p class="end">A picture, frozen 30 Sep from the built bar (de7c62c). Nothing
     on it works.</p>
 </div>
 </body>
