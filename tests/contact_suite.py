@@ -177,7 +177,19 @@ TASKS["bar"]["t2gandt"].update({"note": "Charge to villa 9", "noteBy": "ben@x", 
 
 PREVINVITES = {"b-sarah": {"sentAt": "2026-09-22T10:02:00+10:00", "status": "sent", "to": "+61412345678",
                            "body": "Good morning. Ahead of your stay with us, a few questions. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=k7m2qx",
-                           "by": "waiter@x", "delivery": "delivered"}}
+                           "by": "waiter@x", "delivery": "delivered",
+                           # the first text, which the nudge above replaced (30 Sep)
+                           "earlier": [{"sentAt": "2026-09-20T16:30:00+10:00", "status": "sent",
+                                        "to": "+61412345678", "by": "ben@x", "delivery": "delivered",
+                                        "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=q9w3ze"}]}}
+# the dinner invitations, as invitations.html's Worker records them, and an
+# outside guest's, for the number on no booking
+INVITES = {"2026-09-28": {"7": {"sentAt": "2026-09-28T16:02:00+10:00", "status": "sent", "to": "+61412345678",
+                                "by": "ben@x", "delivery": "delivered",
+                                "body": "Tonight\u2019s menu is ready. Nala Resort\nhttps://menu.nalaresort.com/?t=ab3xyz"}}}
+EXTINVITES = {"2026-09-28": {"ext-k2m9": {"sentAt": "2026-09-28T16:20:00+10:00", "status": "sent",
+                                          "to": "+61423555019", "by": "ben@x",
+                                          "body": "Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. Nala Resort\nhttps://menu.nalaresort.com/?t=k2m9pp"}}}
 
 STATE = {"hello": {"ready": True, "wa": True, "test": False, "buzz": False}, "send": None,
          "readfail": False}
@@ -222,6 +234,8 @@ def fb(route, request):
             want = json.loads(q["equalTo"][0]) if "equalTo" in q else None
             body = {k: v for k, v in team.items() if key is None or v.get(key) == want} or None
     elif path.startswith("/previnvites/"): body = PREVINVITES.get(path[13:-5])
+    elif path.startswith("/invites/"): body = INVITES.get(path[9:-5])
+    elif path.startswith("/extinvites/"): body = EXTINVITES.get(path[12:-5])
     route.fulfill(status=200, content_type="application/json", body=js(body))
 
 def wk(route, request):
@@ -419,13 +433,25 @@ with sync_playwright() as p:
        pg.get_attribute("#waSw", "aria-checked") == "true" and
        pg.text_content("#waWords").startswith("WhatsApp: asked for, Ben Tue"), pg.text_content("#waWords"))
     order = pg.evaluate("()=>[...document.querySelectorAll('#msgs .msg')].map(e=>e.dataset.m)")
-    ck("every message in time order, the SMS page's pre-arrival text among them",
-       order == ["page0", "in-SMmassage", "oreply1", "in-SMthanks", "in-SMumbrella", "in-SMcandle"], order)
+    ck("every message both ways in time order, the pre-arrival texts and the dinner invitation among them",
+       order == ["page1", "page0", "in-SMmassage", "oreply1", "in-SMthanks", "page2", "in-SMumbrella",
+                 "in-SMcandle"], order)
     days = pg.evaluate("()=>[...document.querySelectorAll('#msgs .day')].map(e=>e.textContent)")
-    ck("with the days between them", days == ["Tue 22 Sep", "Today"], days)
-    pre = pg.evaluate("()=>document.querySelector('.msg[data-m=\"page0\"]').innerText")
-    ck("the pre-arrival text says what it was and where it came from",
-       pre.startswith("Pre-arrival form") and "SMS page" in pre and "Delivered" in pre, pre)
+    ck("the time over each stretch of talk, as the iPhone puts it",
+       days == ["Sun 20 Sep 4:30pm", "Tue 22 Sep 10:02am", "Yesterday 4:02pm", "Today 3:12pm"], days)
+    meta = lambda m: pg.evaluate("(m)=>{const e=document.querySelector('.msg[data-m=\"'+m+'\"] .meta');return e?e.textContent:''}", m)
+    ck("each page's text says what it was, who sent it and how it went",
+       meta("page0") == "Pre-arrival form · Anna · SMS · Delivered" and
+       meta("page1") == "Pre-arrival form · Ben · SMS · Delivered" and
+       meta("page2") == "Dinner invitation · Ben · SMS · Delivered", [meta("page0"), meta("page1"), meta("page2")])
+    bub = lambda m: pg.evaluate("(m)=>{const c=getComputedStyle(document.querySelector('.msg[data-m=\"'+m+'\"] .bub'));"
+                                "return [c.backgroundColor,c.color,c.backgroundImage.indexOf('gradient')>-1]}", m)
+    ck("the guest's words on the iPhone's grey, ours on its blue in white",
+       bub("in-SMmassage") == ["rgb(233, 233, 235)", "rgb(0, 0, 0)", False] and
+       bub("oreply1") == ["rgb(10, 132, 255)", "rgb(255, 255, 255)", True], [bub("in-SMmassage"), bub("oreply1")])
+    ck("with the iPhone's tail on each run's last bubble",
+       pg.evaluate("()=>getComputedStyle(document.querySelector('.msg[data-m=\"oreply1\"] .bub'),'::before').backgroundColor")
+       == "rgb(10, 132, 255)" and "end" in pg.get_attribute('.msg[data-m="in-SMcandle"]', "class"))
     tri = lambda m: pg.evaluate("(m)=>{const t=document.querySelector('.msg[data-m=\"'+m+'\"] .tri');return t?t.innerText.replace(/\\s+/g,' ').trim():''}", m)
     ck("a new message waits to be sorted: No task, or Task", tri("in-SMcandle") == "No task Task", tri("in-SMcandle"))
     ck("a task still open says whose it is, beside its Done", tri("in-SMumbrella").startswith("Maintenance · open Done"),
@@ -585,6 +611,10 @@ with sync_playwright() as p:
        "<img src=x onerror=" in pg.text_content("#msgs"))
     ck("a number on no booking says so, and is titled by its number",
        pg.text_content("#title") == "0423 555 019" and "Not on any booking" in pg.text_content("#ctx"))
+    ck("and an outside guest's dinner invitation is in their conversation, before their answer",
+       pg.evaluate("()=>[...document.querySelectorAll('#msgs .msg')].map(e=>e.dataset.m)") == ["page0", "in-SMunk"] and
+       pg.text_content('.msg[data-m="page0"] .meta') == "Dinner invitation · Ben · SMS · Sent",
+       pg.evaluate("()=>[...document.querySelectorAll('#msgs .msg')].map(e=>e.innerText)"))
     done(pg)
 
     del WRITES[:]

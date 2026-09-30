@@ -137,6 +137,46 @@ function maySend(role, permissions) {
    out of a browser. */
 const bodyHasUrl = (s) => /(https?:\/\/|www\.)/i.test(s || "");
 
+/* A text sent again replaces the record its page reads, and the text it
+   replaces rides along under earlier, newest first, five at most (the
+   owner, 30 Sep: Guest Contact must hold "every outgoing and incoming
+   message including dinner invitations and pre-arrival form" - the
+   pre-arrival nudge used to erase the first text from the conversation).
+   Only a text that went is kept: an attempt that failed was never a
+   message, and five of them must not push the real ones out. */
+const EARLIER = ["sentAt", "by", "status", "to", "body", "error", "providerId",
+                 "delivery", "deliveryText", "deliveryAt"];
+export function withEarlier(rec, prev) {
+  if (!prev || typeof prev !== "object") return rec;
+  const old = prev.earlier && typeof prev.earlier === "object"
+    ? Object.keys(prev.earlier).sort((a, b) => a - b).map((k) => prev.earlier[k])
+        .filter((x) => x && typeof x === "object" && x.sentAt)
+    : [];
+  if (prev.sentAt && (prev.status === "sent" || prev.status === "sent-unrecorded")) {
+    const was = {};
+    for (const k of EARLIER)
+      if (prev[k] != null && prev[k] !== "") was[k] = String(prev[k]).slice(0, 1600);
+    old.unshift(was);
+  }
+  if (old.length) rec.earlier = old.slice(0, 5);
+  return rec;
+}
+
+/* A send's record, written as the caller, and once more without earlier
+   if the rules refuse it: until the rules paste that knows earlier, a text
+   sent again is recorded as it always was, rather than not at all. */
+async function putSend(path, idToken, rec) {
+  const put = (body) => fetch(DB + path + ".json?auth=" + encodeURIComponent(idToken),
+    { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let w = await put(rec);
+  if (!w.ok && rec.earlier) {
+    const bare = Object.assign({}, rec);
+    delete bare.earlier;
+    w = await put(bare);
+  }
+  return w;
+}
+
 async function dbGet(path, idToken) {
   const r = await fetch(DB + path + ".json?auth=" + encodeURIComponent(idToken));
   if (!r.ok) throw new Error("db read refused: " + path);
@@ -571,11 +611,9 @@ export default {
         }
         /* One record per treatment, the latest attempt, written with the
            caller's own token so the rules apply exactly as from the page. */
+        withEarlier(rec, await dbGet("/spareminders/" + b + "/" + t, idToken).catch(() => null));
         try {
-          const w = await fetch(
-            DB + "/spareminders/" + b + "/" + t + ".json?auth=" + encodeURIComponent(idToken),
-            { method: "PUT", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(rec) });
+          const w = await putSend("/spareminders/" + b + "/" + t, idToken, rec);
           if (!w.ok) throw new Error("record refused");
         } catch {
           rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
@@ -640,11 +678,9 @@ export default {
         /* One record per booking, not per villa-night: the question this
            page answers is "has THIS guest been asked", and a booking id is
            how the form and the front desk already say "this guest". */
+        withEarlier(rec, await dbGet("/previnvites/" + id, idToken).catch(() => null));
         try {
-          const w = await fetch(
-            DB + "/previnvites/" + id + ".json?auth=" + encodeURIComponent(idToken),
-            { method: "PUT", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(rec) });
+          const w = await putSend("/previnvites/" + id, idToken, rec);
           if (!w.ok) throw new Error("record refused");
         } catch {
           rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
@@ -737,6 +773,8 @@ export default {
         }
       }
       if (key) {
+        if (!created)
+          withEarlier(rec, await dbGet("/extinvites/" + date + "/" + key, idToken).catch(() => null));
         if (!(await dbPut("/extinvites/" + date + "/" + key, idToken, rec))) {
           rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
           if (rec.status === "sent") rec.status = "sent-unrecorded";
@@ -793,6 +831,7 @@ export default {
          exactly as they would from the page. A record that cannot be written
          is itself reported rather than swallowed: a send with no record is
          the deletion-that-looked-published mistake in a new coat. */
+      withEarlier(rec, await dbGet("/invites/" + date + "/" + v, idToken).catch(() => null));
       try {
         const w = await fetch(
           DB + "/invites/" + date + "/" + v + ".json?auth=" + encodeURIComponent(idToken),

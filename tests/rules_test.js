@@ -581,6 +581,15 @@ can('a failed send is recorded too, before it knew the booking', DESK,
 can('and the handset receipt lands on it', DESK, '/spareminders/b-100/t1',
     Object.assign({}, SPAREM, { delivery: 'delivered', deliveryAt: NOW,
                                 deliveryText: 'Success: Message received on handset.' }));
+/* A text sent again keeps the one it replaced under earlier (30 Sep), so
+   Guest Contact shows every text a guest was sent. */
+const WAS = { sentAt: '2026-09-29T08:00:00.000Z', by: 'manager@nalaresort.com.au', status: 'sent',
+              to: '+61411000007', body: 'Good afternoon. Ahead of your stay with us...', providerId: 'mid-0',
+              delivery: 'delivered', deliveryAt: '2026-09-29T08:01:00.000Z' };
+can('a pre-arrival text sent again keeps the first under earlier', DESK, '/previnvites/b-100',
+    { sentAt: NOW, status: 'sent', to: '+61411000007', body: 'A reminder...', earlier: [WAS] });
+can('and so does a spa reminder, five at most', DESK, '/spareminders/b-100/t1',
+    Object.assign({}, SPAREM, { earlier: [WAS, WAS, WAS, WAS, WAS] }));
 can('a manager saves a spa reminder wording', MANAGER, '/spasmstemplates/remind',
     { label: 'Gentle reminder', order: 1, at: NOW,
       body: 'Hello <first>, a gentle reminder of your booking with us:\n\n<booking>' });
@@ -601,6 +610,12 @@ cannot('a spa reminder quoting a day that is not a date', DESK, '/spareminders/b
 cannot('or three massages', DESK, '/spareminders/b-100/t1', Object.assign({}, SPAREM, { qty: 3 }));
 cannot('or a field the Worker never writes', DESK, '/spareminders/b-100/t1',
        Object.assign({}, SPAREM, { price: 180 }));
+cannot('a sixth earlier text', DESK, '/spareminders/b-100/t1',
+       Object.assign({}, SPAREM, { earlier: [WAS, WAS, WAS, WAS, WAS, WAS] }));
+cannot('or an earlier text carrying a field no send has', DESK, '/previnvites/b-100',
+       { sentAt: NOW, status: 'sent', earlier: [Object.assign({}, WAS, { price: '180' })] });
+cannot('or an earlier text with no send stamp', DESK, '/previnvites/b-100',
+       { sentAt: NOW, status: 'sent', earlier: [{ status: 'sent', body: 'x' }] });
 cannot('a treatment key longer than the /spa rule would ever mint', DESK,
        '/spareminders/b-100/t' + '1'.repeat(39), SPAREM);
 cannot('a spa reminder with no send stamp', DESK, '/spareminders/b-100/t1',

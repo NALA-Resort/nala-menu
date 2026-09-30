@@ -99,6 +99,8 @@ Already done this way — follow these:
   WhatsApp words (`contactTemplateText`), each a twin in nala-shared.js and
   worker/guest-contact.js, and the colour a guest's row wears
   (`contactRowState`). Added 29 Sep with the module; GUEST-CONTACT.md.
+  And who may use the desk or reply to a guest (`can`, the Worker's
+  `mayDo`), 30 Sep with the Reply to guests switch.
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -121,6 +123,11 @@ A page can go live to the admin alone first (29 Sep, Guest Contact before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the
 admin only until `/permissions/open/<page>` is true. `canOpen` answers it,
 so the menu, its count and any Dashboard card follow.
+
+Guest Contact's demo (`guest-contact.html?demo`, contact-demo.js) moves
+with the module: a change the owner can see is in the demo in the same
+commit, checked by `contact_demo_suite.py` (the owner, 30 Sep: "Keep
+update the demo as we go").
 
 ### 3. Duplication that cannot be avoided gets a shared table
 

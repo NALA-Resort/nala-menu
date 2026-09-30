@@ -788,6 +788,14 @@
         "deliveryAt": {
           ".validate": "newData.isString() && newData.val().length <= 40"
         },
+        "earlier": {
+          "$i": {
+            ".validate": "$i.matches(/^[0-4]$/) && newData.hasChildren(['sentAt'])",
+            "$f": {
+              ".validate": "$f.matches(/^(sentAt|by|status|to|body|error|providerId|delivery|deliveryText|deliveryAt)$/) && newData.isString() && newData.val().length <= 1600"
+            }
+          }
+        },
         "$other": {
           ".validate": false
         }
@@ -869,6 +877,14 @@
           },
           "deliveryAt": {
             ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "earlier": {
+            "$i": {
+              ".validate": "$i.matches(/^[0-4]$/) && newData.hasChildren(['sentAt'])",
+              "$f": {
+                ".validate": "$f.matches(/^(sentAt|by|status|to|body|error|providerId|delivery|deliveryText|deliveryAt)$/) && newData.isString() && newData.val().length <= 1600"
+              }
+            }
           },
           "$other": {
             ".validate": false

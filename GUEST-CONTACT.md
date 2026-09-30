@@ -94,11 +94,30 @@ of where the conversation stands (`contactRowState`, the colour law):
 A number on no booking - a caller about dinner, a guest from months ago -
 still lands on In-house, its number in place of a name.
 
-Tap a guest for the conversation: everything said both ways, with what the
-SMS pages sent them (the pre-arrival form, spa reminders, tonight's menu)
-among it. Under each of the guest's messages: **No task** or **Task**, then
+Tap a guest for the conversation, drawn as the iPhone draws one (the owner,
+30 Sep, with a screenshot of his Messages): the guest's words on the
+iPhone's grey, ours on its blue, the time centred over each stretch of
+talk. Under each of the guest's messages: **No task** or **Task**, then
 the team. A task shows amber with **Done** until someone closes it, then
 green with who did.
+
+**Every message both ways is in it** (the owner, 30 Sep: "every outgoing
+and incoming message including dinner invitations and pre-arrival form"):
+
+- Everything typed here, both ways, and every approved WhatsApp message.
+- Every text the SMS pages sent this number: the pre-arrival form and its
+  reminder, each night's dinner invitation, spa reminders, and for a
+  number on no booking, an outside guest's dinner invitation. Each says
+  under it what it was, who sent it and whether it arrived.
+- A text sent again, the pre-arrival reminder most often, keeps the one
+  it replaced: `send-invites.js` carries it under `earlier` on the page's
+  own record, five at most, so neither drops out of the conversation.
+  It needs that Worker's paste and the rules paste, in either order: until
+  both, a text sent again replaces the first, as it always has.
+- Every message a guest sends to the Twilio number, SMS or WhatsApp. Until
+  the everyday texts move to Twilio (`SMS_VIA`, below), a guest who
+  answers a text ClickSend sent is answering ClickSend's number, and that
+  reply is not here; after it, it is.
 
 **The box says which way a message goes before it goes:**
 
@@ -261,6 +280,14 @@ receipts, WhatsApp's 24 hours (James, arriving in four days, is past them).
 Nothing reaches the live app or a guest: the database is a copy held in the
 browser tab, and the messenger is played there too (`contact-demo.js`,
 held to `tests/contact_demo_suite.py`, which watches the network).
+
+The made-up guests have what a real stay has: each one's pre-arrival text,
+each night's dinner invitation, and for Sarah the pre-arrival reminder, a
+spa reminder and her answer to last night's invitation.
+
+**The demo moves with the module** (the owner, 30 Sep: "Keep update the
+demo as we go"): a change the owner can see is in the demo in the same
+commit, and `contact_demo_suite.py` checks it there.
 
 The demo needs the pages published to be opened on a phone; without
 `?demo` the pages are the real ones, the admin's alone until opened.

@@ -723,6 +723,11 @@ None of these can move without him.
     rules have it, switching it on is refused ("That change was not
     saved"), and so is any switch pressed after it until the page is
     reloaded; nothing already saved is touched.
+    Every text the SMS pages send is in the guest's conversation, a text
+    sent again included (30 Sep): `send-invites.js` keeps the one it
+    replaced under `earlier`. It needs that Worker's paste and the rules'
+    paste, in either order: until both, a text sent again replaces the
+    first, as it always has.
     Alerts wait on the push Worker's code coming into this repo. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any

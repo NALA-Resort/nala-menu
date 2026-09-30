@@ -57,6 +57,22 @@ with sync_playwright() as p:
     ck("In-house shows the made-up guests, work first",
        rs and rs[0]["s"] == "fresh" and by["61412345678"]["nm"] == "Sarah Whitfield" and
        by["61411000009"]["s"] == "task" and by["61411000002"]["s"] == "done", rs[:4])
+    # every text the pages sent, in the conversation (the owner, 30 Sep)
+    go("guest-contact.html?c=61412345678")
+    metas = pg.evaluate("()=>[...document.querySelectorAll('#msgs .meta')].map(e=>e.textContent)")
+    ck("Sarah's conversation holds both pre-arrival texts, each night's dinner invitation and her spa reminder",
+       len([x for x in metas if x.startswith("Pre-arrival form")]) == 2 and
+       len([x for x in metas if x.startswith("Dinner invitation")]) >= 2 and
+       any(x.startswith("Spa reminder") for x in metas), metas)
+    ck("and her SMS answer to last night's invitation, after it",
+       pg.evaluate("""()=>{const ms=[...document.querySelectorAll('#msgs .msg')];
+         const i=ms.findIndex(e=>e.dataset.m==='in-SMdinner');
+         const inv=ms.map((e,k)=>[k,(e.querySelector('.meta')||{}).textContent||'']).filter(x=>x[1].startsWith('Dinner invitation')).map(x=>x[0]);
+         return i>-1 && inv.some(k=>k===i-1)}"""))
+    ck("on the iPhone's grey and blue",
+       pg.evaluate("()=>getComputedStyle(document.querySelector('.msg.in .bub')).backgroundColor") == "rgb(233, 233, 235)" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector('.msg.out .bub')).color") == "rgb(255, 255, 255)")
+    go("guest-contact.html?demo")
     ck("and nothing tried to reach the database, the messenger or Firebase",
        not [u for u in LEFT if "firebasedatabase" in u or "workers.dev" in u or "identitytoolkit" in u],
        LEFT)

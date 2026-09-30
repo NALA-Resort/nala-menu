@@ -51,7 +51,8 @@
                 bar:{ members:{ 'anna@demo':true } }, kitchen:{ members:{ 'marco@demo':true } },
                 housekeeping:{ members:{} }, maintenance:{ members:{ 'ray@demo':true } },
                 spa:{ members:{ 'freya@demo':true } } } },
-              stays:{}, contact:{}, contactmsgs:{}, contactnew:{}, tasks:{}, previnvites:{} };
+              stays:{}, contact:{}, contactmsgs:{}, contactnew:{}, tasks:{}, previnvites:{},
+              invites:{}, spareminders:{} };
     PEOPLE.forEach(function(p){ t.staff[p.email] = { name:p.name, role:p.role }; });
     var BOOK = [
       ['b-sarah',  '7',  'Sarah', 'Whitfield', '+61412345678', -2, 3, 2],
@@ -71,6 +72,26 @@
         (t.stays[k] = t.stays[k] || {})[b[1]] = { id:b[0], first:b[2], last:b[3], phone:b[4],
           arrive:day(b[5]), depart:day(b[6]), adults:b[7] };
       }
+    });
+    /* What the SMS pages sent (the owner, 30 Sep: "every outgoing and
+       incoming message including dinner invitations and pre-arrival form"),
+       as those pages' own records hold it: each guest's pre-arrival text
+       five days out, and each night's dinner invitation at 4pm. */
+    function at(n, h, m){ var d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, m, 0, 0);
+                          return d.toISOString(); }
+    function tok(x){ for (var i = 0, v = 7; i < x.length; i++) v = (v * 31 + x.charCodeAt(i)) >>> 0;
+                     return v.toString(36).slice(0, 6); }
+    function sent(o){ return Object.assign({ status:'sent', by:'desk@demo', delivery:'delivered' }, o); }
+    var LINK = 'https://menu.nalaresort.com/';
+    BOOK.forEach(function(b){
+      if (!b[4]) return;
+      t.previnvites[b[0]] = sent({ sentAt:at(b[5] - 5, 15, 10), to:b[4], template:'before',
+        body:'Good afternoon. Ahead of your stay with us, a few questions so everything is ready ' +
+             'when you arrive. Nala Resort\n' + LINK + 'prearrival.html?t=' + tok(b[0]) });
+      for (var n = b[5]; n < b[6] && Date.parse(at(n, 16, 2)) < Date.now(); n++)
+        (t.invites[day(n)] = t.invites[day(n)] || {})[b[1]] = sent({ sentAt:at(n, 16, 2), to:b[4],
+          body:'Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. ' +
+               'Nala Resort\n' + LINK + '?t=' + tok(b[0] + n) });
     });
     function thread(ck, o){ t.contact[ck] = Object.assign({ phone:'+' + ck }, o); }
     function msg(ck, id, o){ (t.contactmsgs[ck] = t.contactmsgs[ck] || {})[id] = o; }
@@ -98,9 +119,20 @@
     thread(S, { lastAt:ago(6), lastIn:ago(6), lastInCh:'wa', lastInWa:ago(6), dir:'in',
       preview:'Also, it’s Tom’s 40th tonight! Any chance of a candle on his dessert?',
       wa:{ on:true, by:'desk@demo', at:ago(7 * 1440) } });
-    t.previnvites['b-sarah'] = { sentAt:ago(7 * 1440), status:'sent', to:'+' + S, by:'desk@demo',
-      delivery:'delivered',
-      body:'Good morning. Ahead of your stay with us, a few questions. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=demo' };
+    /* Her pre-arrival text went twice: the reminder is the record, and the
+       first rides under earlier, as send-invites.js keeps it. */
+    var first = t.previnvites['b-sarah'];
+    t.previnvites['b-sarah'] = sent({ sentAt:at(-4, 9, 30), to:'+' + S, template:'nudge',
+      body:'A reminder, when you have a moment: a few questions ahead of your stay, so everything ' +
+           'is ready when you arrive. Nala Resort\n' + LINK + 'prearrival.html?t=' + tok('b-sarah'),
+      earlier:[first] });
+    /* the morning of her massage, and her answer to last night's menu,
+       by SMS - which lands here once the everyday texts go by Twilio */
+    t.spareminders['b-sarah'] = { t0massage: sent({ sentAt:at(-1, 8, 30), to:'+' + S,
+      body:'Hello Sarah, a gentle reminder of your booking with us:\n\nCouples massage, 1 hour\n' +
+           'Today at 2:00 pm\n\nIf you need to change anything, just reply to this message. Nala Resort' }) };
+    msg(S, 'in-SMdinner', { dir:'in', ch:'sms', at:at(-1, 16, 14),
+      body:'We\u2019d love to. Two of us at 7pm please!', sorted:{ by:'desk@demo', at:at(-1, 16, 20) } });
     task('spa', 't0massage', { ck:S, msg:'in-SMmassage', villa:'7', name:'Sarah Whitfield',
       text:'Could we book a couples massage for Sunday afternoon?', state:'done',
       at:ago(3 * 1440 + 35), by:'desk@demo', doneAt:ago(3 * 1440), doneBy:'freya@demo',
@@ -181,7 +213,7 @@
   }
 
   /* ── the tab's copy of the database ─────────────────────────── */
-  var SEED = 3;   /* moved when the made-up guests change: a tab holding older ones starts again */
+  var SEED = 4;   /* moved when the made-up guests change: a tab holding older ones starts again */
   var TREE = null;
   try { TREE = JSON.parse(sessionStorage.getItem(DBK) || 'null'); } catch (e){}
   if (!TREE || TREE.demoSeed !== SEED){ TREE = seed(); save(); }

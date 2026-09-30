@@ -75,19 +75,38 @@
                box-shadow:0 1px 2px rgba(28,28,26,.25); transition:left .15s ease; }
   .sw.on { background:var(--accent); }
   .sw.on::after { left:21px; }
-  .day { text-align:center; font-size:var(--t1); color:var(--mid); margin:22px 0 10px; }
-  .msg { display:flex; flex-direction:column; max-width:84%; margin:0 0 12px; }
-  .msg.in  { align-items:flex-start; margin-right:auto; }
-  .msg.out { align-items:flex-end; margin-left:auto; }
-  .bub { padding:10px 12px; border-radius:16px; font-size:var(--t3); line-height:1.42;
-         overflow-wrap:anywhere; }
-  /* Theirs on white, ours on the quiet fill: sides, not states. Neither is
-     a colour the law spends. */
-  .msg.in .bub  { border:1px solid var(--rule); border-bottom-left-radius:5px; }
-  .msg.out .bub { background:var(--card); border-bottom-right-radius:5px; }
-  .bub .kind { display:block; font-size:var(--t1); font-weight:600; color:var(--mid);
-               margin-bottom:3px; }
-  .meta { font-size:var(--t1); color:var(--mid); margin-top:4px; padding:0 4px; }
+  /* The iPhone's own conversation (the owner, 30 Sep, with a screenshot of
+     his Messages: "follow the iPhone standard", not a white bubble): the
+     time centred over each stretch of talk, theirs on the iPhone's grey
+     and ours on its blue, a tail on the last bubble of a run. Sides, not
+     states: neither colour is one the law spends, and blue is no family
+     colour_suite polices. The blue deepens to the foot of each bubble, as
+     the iPhone's does down the screen; per bubble, not fixed to the
+     screen, because Safari on the iPhone ignores a fixed background; and
+     it is deepest from the tail's height down, so the tail matches the
+     foot it curls from. */
+  .day { text-align:center; font-size:var(--t1); color:#8E8E93; margin:20px 0 8px; }
+  .day .dw { font-weight:600; }
+  .msg { display:flex; flex-direction:column; max-width:80%; margin:0 0 12px; }
+  .msg.in  { align-items:flex-start; margin-right:auto; margin-left:8px; }
+  .msg.out { align-items:flex-end; margin-left:auto; margin-right:8px; }
+  .msg.run { margin-bottom:3px; }
+  .bub { position:relative; z-index:0; padding:8px 13px; border-radius:18px; font-size:var(--t3);
+         line-height:1.36; overflow-wrap:anywhere; }
+  .msg.in .bub  { background:#E9E9EB; color:#000; }
+  .msg.out .bub { background:#0A84FF linear-gradient(#2A9DFC, #0A84FF calc(100% - 20px)); color:#fff; }
+  /* the tail: a curl of the bubble's own colour, cut by the page's */
+  .msg.end .bub::before, .msg.end .bub::after { content:''; position:absolute; z-index:-1;
+                                                bottom:0; height:20px; }
+  .msg.in.end .bub::before  { left:-7px; width:20px; background:#E9E9EB;
+                              border-bottom-right-radius:15px; }
+  .msg.in.end .bub::after   { left:-10px; width:10px; background:var(--ground, #fff);
+                              border-bottom-right-radius:10px; }
+  .msg.out.end .bub::before { right:-7px; width:20px; background:#0A84FF;
+                              border-bottom-left-radius:15px; }
+  .msg.out.end .bub::after  { right:-10px; width:10px; background:var(--ground, #fff);
+                              border-bottom-left-radius:10px; }
+  .meta { font-size:var(--t1); color:#8E8E93; margin-top:3px; padding:0 4px; }
   .meta .bad { color:var(--law-red); }
   .photo { display:block; max-width:210px; width:100%; min-height:40px; border-radius:10px;
            margin:0 0 8px; }
@@ -149,7 +168,6 @@ body.paper .vrow.b-task { background:var(--law-amber); }
 body.paper .vrow.b-sent { background:linear-gradient(var(--law-wait), var(--law-wait)), var(--surface); }
 body.paper .vrow.b-done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .vrow.b-none, body.paper .vrow.b-nophone { background:var(--surface); box-shadow:none; }
-body.paper .msg.in .bub { background:var(--surface); box-shadow:var(--lift); }
 body.paper .chip { background:var(--surface); }
 body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
 </style>
@@ -203,7 +221,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=4"></script>
+<script src="contact-demo.js?v=5"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=92"></script>
 <script>
@@ -534,21 +552,35 @@ function bookingFor(ck){
   return pick;
 }
 
-/* What the SMS pages sent this guest - the pre-arrival form, spa reminders,
-   tonight's menu - so the whole stay reads in one place. Read, never
-   written: those pages own their records. */
+/* Every text the SMS pages sent this number - the pre-arrival form, spa
+   reminders, the dinner invitations, an outside guest's invitation - so
+   the whole stay reads in one place (the owner, 30 Sep: "every outgoing
+   and incoming message including dinner invitations and pre-arrival
+   form"). Read, never written: those pages own their records. A text sent
+   again keeps the one it replaced under earlier (send-invites.js), so both
+   are here. A number on no booking can only have been an outside guest,
+   so its last fortnight of /extinvites is read instead. */
 function smsPageSends(b, phone){
-  if (!b) return Promise.resolve([]);
-  var reads = [whole('/previnvites/' + b.id).catch(function(){ return null; }),
-               whole('/spareminders/' + b.id).catch(function(){ return null; })];
-  var nights = [], d = parseDepDate(b.arrive), end = b.depart < dkey(new Date()) ? b.depart : dkey(new Date());
-  for (var i = 0; d && dkey(d) <= end && i < 14; i++){
-    nights.push(dkey(d)); d = new Date(d.getTime() + 86400000);
+  var reads = [], kinds = [], today = dkey(new Date());
+  function read(path, kind){
+    reads.push(whole(path).catch(function(){ return null; })); kinds.push(kind);
   }
-  nights.forEach(function(k){ reads.push(whole('/invites/' + k).catch(function(){ return null; })); });
+  var d, i;
+  if (b){
+    read('/previnvites/' + b.id, 'pre');
+    read('/spareminders/' + b.id, 'spa');
+    var end = b.depart < today ? b.depart : today;
+    for (d = parseDepDate(b.arrive), i = 0; d && dkey(d) <= end && i < 14; i++){
+      read('/invites/' + dkey(d), 'night'); d = new Date(d.getTime() + 86400000);
+    }
+  } else {
+    for (d = parseDepDate(today), i = 0; d && i < 14; i++){
+      read('/extinvites/' + dkey(d), 'night'); d = new Date(d.getTime() - 86400000);
+    }
+  }
   return Promise.all(reads).then(function(res){
     var out = [];
-    function add(rec, kind){
+    function one(rec, kind){
       if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
       if (rec.to && normalisePhone(rec.to) !== phone) return;
       out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
@@ -558,10 +590,17 @@ function smsPageSends(b, phone){
                        : rec.delivery === 'delivered' ? 'delivered' : 'sent',
                  err: rec.error || rec.deliveryText || '' });
     }
-    add(res[0], 'Pre-arrival form');
-    Object.keys(res[1] || {}).forEach(function(tid){ add(res[1][tid], 'Spa reminder'); });
-    res.slice(2).forEach(function(night){
-      Object.keys(night || {}).forEach(function(v){ add(night[v], 'Tonight’s menu'); });
+    function add(rec, kind){
+      one(rec, kind);
+      var was = rec && rec.earlier;
+      if (was && typeof was === 'object')
+        Object.keys(was).forEach(function(k){ one(was[k], kind); });
+    }
+    res.forEach(function(r, i){
+      if (kinds[i] === 'pre') return add(r, 'Pre-arrival form');
+      Object.keys(r || {}).forEach(function(k){
+        add(r[k], kinds[i] === 'spa' ? 'Spa reminder' : 'Dinner invitation');
+      });
     });
     return out;
   });
@@ -664,24 +703,32 @@ function triHTML(id, m){
   return h ? '<div class="tri">' + h + notes + '<div class="trifail" id="tf-' + id + '"></div></div>' : '';
 }
 
-function msgHTML(id, m){
-  var kind = m.page ? m.kind
-           : m.kind === 'template' ? (CONTACT_TEMPLATES.filter(function(x){ return x.id === m.tpl; })[0] || {}).label || 'Approved message'
-           : m.kind === 'fallback' ? 'Sent again by SMS: not on WhatsApp' : '';
+/* What a message was, when it was not typed here: the SMS pages' texts by
+   their page, an approved WhatsApp message by its name. */
+function kindOf(m){
+  return m.page ? m.kind
+       : m.kind === 'template' ? (CONTACT_TEMPLATES.filter(function(x){ return x.id === m.tpl; })[0] || {}).label || 'Approved message'
+       : m.kind === 'fallback' ? 'Sent again by SMS: not on WhatsApp' : '';
+}
+/* end: the last bubble of a run, which takes the tail and says who sent it
+   and how it went, as the iPhone says Delivered under its last. A failure
+   is said under its own bubble, wherever it falls. */
+function msgHTML(id, m, end){
+  var kind = kindOf(m);
   var photos = '';
   Object.keys(m.media || {}).forEach(function(i){
     photos += '<img class="photo wait" alt="Photo from the guest" data-m="' + esc(id) + '" data-i="' + esc(i) + '">';
   });
   var meta = [];
+  if (kind) meta.push(esc(kind));
   if (m.dir === 'out' && m.by) meta.push(esc(whoOf(m.by)));
   meta.push(m.ch === 'wa' ? 'WhatsApp' : 'SMS');
-  if (m.page) meta.push('SMS page');
-  meta.push(esc(timeOf(m.at)));
   if (m.dir === 'out' && statusWords(m)) meta.push(statusWords(m));
-  return '<div class="msg ' + (m.dir === 'in' ? 'in' : 'out') + '" data-m="' + esc(id) + '">' +
-    '<div class="bub">' + (kind ? '<span class="kind">' + esc(kind) + '</span>' : '') + photos +
-    esc(m.body).replace(/\n/g, '<br>') + '</div>' +
-    '<div class="meta">' + meta.join(' · ') + '</div>' + triHTML(id, m) + '</div>';
+  var bad = m.status === 'failed' || m.status === 'undelivered';
+  return '<div class="msg ' + (m.dir === 'in' ? 'in' : 'out') + (end ? ' end' : ' run') +
+    '" data-m="' + esc(id) + '">' +
+    '<div class="bub">' + photos + esc(m.body).replace(/\n/g, '<br>') + '</div>' +
+    (end || bad ? '<div class="meta">' + meta.join(' · ') + '</div>' : '') + triHTML(id, m) + '</div>';
 }
 
 var DRAWN = false;
@@ -714,11 +761,25 @@ function drawThread(){
     var x = parseISO(a.m.at), y = parseISO(b.m.at);
     return ((x ? x.getTime() : 0) - (y ? y.getTime() : 0)) || (a.id < b.id ? -1 : 1);
   });
-  var h = '', day = null;
-  all.forEach(function(x){
-    var dl = dayLabel(x.m.at);
-    if (dl !== day){ day = dl; h += '<div class="day">' + esc(dl) + '</div>'; }
-    h += msgHTML(x.id, x.m);
+  /* The time over each stretch of talk, as the iPhone puts it: a new day,
+     or an hour since the last message. A run is one side's messages in a
+     stretch, the same sender and the same kind; a guest's message ends its
+     own, since what it became is said under it. */
+  var HOUR = 3600000, h = '';
+  function ms(x){ var d = parseISO(x.m.at); return d ? d.getTime() : null; }
+  function breaks(a, b){
+    return !a || ms(a) == null || ms(b) == null || dayLabel(a.m.at) !== dayLabel(b.m.at) ||
+           ms(b) - ms(a) >= HOUR;
+  }
+  all.forEach(function(x, i){
+    if (breaks(all[i - 1], x))
+      h += '<div class="day"><span class="dw">' + esc(dayLabel(x.m.at)) + '</span> ' +
+           esc(timeOf(x.m.at)) + '</div>';
+    var nx = all[i + 1];
+    var run = !!nx && !breaks(x, nx) && x.m.dir === 'out' && nx.m.dir === 'out' &&
+              (x.m.by || '') === (nx.m.by || '') && kindOf(x.m) === kindOf(nx.m) &&
+              (x.m.ch || '') === (nx.m.ch || '');
+    h += msgHTML(x.id, x.m, !run);
   });
   document.getElementById('msgs').innerHTML = h ||
     '<div class="empty">Nothing yet. Anything you send starts the conversation.</div>';

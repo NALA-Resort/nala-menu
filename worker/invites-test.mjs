@@ -127,6 +127,10 @@ function install() {
         return new Response("no", { status: 401 });
       if (!STATE.linksOk && path.startsWith("/links/"))
         return new Response("no", { status: 401 });
+      /* oldRules: the rules before the paste that knows earlier, which
+         refuse it on the pre-arrival and spa records. */
+      if (STATE.oldRules && /^\/(previnvites|spareminders)\//.test(path) && "earlier" in JSON.parse(opt.body))
+        return new Response("no", { status: 401 });
       STORE[path] = JSON.parse(opt.body);
       return new Response(opt.body, { status: 200 });
     }
@@ -759,6 +763,50 @@ for (const k of Object.keys(TW)) delete env[k];
 install(); r = await post();
 ck("and with SMS_VIA gone, the texts are ClickSend's again",
    SENDS.length === 1 && TSENDS.length === 0);
+
+/* ── a text sent again keeps the one it replaced (30 Sep) ─────────
+   The owner: Guest Contact must hold "every outgoing and incoming message
+   including dinner invitations and pre-arrival form". Each page's record
+   is its latest send; the one it replaced rides along under earlier. */
+install(); STORE["/menu"] = null;
+await pre();
+const first = STORE["/previnvites/bk-future"];
+await pre({ template: "nudge", body: "A reminder, when you have a moment. Nala Resort\n<form>" });
+prec = STORE["/previnvites/bk-future"];
+ck("the pre-arrival nudge is the record, and the first text rides under earlier",
+   prec.template === "nudge" && prec.earlier && prec.earlier.length === 1 &&
+   prec.earlier[0].sentAt === first.sentAt && prec.earlier[0].body === first.body &&
+   prec.earlier[0].status === "sent" && !("token" in prec.earlier[0]));
+install(); STORE["/menu"] = null; STATE.oldRules = true;
+await pre(); await pre();
+prec = STORE["/previnvites/bk-future"];
+ck("before the rules know earlier, a text sent again is recorded as it always was, not refused",
+   prec.status === "sent" && !("earlier" in prec));
+install();
+await post(); await post(); await post();
+rec = STORE["/invites/" + today + "/4"];
+ck("a dinner invitation sent three times: the last, and the two before it, newest first",
+   rec.earlier && rec.earlier.length === 2 && rec.earlier[0].sentAt >= rec.earlier[1].sentAt &&
+   rec.earlier.every((x) => x.status === "sent" && x.to === "+61411222333"));
+STATE.clicksendOk = false;
+await post();
+rec = STORE["/invites/" + today + "/4"];
+ck("an attempt that failed is the record, and the texts that went are all kept",
+   rec.status === "failed" && rec.earlier.length === 3);
+await post();
+ck("and a failed attempt is never kept itself: it was not a message",
+   STORE["/invites/" + today + "/4"].earlier.length === 3);
+STATE.clicksendOk = true;
+for (let n = 0; n < 4; n++) await post();
+ck("five at most", STORE["/invites/" + today + "/4"].earlier.length === 5);
+install();
+await post();
+STORE["/invites/" + today + "/4"].earlier = [{ sentAt: "2026-09-29T08:00:00.000Z", status: "sent", body: "x" }];
+STATE.receipt = { status_code: "201", status_text: "Success: Message received on handset." };
+await dlv({ invites: [{ date: today, villa: "4" }] });
+ck("the receipt check writes its verdict and keeps what was sent before",
+   STORE["/invites/" + today + "/4"].delivery === "delivered" &&
+   (STORE["/invites/" + today + "/4"].earlier || []).length === 1);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);
