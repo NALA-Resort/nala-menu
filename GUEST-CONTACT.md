@@ -363,6 +363,11 @@ of its own, and broken on purpose to watch that test go red.
   answer is no longer put back to queued. A webhook Twilio sends twice no
   longer wipes how the desk sorted the message. The SMS pages' Worker
   answers any fault in words rather than a bare error.
+- **A Worker older than the page says so.** The owner's first Delete, tried
+  before the Worker's paste, read "unknown kind". Chat now says what that
+  means - the Chat Worker in Cloudflare is older than this page, paste
+  `worker/guest-contact.js` into nala-contact and press Deploy - where it
+  happened, and at the top in the setup check.
 - **The sending number** is read as the phone rule reads it, so
   `TWILIO_FROM` typed as 0495 033 444, or `TWILIO_WA_FROM` typed with its
   `whatsapp:`, still works, and the setup check agrees with the sends.
