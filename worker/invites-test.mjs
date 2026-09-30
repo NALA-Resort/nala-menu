@@ -778,10 +778,12 @@ ck("the pre-arrival nudge is the record, and the first text rides under earlier"
    prec.earlier[0].sentAt === first.sentAt && prec.earlier[0].body === first.body &&
    prec.earlier[0].status === "sent" && !("token" in prec.earlier[0]));
 install(); STORE["/menu"] = null; STATE.oldRules = true;
-await pre(); await pre();
+await pre();
+r = await pre({ template: "nudge", body: "A reminder, when you have a moment. Nala Resort\n<form>" });
+j = await r.json();
 prec = STORE["/previnvites/bk-future"];
 ck("before the rules know earlier, a text sent again is recorded as it always was, not refused",
-   prec.status === "sent" && !("earlier" in prec));
+   j.results["bk-future"].status === "sent" && prec.template === "nudge" && !("earlier" in prec));
 install();
 await post(); await post(); await post();
 rec = STORE["/invites/" + today + "/4"];
