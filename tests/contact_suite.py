@@ -1155,8 +1155,12 @@ with sync_playwright() as p:
            "Only before a guest arrives." in o["why"] and not [x for x in o["btns"] if x.startswith("pre:")], o)
         ck("[%s] tonight's menu, live, in the Templates page's order" % tz,
            [x for x in o["btns"] if x.startswith("menu:")] == ["menu:ready", "menu:join"], o)
-        ck("[%s] tomorrow's massage, Spa reminders' own row; this morning's, begun, is not offered" % tz,
-           [x for x in o["btns"] if x.startswith("spa:")] == ["spa:remind:t7"] and
+        # Begun is by the device's clock (spaTreatmentStarted): at 3:20pm in
+        # Brisbane this morning's 9am has begun; a device in UTC reads
+        # 5:20am, before it, as every board does.
+        want = ["spa:remind:t7"] if tz == "Australia/Brisbane" else ["spa:remind:t6", "spa:remind:t7"]
+        ck("[%s] tomorrow's massage, Spa reminders' own row; this morning's, once begun, is not offered" % tz,
+           [x for x in o["btns"] if x.startswith("spa:")] == want and
            any("Wednesday 30 September at 10:30 am" in w for w in o["why"]), o)
         pg.click('#sheet button[data-tset="menu"][data-tid="ready"]'); pg.wait_for_timeout(200)
         cmp = pg.evaluate("""()=>({win:document.getElementById('win').textContent,

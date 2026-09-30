@@ -1257,6 +1257,9 @@ function sendTemplate(btn){
   }, { busy:'Sending', done:'Sent', hold:400, fail: err,
        then: function(){ PICKT = null; SENT_AT = 0; var s = document.getElementById('sendBtn');
                          armSave(s); s.textContent = 'Send';
+                         /* back to typing now: the refresh redraws only a
+                            conversation that has moved */
+                         drawCompose();
                          if (late){ err.textContent = late; err.classList.add('show'); }
                          refresh(); } });
 }
