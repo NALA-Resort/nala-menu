@@ -142,7 +142,12 @@ bar at the foot stands on `var(--tabroom)` and wears `onbar`, so the
 strip under it is solid, as Publish's does, or rises over the bar with a
 z-index above 5, as Dietary's save bar does - never under it. A board
 that wants a refresh calls `pullToRefresh()`; a Refresh button in a
-footer is what the owner cleared away (30 Sep).
+footer is what the owner cleared away (30 Sep). The bar stays put from
+page to page (the owner, 30 Sep: "It should stay there"): a page draws
+the icons this phone was last given (`nala-tabs`) as nala-shared.js
+loads, before its login lands, standing on auth.js's cover while that
+only waits (`#nalaCover.waiting`), and `buildTabs` puts the login's own
+in their place when they differ.
 
 A page can go live to the admin alone first (29 Sep, Chat before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the

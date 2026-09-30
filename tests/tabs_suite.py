@@ -51,6 +51,13 @@ answer to each other, and whichever side a change misses fails by name.
      the top reloads Reservations, Cleans and the Dashboard, and nothing
      else reloads - a short pull, a pull from the bar, under a sheet or
      from part-way down, a page that never asked, a browser tab.
+ 10. It stays put from page to page (the owner, the same day: "It should
+     stay there"): the icons a login was given are kept on the phone, the
+     next page draws them in its first frame, before its login lands,
+     standing on auth.js's cover, which wears the page's ground; the menu's
+     icon waits for the page; the login's own replace them if they differ,
+     and the same leave the bar as it stood; a kept page gone from the menu
+     is left out; the passcode's cover covers the bar; Logout forgets them.
 
 The night is tests/paper_night.json, read through tests/night_harness.py,
 with a login for each role added here.
@@ -80,12 +87,20 @@ for r in ROLES:
     TREE["staff"].setdefault(EMAIL[r], {"name": r.title(), "role": r})
 PREVIEW_OPEN = {"open": {"guest-contact": True, "tasks": True}}
 
+# The login lands 20ms in, or __HOLD ms in to stand for a slow phone (10);
+# __OUT, nobody is signed in, and auth.js asks for the passcode.
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL,
-getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL});},25);},
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb(window.__OUT?null:{email:window.__EMAIL,
+getIdToken:function(){return Promise.resolve('T');}});},window.__HOLD||20);},
+onAuthStateChanged:function(cb){setTimeout(function(){cb(window.__OUT?null:{email:window.__EMAIL});},(window.__HOLD||20)+5);},
 signOut:function(){}};"""
+# How many frames a page had painted when its tab bar arrived: none is a bar
+# in the page's first frame (10).
+FIRST_FRAME = """new MutationObserver(function(m, o){
+  if (!document.getElementById('tabBar')) return;
+  window.__barPaints = performance.getEntriesByType('paint').length; o.disconnect();
+}).observe(document, {childList:true, subtree:true});"""
 
 P = F = 0
 def ck(name, cond, detail=""):
@@ -93,19 +108,29 @@ def ck(name, cond, detail=""):
     print(("PASS " if cond else "FAIL ") + name + ("" if cond or not detail else "  -> " + str(detail)))
     P, F = (P + 1, F) if cond else (P, F + 1)
 
-def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False):
+def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
+            kept=None, hold=None, out=False, settle=2000):
     """A page on the fixture night, signed in as email, settled. app: as the
-    Home Screen app, on a touch screen; touch: a touch screen in a tab."""
+    Home Screen app, on a touch screen; touch: a touch screen in a tab.
+    kept: the tab bar's icons this phone was last given; hold: the login
+    lands that many ms in; out: nobody is signed in; settle: ms to wait."""
     if perms is None: TREE.pop("permissions", None)
     else: TREE["permissions"] = perms
+    state = {"cookies": [], "origins": []}
+    if kept is not None:
+        state["origins"] = [{"origin": "http://localhost:%d" % PORT,
+                             "localStorage": [{"name": "nala-tabs", "value": kept}]}]
     ctx = b.new_context(viewport={"width": w, "height": h}, timezone_id="Australia/Brisbane",
-                        has_touch=app or touch)
+                        has_touch=app or touch, storage_state=state)
     pg = ctx.new_page()
     if app:
         pg.add_init_script("Object.defineProperty(navigator,'standalone',{get:function(){return true;}});")
     pg.clock.set_fixed_time(CLOCK)
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
+    if hold: pg.add_init_script("window.__HOLD=%d;" % hold)
+    if out: pg.add_init_script("window.__OUT=true;")
+    pg.add_init_script(FIRST_FRAME)
     pg.route("**firebasedatabase.app/**", fb)
     pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
@@ -113,7 +138,7 @@ def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False):
     # that matters, and the sandbox cannot reach them.
     pg.route("**.workers.dev/**", lambda r: r.fulfill(status=200, content_type="application/json", body="{}"))
     pg.goto("http://localhost:%d/%s" % (PORT, page))
-    pg.wait_for_timeout(2000)
+    pg.wait_for_timeout(settle)
     return ctx, pg
 
 def press(pg, sel):
@@ -588,6 +613,83 @@ with sync_playwright() as p:
                 below:d.getBoundingClientRect().top>=b.bottom-1};}""")
     ck("a page without the bar keeps the hamburger, and its menu drops from it",
        not miss and not m["bar"] and m["open"] and m["below"], miss or m)
+    ctx.close()
+
+    # ── 10. it stays put ──────────────────────────────────────────────
+    # The owner, 30 Sep: "Why does the menu bar need to disappear every icon
+    # press and load with the page. It should stay there". Each icon opens a
+    # new page, and the login lands a moment into each: the bar is drawn at
+    # once from the icons this phone was last given, stands on auth.js's
+    # cover while that waits, and gives way to the login's own if they differ.
+    ADMIN = " ".join(TABS["roles"]["admin"])
+    STAY = """()=>{const b=document.getElementById('tabBar'), c=document.getElementById('nalaCover');
+      const t=document.getElementById('tab-cleaners'); let hit=null;
+      if (t){ const r=t.getBoundingClientRect(); hit=document.elementFromPoint(r.x+r.width/2, r.y+r.height/2); }
+      return {tabs:b?b.getAttribute('data-tabs'):null, early:!!(b&&b.__early),
+        here:(document.querySelector('#tabBar a[aria-current]')||{}).id||null,
+        cover:c?c.className:null, onTop:!!(hit&&hit.closest('#tab-cleaners')),
+        underCover:!!(hit&&c&&c.contains(hit)),
+        coverBg:c?getComputedStyle(c).backgroundColor:null,
+        ground:getComputedStyle(document.body).backgroundColor,
+        paints:window.__barPaints, role:!!window.NALA_ROLE,
+        kept:localStorage.getItem('nala-tabs')};}"""
+    ctx, pg = open_as(b, EMAIL["admin"], "dashboard.html")
+    s = pg.evaluate(STAY)
+    ck("a login's icons are kept on the phone", s["kept"] == ADMIN, s["kept"])
+    # A tap on Reservations, its login held back as on a slow phone.
+    pg.add_init_script("window.__HOLD=1500;")
+    miss = press(pg, "#tab-tally")
+    pg.wait_for_url("**/tally.html"); pg.wait_for_timeout(300)
+    s = pg.evaluate(STAY)
+    pg.evaluate("()=>{const b=document.getElementById('tabBar'); if (b) b.__early=true;}")
+    ck("the next page draws them before its login lands",
+       not miss and not s["role"] and s["cover"] == "waiting" and s["tabs"] == ADMIN, miss or s)
+    ck("in its first frame", s["paints"] == 0, s["paints"])
+    ck("with its own icon lit", s["here"] == "tab-tally", s["here"])
+    ck("standing on the cover, where a finger reaches it", s["onTop"], s)
+    ck("and the cover wears the page's own ground, not auth.js's cream",
+       s["coverBg"] == s["ground"], (s["coverBg"], s["ground"]))
+    miss = press(pg, "#tab-menu"); pg.wait_for_timeout(200)
+    ck("the menu's icon waits for the page, and the login's menu",
+       not miss and not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"), miss)
+    pg.wait_for_timeout(2000)
+    s = pg.evaluate(STAY)
+    ck("the login landed, the same icons leave the bar as it stood",
+       s["role"] and s["cover"] is None and s["early"] and s["tabs"] == ADMIN, s)
+    miss = press(pg, "#tab-menu"); pg.wait_for_timeout(300)
+    ck("and the menu's icon raises the menu",
+       not miss and pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"), miss)
+    miss = press(pg, "#navSignout"); pg.wait_for_timeout(200)
+    ck("Logout forgets the icons", not miss and pg.evaluate("()=>localStorage.getItem('nala-tabs')") is None, miss)
+    ctx.close()
+
+    # A phone handed to another login: the admin's icons give way to the
+    # housekeeper's once hers lands, and hers are kept.
+    HK = " ".join(TABS["roles"]["housekeeping"])
+    ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html", kept=ADMIN)
+    s = pg.evaluate(STAY)
+    ck("a phone handed to another login draws that login's own, and keeps them",
+       s["tabs"] == HK and s["kept"] == HK, s)
+    ctx.close()
+
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", hold=1500, settle=300,
+                      kept="dashboard.html nowhere.html tally.html")
+    s = pg.evaluate(STAY)
+    ck("a kept page no longer on the menu is left out",
+       s["cover"] == "waiting" and s["tabs"] == "dashboard.html tally.html", s)
+    ctx.close()
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", hold=1500, settle=300)
+    s = pg.evaluate(STAY)
+    ck("with nothing kept, nothing is drawn before the login",
+       s["cover"] == "waiting" and s["tabs"] is None, s)
+    ctx.close()
+
+    # Signed out, the cover asks for the passcode: the kept icons are no
+    # way past it.
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", out=True, kept=ADMIN)
+    s = pg.evaluate(STAY)
+    ck("signed out, the passcode's cover covers the bar as it covers everything",
+       s["cover"] == "" and s["tabs"] == ADMIN and s["underCover"] and not s["onTop"], s)
     ctx.close()
 
     b.close()

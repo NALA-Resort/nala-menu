@@ -349,9 +349,13 @@ bar is. The page you are on is its icon in blue, and the counts are
 blue and stay on the icon of the page you are on - his rulings of the
 same day, after a red try he found confusing.
 The menu's counts ride on the icons. The page's footer stands on the
-bar; sheets and the select and save bars cover it. Not on the printed
-sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and
-`tabs_suite` hold it.
+bar; sheets and the select and save bars cover it. It stays put from
+page to page ("It should stay there", the same day): each page draws the
+icons the phone was last given as it opens, standing on auth.js's cover
+while the login lands, and the login's own replace them if they differ;
+Logout forgets them. The counts still arrive with each page, recounted.
+Not on the printed sheets, which wear the older dress.
+`tests/nav_canon.json` ("tabs") and `tabs_suite` hold it.
 
 Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
 ("Study apple iPhone best practice including space below and icon line

@@ -363,6 +363,15 @@ body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:5;
    the strip is solid ground instead: the two read as one band, and no row
    shows between them. */
 body.ui2.hastabs:has(> .foot, > .onbar) .tabbar{ background:var(--ground); }
+/* It stays put from page to page (the owner, 30 Sep: "It should stay
+   there"). Every tap opens a new page, which auth.js covers until the
+   login lands; drawn at once (nala-shared.js), the bar stands on that
+   cover while it only waits, and the cover wears the page's own ground
+   rather than its cream, so a tap reads as the page changing under a bar
+   that did not move. A cover with a passcode or a word on it covers the
+   bar as it covers everything. */
+body.ui2.hastabs:has(> #nalaCover.waiting) .tabbar{ z-index:10000; }
+body.ui2 > #nalaCover.waiting{ background:var(--ground) !important; }
 body.ui2 .tabrow{ position:absolute; bottom:21px; left:max(21px, env(safe-area-inset-left));
                   right:max(21px, env(safe-area-inset-right)); max-width:var(--appw);
                   margin:0 auto; height:62px; padding:2px; display:flex;

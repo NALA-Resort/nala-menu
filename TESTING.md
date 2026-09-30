@@ -364,6 +364,10 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
 6. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
    that login may open, and the icons in the same places on every page.
    The chef's includes Statistics.
+7. **Tap from icon to icon.** **Expect** the bar to stay where it is: the
+   new page's icon turns blue at once and the page fills in above the bar,
+   which never goes away. The counts come a moment later, counted afresh.
+   Only the first page after signing in draws the bar late, once.
 
 ---
 

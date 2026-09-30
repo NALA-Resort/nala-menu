@@ -3235,6 +3235,9 @@ function buildNav(){
     var u = window.NALA_USER || null;
     try { u = firebase.auth().currentUser || u; } catch (ex){}
     var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* The tab bar's icons kept on this phone were this login's: the next
+       login is drawn its own. */
+    try { localStorage.removeItem(TABS_KEPT); } catch (ex){}
     /* Unsubscribe first, while the token is still valid enough to delete
        the record. If it fails, sign out anyway: being stuck signed in
        would be the worse outcome. */
@@ -3311,12 +3314,24 @@ function tabsFor(role){
    record, draws none. Only where the menu is, and only on a page wearing
    ui2, whose sheet (nala-ui2.css) holds the bar's dress and the rules that
    keep the page's own footer and sheets clear of it. The printed sheets
-   wear the older dress and keep the menu alone until they join.        */
+   wear the older dress and keep the menu alone until they join.
+   What it offered is kept on the phone, for the next page to draw at once
+   (below).                                                              */
+var TABS_KEPT = 'nala-tabs';
 function buildTabs(role){
+  if (!tabsPage()) return;
+  var tabs = tabsFor(role);
+  try { localStorage.setItem(TABS_KEPT, tabs.join(' ')); } catch (e){}
+  drawTabs(tabs);
+}
+function tabsPage(){
   var body = document.body;
-  if (!body || !document.getElementById('navDrop') ||
-      !/(^|\s)ui2(\s|$)/.test(body.className)) return;
-  var tabs = tabsFor(role), key = tabs.join(' ');
+  return !!(body && document.getElementById('navDrop') &&
+            /(^|\s)ui2(\s|$)/.test(body.className));
+}
+function drawTabs(tabs){
+  if (!tabsPage()) return;
+  var body = document.body, key = tabs.join(' ');
   var bar = document.getElementById('tabBar');
   if (bar && bar.getAttribute('data-tabs') === key) return;   /* drawn already */
   if (bar) bar.parentNode.removeChild(bar);
@@ -3367,6 +3382,9 @@ function buildTabs(role){
                 MENU_ICONS.menu + '</svg></span><span class="tablbl">Menu</span>';
   m.addEventListener('click', function(e){
     e.stopPropagation();          /* the page shuts its menu on any other tap */
+    /* Not while auth.js's cover waits on the login, the bar standing on
+       it: the page is not there yet, nor the menu's filter for the login. */
+    if (document.getElementById('nalaCover')) return;
     var btn = document.getElementById('navBtn');
     if (btn) btn.click();
   });
@@ -3392,6 +3410,25 @@ function buildTabs(role){
     }).observe(drop, { attributes:true, attributeFilter:['class'] });
   }
 }
+
+/* The bar at once, before the login is known. Every tap on it opens a new
+   page, and the login takes a moment to land on each: a bar drawn only
+   then went with the tap and came back after the page. The owner, 30 Sep:
+   "Why does the menu bar need to disappear every icon press and load with
+   the page. It should stay there". So the icons this phone was last given
+   are drawn as this file loads, and stand on auth.js's cover while it
+   waits (nala-ui2.css). buildTabs puts the login's own in their place
+   when they differ - a phone handed to another login, a page switched off
+   in Settings since - and Logout forgets them. The bar only saves the
+   moment: every page it leads to asks for the login itself.           */
+(function(){
+  var kept = '';
+  try { kept = localStorage.getItem(TABS_KEPT) || ''; } catch (e){}
+  var tabs = kept.split(' ').filter(function(h){
+    return navEntry(h) && Object.prototype.hasOwnProperty.call(PAGE_ICONS, h);
+  });
+  if (tabs.length > 1) drawTabs(tabs);
+})();
 
 /* ── pull to refresh ─────────────────────────────────────────────────────
    Drag the page down from its top and let go: it reloads. The owner, 30

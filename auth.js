@@ -163,10 +163,13 @@
                  otherwise zoom the page mid-passcode                    */
               touchAction:'manipulation' });
     OV.innerHTML = '<div id="nalaAuthBox" style="width:82%;max-width:320px;text-align:center;"></div>';
+    /* Named, and waiting until it holds something to read or press: while
+       it only waits, a page's tab bar stands on it (nala-ui2.css). */
+    OV.id = 'nalaCover'; OV.className = 'waiting';
     (document.body || document.documentElement).appendChild(OV);
   }
   function showForm(msg){
-    makeOverlay(); formShown = true;
+    makeOverlay(); formShown = true; OV.className = '';
     css(OV, { alignItems:'center', justifyContent:'center' });
     if (!OV.querySelector('#nalaAuthBox')){
       OV.innerHTML = '<div id="nalaAuthBox" style="width:82%;max-width:320px;text-align:center;"></div>';
@@ -218,7 +221,7 @@
   function padDigitsOf(el){ return el.getAttribute('data-code') || ''; }
 
   function showPad(msg){
-    makeOverlay(); formShown = true;
+    makeOverlay(); formShown = true; OV.className = '';
     css(OV, { alignItems:'stretch', justifyContent:'flex-start' });
     var keys = ['1','2','3','4','5','6','7','8','9','','0','back'];
     var slots = '', i;
@@ -356,7 +359,7 @@
 
   /* ── auth wiring ─────────────────────────────────────── */
   if (typeof firebase === 'undefined'){
-    makeOverlay();
+    makeOverlay(); OV.className = '';
     OV.querySelector('#nalaAuthBox').innerHTML =
       '<div style="color:#A8321E;font-size:13px;">Could not load the sign-in service.<br>Check the connection and refresh.</div>';
     return;
