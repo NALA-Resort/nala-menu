@@ -333,6 +333,23 @@ Open **front-desk.html** and **prearrival.html** on the narrowest phone anyone a
 the resort uses. **Expect** no sideways scrolling anywhere, including with a
 summary open.
 
+## 11. The tab bar, 30 Sep, on the Home Screen app
+
+Measured in a headless browser, which has no home strip, no keyboard and no
+San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
+
+1. **Five icons along the foot**: Dashboard, Reservations, Cleans, Chat,
+   Tasks. **Expect** them clear of the home strip, the page you are on on a
+   grey pill, and every name whole - "Reservations" is the long one.
+2. **Reservations and Cleans.** **Expect** Refresh and its neighbour
+   standing on the bar, and on Cleans all seventeen villas on one screen.
+3. **Chat, in a conversation, typing.** **Expect** the message box and Send
+   reachable above the keyboard, the bar not riding up over them.
+4. **Turn the phone sideways.** **Expect** the bar gone and the menu still
+   there: under 600pt of height it steps aside for the boards.
+5. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
+   that login may open, and the icons in the same places on every page.
+
 ---
 
 ## What I check, so you do not have to

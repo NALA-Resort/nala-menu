@@ -114,5 +114,102 @@
       ]
     ]
   ],
-  "signout": "Logout"
+  "signout": "Logout",
+  "tabs": {
+    "_comment": [
+      "The tab bar along the foot of every ui2 page with a menu, as buildTabs",
+      "in nala-shared.js draws it (TABBAR, TABBAR_MAX). The owner, 30 Sep: one",
+      "icon a page, five at most, only pages the login may open, and the",
+      "admin's five are Dashboard, Reservations, Cleans, Chat and Tasks. A",
+      "login gets the first five of the order it may open, in that order; one",
+      "page alone draws no bar. 'roles' is what each role is offered on the",
+      "shipped grants while Chat and Tasks are still the admin's alone",
+      "(PREVIEW_PAGES), 'roles_open' once the owner has opened them. Change",
+      "the bar in TABBAR and here, and tabs_suite names whichever was missed."
+    ],
+    "order": [
+      "dashboard.html",
+      "tally.html",
+      "cleaners.html",
+      "guest-contact.html",
+      "tasks.html",
+      "front-desk.html",
+      "spa.html",
+      "calendar.html",
+      "keys.html",
+      "publish.html"
+    ],
+    "max": 5,
+    "roles": {
+      "admin": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "guest-contact.html",
+        "tasks.html"
+      ],
+      "manager": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "front-desk.html",
+        "spa.html"
+      ],
+      "chef": [
+        "dashboard.html",
+        "tally.html",
+        "publish.html"
+      ],
+      "waiter": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "front-desk.html",
+        "spa.html"
+      ],
+      "housekeeping": [
+        "cleaners.html",
+        "calendar.html"
+      ],
+      "spa": []
+    },
+    "roles_open": {
+      "admin": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "guest-contact.html",
+        "tasks.html"
+      ],
+      "manager": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "guest-contact.html",
+        "tasks.html"
+      ],
+      "chef": [
+        "dashboard.html",
+        "tally.html",
+        "tasks.html",
+        "publish.html"
+      ],
+      "waiter": [
+        "dashboard.html",
+        "tally.html",
+        "cleaners.html",
+        "guest-contact.html",
+        "tasks.html"
+      ],
+      "housekeeping": [
+        "cleaners.html",
+        "tasks.html",
+        "calendar.html"
+      ],
+      "spa": [
+        "tasks.html",
+        "spa.html"
+      ]
+    }
+  }
 }

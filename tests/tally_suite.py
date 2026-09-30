@@ -756,10 +756,16 @@ with sync_playwright() as p:
       href:[...document.querySelectorAll('.navdrop a')].find(a=>a.href.includes('list')).getAttribute('href')})""")
     ck("Today button enabled off-today", off["today"])
     ck("print link carries browsed date", off["href"]=="list.html?date="+plus(1))
+    #  The foot of the screen is the tab bar's where there is one (30 Sep),
+    #  and the footer stands on it: pinned to its top, not under it.
     ft=pg.evaluate("""()=>{const f=document.querySelector('.foot');const r=f.getBoundingClientRect();
-      return {b:Math.round(r.bottom),vh:window.innerHeight,doc:document.scrollingElement.scrollHeight};}""")
+      const t=document.getElementById('tabBar');
+      const floor=t&&getComputedStyle(t).display!=='none'?t.getBoundingClientRect().top:window.innerHeight;
+      return {b:Math.round(r.bottom),floor:Math.round(floor),vh:window.innerHeight,
+              doc:document.scrollingElement.scrollHeight};}""")
     print("   short page:", ft)
-    ck("footer pinned to screen bottom on short page", abs(ft["b"]-ft["vh"])<=1)
+    ck("footer pinned to the foot of the screen on short page, on the tab bar",
+       abs(ft["b"]-ft["floor"])<=1 and ft["floor"]<ft["vh"])
     #  The menu's shape lives in tests/nav_canon.json - one table the suites
     #  share instead of four private copies of the order. This page's own
     #  link is the one the canon has and the menu must not.

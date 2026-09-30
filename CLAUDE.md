@@ -53,6 +53,11 @@ Already done this way — follow these:
 - `tests/nav_canon.json` — the menu's shape as the suites assert it. The
   `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
   tests expect, and whichever side a change misses fails by name.
+- `nala-shared.js` → `TABBAR` - the tab bar along the foot of every ui2
+  page with a menu (the owner, 30 Sep): one icon a page, five at most, the
+  first of `TABBAR` a login may open (`tabsFor`, asking `canOpen`),
+  labelled from `NAV`. The admin's five lead it. `nav_canon.json`'s "tabs"
+  is what each role is offered, as `tabs_suite` asserts.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `tests/form_dinner_cases.json` — the guest's pre-arrival dinner answer as
   every screen must read it (`formDinnerCell`, nala-shared.js). Added 4 Sep,
@@ -118,6 +123,13 @@ maintained, see below.
 Two things the generator gets right that you would get wrong pasting: each
 page omits its own link, and the permission keys are `resSheet` and
 `cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
+
+A board on the tab bar (30 Sep) is its place in `TABBAR`, a drawing in
+`TAB_ICONS` and the same line in the canon's "tabs"; no page changes, as
+the bar draws itself into every ui2 page with a menu and `nala-ui2.css`
+stands each page's `.foot` on it. A page's own fixed bar at the foot
+stands on `var(--tabroom)`, as Publish's does, or rises over the bar
+with a z-index above 5, as Dietary's save bar does - never under it.
 
 A page can go live to the admin alone first (29 Sep, Chat before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the

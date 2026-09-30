@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Publish Menu</title>
-<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui2.css?v=10">
 <style>
   body { padding:28px 24px 170px; }
   /* The save bar is pinned over the foot of the page, so the page has to
@@ -126,7 +126,9 @@
               color:var(--mid); }
   .dietlink a { color:var(--ink); }
 
-  .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
+  /* bottom: the tab bar's room (nala-ui2.css), so this bar stands on it
+     rather than under it, as every page's footer does. 0 without one. */
+  .bar { position:fixed; bottom:var(--tabroom); left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
   .bar .in { max-width:var(--appw); margin:0 auto; display:flex; gap:10px; align-items:center; }
   .pubbtn { flex:1; padding:14px; min-height:46px; border:none; background:var(--ink);
@@ -271,7 +273,7 @@ body.paper .bar { background:var(--ground); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=94"></script>
+<script src="nala-shared.js?v=95"></script>
 <script>
 /* Publishing is the chef's job and the manager's, gated on the same permission
    the tagging page uses. Sent to their own board rather than refused, since a

@@ -3111,6 +3111,153 @@ function buildNav(){
 }
 buildNav();
 
+/* ── the tab bar ─────────────────────────────────────────────────────────
+   Icons along the foot of the screen for the pages used most: one icon a
+   page, five at most, and a page this login cannot open is not there. The
+   owner, 30 Sep, naming the admin's five: Dashboard, Reservations, Cleans,
+   Chat and Tasks.
+
+   A shortcut into the menu, not a second menu. Every page on it keeps its
+   place in NAV, its label is its NAV entry's, and whether it is offered is
+   canOpen's answer - the menu filter's own question - so the bar and the
+   menu cannot disagree about a page, and a page switched off for a role in
+   Settings leaves both at once.
+
+   TABBAR is the order of preference: a login gets the first TABBAR_MAX
+   pages of it that it may open, drawn in this order. The admin's five lead,
+   so the admin, who may open everything, gets exactly those. The rest are
+   the other boards on the menu's top level, for the logins that cannot open
+   all five - a housekeeper's Calendar, the masseuse's Spa, the chef's
+   Publish Menu. The Print, SMS and Settings pages stay in their submenus.
+
+   A login with one page to go to draws no bar: an icon that can only say
+   "you are here" is chrome. The page you are on stays on the bar, marked
+   and not a link, so the icons never move under the thumb.
+
+   tests/nav_canon.json holds the order and what each role is offered, the
+   menu's own pattern: change the bar there too, or the suites name it.   */
+var TABBAR = ['dashboard.html', 'tally.html', 'cleaners.html', 'guest-contact.html',
+              'tasks.html', 'front-desk.html', 'spa.html', 'calendar.html',
+              'keys.html', 'publish.html'];
+var TABBAR_MAX = 5;
+
+/* The massage mark: one centre petal and a mirrored pair, on the fork's own
+   24 grid, stroked so it carries its state in the stroke colour. Drawn for
+   Front Desk's rows on 31 Aug and moved here 30 Sep, when the tab bar drew
+   Spa with it: one lotus, so the two cannot drift apart.               */
+var LOTUS_PATHS =
+  '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
+  '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
+  '<path d="M11.4 17.5c-2.8.5-5.2-.2-7-2C2.5 13.6 1.9 11.2 2.2 8.6' +
+  'c2.6-.3 5 .3 6.8 2.1"/>' +
+  '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
+  'c-2.6-.3-5 .3-6.8 2.1"/>';
+var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
+
+/* Line drawings on the same 24 grid, stroked in the colour of the label
+   under them (nala-ui2.css). One per page on TABBAR; the suite fails a
+   page on the bar that has none.                                        */
+var TAB_ICONS = {
+  /* panels: the page that lays the day out on one screen */
+  'dashboard.html': '<rect x="3.5" y="3.5" width="7" height="8.5" rx="1.6"/>' +
+    '<rect x="13.5" y="3.5" width="7" height="5" rx="1.6"/>' +
+    '<rect x="13.5" y="11.5" width="7" height="9" rx="1.6"/>' +
+    '<rect x="3.5" y="15" width="7" height="5.5" rx="1.6"/>',
+  /* the knife and fork, as the dining forks draw it */
+  'tally.html': '<path d="M5 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M7.5 3v5"/>' +
+    '<path d="M7.5 10.5V21"/><path d="M17 21V3c2 .6 3 3 3 5.6 0 2.5-1 4-3 4.6"/>',
+  /* a broom */
+  'cleaners.html': '<path d="M12 2.8v6.4"/>' +
+    '<path d="M9 9.2h6a2 2 0 0 1 2 2v1.6H7v-1.6a2 2 0 0 1 2-2z"/>' +
+    '<path d="M7 12.8 5.2 20.4a.6.6 0 0 0 .6.8h12.4a.6.6 0 0 0 .6-.8L17 12.8"/>' +
+    '<path d="M10.2 17v4.2"/><path d="M13.8 17v4.2"/>',
+  /* a speech bubble */
+  'guest-contact.html': '<path d="M12 4c4.4 0 8 3.1 8 7s-3.6 7-8 7c-1 0-2-.2-2.9-.5' +
+    'L4.5 19.5l1.3-3.6C4.7 14.6 4 12.9 4 11c0-3.9 3.6-7 8-7z"/>',
+  /* a list, two of it ticked */
+  'tasks.html': '<path d="M4 6.6 5.8 8.4 9 5.2"/><path d="M12.5 7h8"/>' +
+    '<path d="M4 13.6l1.8 1.8L9 12.2"/><path d="M12.5 14h8"/>' +
+    '<path d="M4.5 19.5h4"/><path d="M12.5 20h8"/>',
+  /* the bell on the desk */
+  'front-desk.html': '<path d="M4.5 17a7.5 7.5 0 0 1 15 0"/><path d="M3 17h18"/>' +
+    '<path d="M4.5 20.5h15"/><path d="M12 9.5V7.6"/><circle cx="12" cy="6.2" r="1.4"/>',
+  'spa.html': LOTUS_PATHS,
+  'calendar.html': '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/>' +
+    '<path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+  'keys.html': '<circle cx="8" cy="15.5" r="4.5"/><path d="M11.2 12.3 20 3.5"/>' +
+    '<path d="M17 6.5l2.4 2.4"/><path d="M14.6 8.9l1.8 1.8"/>',
+  /* a menu card: a title over the courses */
+  'publish.html': '<rect x="5" y="3" width="14" height="18" rx="2"/>' +
+    '<path d="M10 7.5h4"/><path d="M8.5 11.5h7"/><path d="M8.5 14.5h7"/>' +
+    '<path d="M10 17.5h4"/>'
+};
+
+/* The menu's top-level entries by page, taken as this file loads - as
+   NAV_NEEDS is - and not read from NAV later: Past Menus names its date
+   control NAV, a page global that replaces this list once the page's own
+   script runs, and a bar that asked NAV then found no pages at all. The
+   bar carries no group's pages, so the top level is the whole search.   */
+var NAV_TOP = (function(){
+  var out = {};
+  NAV.forEach(function(e){ if (e.href) out[e.href] = e; });
+  return out;
+})();
+function navEntry(href){
+  return Object.prototype.hasOwnProperty.call(NAV_TOP, href) ? NAV_TOP[href] : null;
+}
+
+/* What the bar offers this login: the first TABBAR_MAX pages of TABBAR it may
+   open, in TABBAR's order - or none, when that is one page or none. A page
+   missing from NAV is never offered: canOpen calls an unlisted page ungated,
+   which is right for a menu link and wrong for this. */
+function tabsFor(role){
+  var out = [];
+  for (var i = 0; i < TABBAR.length && out.length < TABBAR_MAX; i++){
+    if (navEntry(TABBAR[i]) && canOpen(role, TABBAR[i])) out.push(TABBAR[i]);
+  }
+  return out.length > 1 ? out : [];
+}
+
+/* Draws the bar, from the menu filter below: it runs once the role and the
+   permissions are known, so a signed-out page, or a login with no staff
+   record, draws none. Only where the menu is, and only on a page wearing
+   ui2, whose sheet (nala-ui2.css) holds the bar's dress and the rules that
+   keep the page's own footer and sheets clear of it. The printed sheets
+   wear the older dress and keep the menu alone until they join.        */
+function buildTabs(role){
+  var body = document.body;
+  if (!body || !document.getElementById('navDrop') ||
+      !/(^|\s)ui2(\s|$)/.test(body.className)) return;
+  var tabs = tabsFor(role), key = tabs.join(' ');
+  var bar = document.getElementById('tabBar');
+  if (bar && bar.getAttribute('data-tabs') === key) return;   /* drawn already */
+  if (bar) bar.parentNode.removeChild(bar);
+  body.classList.toggle('hastabs', tabs.length > 0);
+  if (!tabs.length) return;
+  var here = location.pathname.split('/').pop() || 'index.html';
+  bar = document.createElement('nav');
+  bar.id = 'tabBar';
+  bar.className = 'tabbar';
+  bar.setAttribute('aria-label', 'Pages');
+  bar.setAttribute('data-tabs', key);
+  var row = document.createElement('div');
+  row.className = 'tabrow';
+  tabs.forEach(function(href){
+    var a = document.createElement('a');
+    a.id = 'tab-' + pageKey(href);
+    /* Not a link on its own page: pressing it could only reload the page,
+       and a reload throws away whatever was being typed there. */
+    if (href === here) a.setAttribute('aria-current', 'page');
+    else a.href = href;
+    a.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+                  TAB_ICONS[href] + '</svg></span>' +
+                  '<span class="tablbl">' + navEntry(href).label + '</span>';
+    row.appendChild(a);
+  });
+  bar.appendChild(row);
+  body.appendChild(bar);
+}
+
 function navFilterShared(role){
   var drop = document.getElementById('navDrop');
   if (!drop) return;
@@ -3125,6 +3272,7 @@ function navFilterShared(role){
     links[i].style.display = canOpen(role, href) ? '' : 'none';
   }
   hideEmptyGroups(drop);
+  buildTabs(role);            /* before the counts, which the icons wear too */
   navActionBadges(role);
 }
 
@@ -3589,15 +3737,27 @@ function navActionBadges(role){
         link = links[i]; break;
       }
     }
-    if (!link) return;               /* the entry's own page omits its link */
+    /* The tab bar's icon for the page wears the same count (30 Sep), from
+       the same one fetch. On the page itself the menu has no link and the
+       icon is no link either, so nothing is asked: you are looking at the
+       queue. */
+    var tab = document.getElementById('tab-' + pageKey(a.href));
+    if (tab && !tab.getAttribute('href')) tab = null;
+    if (!link && !tab) return;       /* the entry's own page omits its link */
     NAV_BADGED[a.href] = true;
     a.count(role, function(n){
       if (!n) return;
-      if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
-      var b = document.createElement('span');
-      b.className = 'navbadge';
-      b.textContent = n > 9 ? '9+' : String(n);
-      link.appendChild(b);
+      function badge(){
+        var b = document.createElement('span');
+        b.className = 'navbadge';
+        b.textContent = n > 9 ? '9+' : String(n);
+        return b;
+      }
+      if (link){
+        if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
+        link.appendChild(badge());
+      }
+      if (tab) tab.querySelector('.tabic').appendChild(badge());
     });
   });
 }

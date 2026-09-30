@@ -102,6 +102,8 @@ SUITES = [
     ("registr",    ["python3", "tests/reg_suite.py"],     300),
     ("pages",      ["python3", "tests/pages_suite.py"],   300),
     ("paper",      ["python3", "tests/paper_suite.py"],   300),
+    # The tab bar, 30 Sep: what each role is offered, and nothing under it.
+    ("tabs",       ["python3", "tests/tabs_suite.py"],    400),
     ("colour",     ["python3", "tests/colour_suite.py"],  400),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("pastmenus",  ["python3", "tests/pastmenus_suite.py"], 120),
@@ -142,11 +144,11 @@ COVERS = {
     "dashboard.html":    ["dash", "sweep:dashboard", "paper", "colour"],
     "calendar.html":     ["calendar", "roomclean", "sweep:calendar", "paper", "colour"],
     "guest.html":        ["guest", "sweep:guest", "colour"],
-    "tally.html":        ["tally", "sweep:tally", "paper", "colour"],
+    "tally.html":        ["tally", "sweep:tally", "paper", "colour", "tabs"],
     "cleaners.html":     ["cleans", "sweep:cleaners", "paper", "colour"],
     "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys", "paper", "colour"],
     "keys.html":         ["keys", "sweep:keys", "pages", "paper", "colour"],
-    "invitations.html":  ["invites", "sweep:invitations", "paper", "colour"],
+    "invitations.html":  ["invites", "sweep:invitations", "paper", "colour", "tabs"],
     "past-menus.html":   ["pastmenus", "sweep:past-menus"],
     "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper", "colour"],
     "spa-reminders.html": ["spar", "sweep:spa-reminders", "paper", "colour"],
@@ -174,9 +176,9 @@ COVERS = {
     "registration.html": ["registr", "sweep:registration"],
     "pages.html":        ["pages", "sweep:pages"],
     "stats.html":        ["stats", "sweep:stats", "colour"],
-    "tag.html":          ["tag", "sweep:tag", "paper", "colour"],
+    "tag.html":          ["tag", "sweep:tag", "paper", "colour", "tabs"],
     "flags.html":        ["flags", "sweep:flags"],
-    "publish.html":      ["pub", "sweep:publish", "paper", "colour"],
+    "publish.html":      ["pub", "sweep:publish", "paper", "colour", "tabs"],
     "debug.html":        ["debug", "sweep:debug"],
     "menu-print.html":   ["print"],
     "welcome.html":      ["welcome", "sweep:welcome"],
@@ -193,7 +195,9 @@ COVERS = {
     # move what both of them read.
     "tests/colour_law.json":  ["colour"],
     "tests/paper_night.json": ["paper", "colour"],
-    "tests/night_harness.py": ["paper", "colour"],
+    "tests/night_harness.py": ["paper", "colour", "tabs"],
+    # The menu's shape and the tab bar's, read by these five.
+    "tests/nav_canon.json": ["tabs", "pages", "tally", "pub", "tag"],
 }
 # nala-ui.css and nala-ui2.css dress every page, so, like nala-shared.js, a
 # change to either has no single owner. Until 27 Sep neither was listed, and

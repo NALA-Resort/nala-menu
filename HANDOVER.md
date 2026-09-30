@@ -331,6 +331,22 @@ link anywhere. Six pages once kept private copies of the role filter and
 hid whatever they did not recognise; `pages_suite` still fails if any page
 keeps one.
 
+**The tab bar** (30 Sep, the owner's ask): icons along the foot of every
+ui2 page with a menu for the pages a login uses most - one icon a page,
+five at most, and only pages the login may open. `TABBAR` in
+`nala-shared.js` is the order of preference and a login gets the first
+five it may open (`tabsFor`, asking `canOpen`, so a page switched off in
+Settings leaves the bar and the menu together). The admin's five lead it,
+as ruled: Dashboard, Reservations, Cleans, Chat, Tasks. The waiter and the
+manager reach more than five too, so they get those same five once Chat
+and Tasks are opened (until then Front Desk and Spa stand in); the chef,
+housekeeping and the masseuse get what they can open, and a login with
+one page gets no bar. The menu's counts ride on the icons. The page's
+footer stands on the bar; sheets and the select and save bars cover it;
+under 600pt of height it steps aside, so the Cleans board keeps all
+seventeen villas on one screen. Not on the printed sheets, which wear the
+older dress. `tests/nav_canon.json` ("tabs") and `tabs_suite` hold it.
+
 ---
 ## Key cards
 

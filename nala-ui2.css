@@ -297,6 +297,71 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
                     color:var(--accent-ink); font-size:var(--t1);
                     display:inline-flex; align-items:center; justify-content:center; }
 
+/* ── the tab bar ─────────────────────────────────────────────────────
+   The icons along the foot of the screen, drawn by buildTabs in
+   nala-shared.js: the pages a login uses most, five at most, the owner's
+   ask of 30 Sep. It is the one fixed element pinned over the page, so the
+   header law's ban on floating menus is answered here rather than
+   ignored: nothing may sit under it.
+
+   - The page ends above it. body.hastabs::after is room for the bar at
+     the end of every page, so the last row always scrolls clear.
+   - The page's own footer stands ON it, never under it: .foot, sticky or
+     fixed, is lifted by the bar's height and gives the phone's home
+     strip back to the bar, which already keeps clear of it.
+   - A sheet, a select bar or a save bar rising from the foot covers it,
+     as a sheet covers the page: z-index 5 sits under all of theirs.
+
+   --tabroom is the height the bar takes at the foot of the screen, and
+   0px where there is no bar, for a page's own fixed bar to stand on.
+
+   Grey for every page and ink for the one you are on, which also sits on
+   the selection grey: "Selected is grey, never black and never blue"
+   (STYLEGUIDE.md). A count is the menu's own badge. */
+body.ui2{ --tabroom:0px; }
+body.ui2.hastabs{ --tabroom:calc(56px + env(safe-area-inset-bottom)); }
+body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:5;
+                  background:var(--surface, #fff); border-top:1px solid var(--rule);
+                  padding-bottom:env(safe-area-inset-bottom); }
+body.ui2 .tabrow{ display:flex; height:55px; max-width:var(--appw); margin:0 auto; }
+body.ui2 .tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+                    align-items:center; justify-content:center; gap:2px;
+                    color:var(--mid); text-decoration:none;
+                    -webkit-tap-highlight-color:transparent; }
+body.ui2 .tabbar .tabic{ position:relative; display:flex; align-items:center;
+                         justify-content:center; width:52px; height:28px;
+                         border-radius:var(--pill); }
+body.ui2 .tabbar svg{ width:24px; height:24px; display:block; fill:none;
+                      stroke:currentColor; stroke-width:1.8;
+                      stroke-linecap:round; stroke-linejoin:round; }
+/* A label is a name, so it is the thing that may trim (the trim rule) -
+   but only at 320. --t1 from 387pt up, easing to 11px below it: five
+   labels share the width, 75pt each on a 375pt iPhone, and at 12px
+   "Reservations" needs about all of that (70px in Arial's metrics, and
+   San Francisco runs wider). The one size off the scale, for the one row
+   that has to fit five names across a phone, as the phone's own tab bars
+   do at 10pt. Not bold on the page you are on either: the grey behind
+   its icon says so, and bold is wider. */
+body.ui2 .tabbar .tablbl{ max-width:100%; font-size:clamp(11px, 3.1vw, var(--t1));
+                          line-height:1.2; white-space:nowrap; overflow:hidden;
+                          text-overflow:ellipsis; }
+body.ui2 .tabbar a[aria-current]{ color:var(--ink); cursor:default; }
+body.ui2 .tabbar a[aria-current] .tabic{ background:var(--sel-bg); }
+body.ui2 .tabbar a[href]:active .tabic{ background:var(--card); }
+body.ui2 .tabbar .navbadge{ position:absolute; top:-4px; left:calc(50% + 4px);
+                            min-width:18px; height:18px; padding:0 5px; }
+body.ui2.hastabs::after{ content:''; display:block; flex:0 0 auto; height:var(--tabroom); }
+body.ui2.hastabs .foot{ bottom:var(--tabroom); padding-bottom:10px; }
+/* Under 600pt of height - a phone held sideways, an iPhone SE in Safari -
+   the bar steps aside and the menu does its job alone. Its 56pt there is
+   what the Cleans board needs to keep all seventeen villas on one screen
+   (the owner's ruling, cl_suite's sizes): with it, the grid scrolled at
+   every one of those sizes and at none of the taller. */
+@media (max-height: 600px){
+  body.ui2 .tabbar{ display:none; }
+  body.ui2.hastabs{ --tabroom:0px; }
+}
+
 /* ── buttons · the button law, redressed but not rewritten ───────────
    One solid primary per surface; quiet is secondary; destructive wears
    terracotta outline and always asks first. Only the dress changed:
@@ -465,5 +530,7 @@ body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
 
 /* keep controls off paper */
 @media print{
-  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav{ display:none !important; }
+  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav,
+  body.ui2 .tabbar{ display:none !important; }
+  body.ui2.hastabs::after{ display:none; }
 }

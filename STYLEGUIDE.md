@@ -285,6 +285,23 @@ sweep of a live system.
 Floating corner menus remain banned: a fixed element pinned over in-flow
 content is guaranteed to collide with something at some width.
 
+**The one pinned element is the tab bar** (the owner's ask, 30 Sep): icons
+along the foot of the screen, one per page a login uses most, five at
+most. It answers the ban rather than ignoring it, with three rules that
+`tabs_suite` measures:
+
+- **The page ends above it.** Every page gets room at its end for the bar,
+  so the last row scrolls clear.
+- **The page's footer stands on it**, never under it: `.foot`, sticky or
+  fixed, sits on the bar's top edge, and a page's own fixed bar stands on
+  `var(--tabroom)`.
+- **Anything that rises from the foot covers it** - a sheet, the select
+  bar, a save bar - the way a sheet covers the page.
+
+Grey icons, and ink on the page you are on, which also sits on the
+selection grey and is not a link. Under 600pt of height (a phone on its
+side) it steps aside and the menu works alone.
+
 **One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
 2026), uppercased by CSS. No ordinals, no long months, no year-less dates.
 
@@ -302,7 +319,12 @@ content is guaranteed to collide with something at some width.
   rule border. Print tier: white. Hidden when printing. The row sits hard
   against the bottom of the screen, so the first button's bottom-left and
   the last button's bottom-right carry an 8px radius (matching the nav
-  button); every other corner in the row stays square.
+  button); every other corner in the row stays square. Where the tab bar
+  is drawn, the footer stands on it instead (see Header above).
+- **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
+  nala-shared.js from `TABBAR`, never written into a page. The icons are
+  line drawings on a 24 grid in `TAB_ICONS`, the label under each is the
+  page's menu name, and a count from `NAV_ACTIONS` rides on its icon.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 - **The action icon** (`.navbadge`, since 25 Aug): a number beside a menu
   entry meaning "something in there waits on you". Amber, the colour law's

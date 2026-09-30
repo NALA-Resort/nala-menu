@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Menu Dietaries</title>
-<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui2.css?v=10">
 <style>
   body { padding:28px 24px 60px; }
   /* The save bar is pinned over the foot of the page, so the page has to
@@ -83,7 +83,9 @@
      comes before delete. It was red, which is failure's colour.          */
   .mtog.mdel { border-color:var(--law-terra-b); color:var(--law-terra); }
 
-  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--ground);
+  /* z-index: it rises over the tab bar (5), as a sheet does. */
+  .savebar { position:fixed; bottom:0; left:0; right:0; z-index:30;
+             background:var(--ground);
              border-top:1px solid var(--rule);
              padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
              transform:translateY(110%); transition:transform .25s; }
@@ -147,7 +149,7 @@ body.paper .mng .mrow:last-child { border-bottom:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=94"></script>
+<script src="nala-shared.js?v=95"></script>
 <script>
 /* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
    no gate at all, so a cleaner could archive the dietary list. Sent to their
