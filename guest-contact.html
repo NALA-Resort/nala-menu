@@ -128,9 +128,14 @@
         border-radius:var(--pill); border:1px solid; font-size:var(--t2); }
   .tp.open { background:var(--law-amber); border-color:var(--law-amber-b); color:var(--law-amber-ink); }
   .tp.done { background:var(--law-save-bg); border-color:var(--law-save-bdr); color:var(--law-save-ink); }
+  /* Task, No task, Done, Note: buttons, bordered as buttons are (the owner,
+     30 Sep: "Creating a task is a button and should be bordered like a
+     button"), square-cornered, so they read apart from the round status
+     pills beside them, which are never tapped. */
   .sbtn { display:inline-flex; align-items:center; justify-content:center; min-height:36px;
-          padding:0 14px; border:0; border-radius:var(--r); background:var(--card);
-          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); cursor:pointer; }
+          padding:0 14px; border:1px solid rgba(95,95,88,.4); border-radius:var(--r);
+          background:var(--surface, #fff); font-family:var(--ui-font); font-size:var(--t2);
+          color:var(--ink); cursor:pointer; }
   .sbtn.saving { background:var(--law-wait); color:var(--mid); }
   .trifail { flex-basis:100%; font-size:var(--t2); color:var(--law-red); }
 
@@ -143,6 +148,10 @@
           border:1px solid var(--rule); border-radius:var(--pill);
           font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); cursor:pointer; }
   .prev { margin:0 0 4px auto; }
+  /* the approved words, before they go: the blue's tint, dashed, so a
+     preview is never taken for a message already sent */
+  .msg.out.prev .bub { background:linear-gradient(rgba(10,132,255,.1), rgba(10,132,255,.1)),
+                         var(--surface, #fff); color:var(--ink); border:1px dashed #0A84FF; }
   /* Test mode is the attention colour: the page works, and nothing leaves
      for a guest. The Worker says so; this only repeats it. */
   .testbar { display:none; margin:0 0 12px; padding:10px 12px; border-radius:8px;

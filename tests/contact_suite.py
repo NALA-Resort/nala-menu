@@ -459,6 +459,10 @@ with sync_playwright() as p:
     ck("a task done says who did it", tri("in-SMmassage").startswith("Spa · done by Ben"), tri("in-SMmassage"))
     ck("a message that needed nothing says so", tri("in-SMthanks").startswith("No task · Ben"), tri("in-SMthanks"))
     pill = lambda sel: pg.evaluate("(s)=>{const e=document.querySelector(s);const c=getComputedStyle(e);return [c.backgroundColor,c.color]}", sel)
+    ck("Task and No task are bordered as buttons are, square to the round pills (the owner, 30 Sep)",
+       pg.evaluate("""()=>{const c=getComputedStyle(document.querySelector('#tk-in-SMcandle'));
+         return c.borderTopWidth==='1px' && c.borderTopStyle==='solid' && c.borderTopColor!=='rgba(0, 0, 0, 0)' &&
+                parseFloat(c.borderTopLeftRadius) < 14}"""))
     ck("open is the law's amber, done the law's green pill",
        pill('.msg[data-m="in-SMumbrella"] .tp.open') == ["rgb(246, 234, 213)", "rgb(138, 106, 47)"] and
        pill('.msg[data-m="in-SMmassage"] .tp.done') == ["rgb(228, 237, 226)", "rgb(94, 125, 103)"])
