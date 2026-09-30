@@ -268,9 +268,17 @@ body.ui2 .navdrop{ display:none; position:absolute; right:0; top:42px;
                    border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
                    box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
 body.ui2 .navdrop.open{ display:block; }
-body.ui2 .navdrop a{ display:block; padding:var(--s3) var(--s4);
+body.ui2 .navdrop a{ display:flex; align-items:center; gap:var(--s3);
+                     padding:var(--s3) var(--s4);
                      font-size:var(--t2); line-height:1.3; color:var(--ink);
                      text-decoration:none; }
+/* Each row's icon, the page's own (PAGE_ICONS, nala-shared.js), drawn as
+   the tab bar draws it; a group's name stands where its rows' names do. */
+body.ui2 .navic{ flex:0 0 auto; display:flex; width:24px; height:24px; color:var(--mid); }
+body.ui2 .navic svg{ width:100%; height:100%; fill:none; stroke:currentColor;
+                     stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+body.ui2 .navlabel{ flex:1 1 auto; min-width:0; }
+body.ui2 .navgrp > span{ padding-left:calc(24px + var(--s3)); }
 body.ui2 .navdrop a:active{ background:var(--accent-soft); }
 body.ui2 .navgrp{ display:flex; align-items:center; justify-content:space-between;
                   gap:var(--s4); width:100%; padding:var(--s3) var(--s4);
@@ -284,7 +292,7 @@ body.ui2 .navgroup.open .navsub{ display:block; }
 body.ui2 .navsub a{ padding-left:var(--s6); }
 body.ui2 .navdrop a.navaction,
 body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
-                            justify-content:space-between; gap:var(--s4); }
+                            justify-content:space-between; gap:var(--s3); }
 body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
 body.ui2 .navmark.on{ color:var(--law-green); }  /* the law's green ink (was a green of its own until 27 Sep) */
 body.ui2 .navmark.off{ color:#9A9A92; }
@@ -292,6 +300,9 @@ body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
 body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
                              margin-top:var(--s1); padding-top:var(--s3);
                              color:var(--mid); }
+/* A count of what waits on you is the accent's blue, on the bar and in
+   the menu alike: the owner, 30 Sep, "Counter is blue", having tried the
+   phone's red and found it confusing beside the red that means failure. */
 body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
                     border-radius:var(--pill); background:var(--accent);
                     color:var(--accent-ink); font-size:var(--t1);
@@ -311,7 +322,12 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
      21pt in from its sides (further in from a notch), with 2pt inside
      it to the tabs. The home indicator lives in the 21pt below it.
    - icons in a 28pt box, the largest 23pt.
-   - the page you are on in a grey capsule as tall as the bar.
+   - the page you are on in the phone's blue, and no pill: the owner, 30
+     Sep, "no grey pill, just change icon colour to blue", which is also
+     what the phone does. The one place selection wears blue, the accent's
+     other meaning ("you can act here, or this is selected").
+   - five pages and the menu after them, the iPhone's More tab, which
+     raises the menu from the foot beside itself.
    - two or three tabs keep a narrow bar, 98pt a tab, centred; iOS 26
      fills the width from four.
    - held sideways, the compact bar: 44pt, smaller icons, and nearer the
@@ -322,11 +338,8 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
    Where it parts from the phone, the owner chose to, 30 Sep: line icons
    where the phone fills its own, Lucide's (nala-shared.js), drawn
    thinner than Lucide's own ("Make icon line thinner"), and no name under
-   them ("No text below icon"). And three for rules of this app: selection is grey
-   and ink, not the phone's blue ("Selected is grey, never black and
-   never blue", STYLEGUIDE.md); the bar is solid white, not glass, as
-   nothing on paper lets the page through; and a count is the menu's
-   blue badge, not the phone's red, which here means failure.
+   them ("No text below icon"). And one for a rule of this app: the bar is
+   solid white, not glass, as nothing on paper lets the page through.
 
    - The page ends above it. body.hastabs::after is room for the bar at
      the end of every page, so the last row always scrolls clear.
@@ -357,12 +370,13 @@ body.ui2 .tabrow{ position:absolute; bottom:21px; left:max(21px, env(safe-area-i
                   box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06),
                              0 6px 20px rgba(28,28,26,.10);
                   pointer-events:auto; }
-body.ui2 .tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
-                    align-items:center; justify-content:center;
+body.ui2 .tabbar a, body.ui2 .tabbar .tabmenu{ flex:1 1 0; min-width:0; display:flex;
+                    flex-direction:column; align-items:center; justify-content:center;
+                    padding:0; border:0; background:none; font:inherit; cursor:pointer;
                     border-radius:var(--pill); color:var(--mid); text-decoration:none;
                     -webkit-tap-highlight-color:transparent; }
 body.ui2 .tabbar.few .tabrow{ width:fit-content; }
-body.ui2 .tabbar.few a{ flex:0 0 98px; }
+body.ui2 .tabbar.few a, body.ui2 .tabbar.few .tabmenu{ flex:0 0 98px; }
 body.ui2 .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
 /* Lucide's line drawn thinner than its own 2, at the owner's ask: 1.5 on
    its 24 grid, 1.75pt on the bar. Round ends, as Lucide's. */
@@ -374,8 +388,11 @@ body.ui2 .tabbar svg{ width:100%; height:100%; display:block; fill:none;
    "Chat, 1" (and a mouse has the link's title). */
 body.ui2 .tabbar .tablbl{ position:absolute; width:1px; height:1px; overflow:hidden;
                           clip-path:inset(50%); white-space:nowrap; }
-body.ui2 .tabbar a[aria-current]{ background:var(--sel-bg); color:var(--ink); cursor:default; }
-body.ui2 .tabbar a[href]:active{ background:var(--card); }
+body.ui2 .tabbar a[aria-current],
+body.ui2 .tabbar .tabmenu.here,
+body.ui2 .tabbar .tabmenu[aria-expanded="true"]{ color:var(--accent); }
+body.ui2 .tabbar a[aria-current]{ cursor:default; }
+body.ui2 .tabbar a[href]:active, body.ui2 .tabbar .tabmenu:active{ opacity:.55; }
 body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
                             min-width:18px; height:18px; padding:0 5px; }
 @media (orientation:landscape) and (max-height:500px){
@@ -385,6 +402,33 @@ body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
   body.ui2 .tabbar .navbadge{ top:-7px; left:auto; right:-7px; min-width:16px;
                               height:16px; padding:0 4px; font-size:11px; }
 }
+/* The menu from the foot. Where the bar is drawn its last icon raises the
+   menu (the owner, 30 Sep, off mock-menu-rise.html): the size the dropdown
+   always was ("It doesn't need to be full width, same as before is ok"),
+   rising from above the bar beside its icon, over a light shade that a tap
+   shuts it from; the bar stays above the shade, so its icon shuts it too.
+   The hamburger at the top stands down. A page without the bar keeps the
+   hamburger, and its menu drops from it. */
+body.ui2.hastabs .navbtn{ display:none; }
+body.ui2.hastabs .navdrop{ display:block; position:fixed; z-index:1; top:auto; left:auto;
+                           bottom:calc(var(--tabroom) + 10px);
+                           right:max(21px, env(safe-area-inset-right), calc((100vw - var(--appw)) / 2));
+                           width:260px; min-width:0; max-height:calc(100dvh - var(--tabroom) - 34px);
+                           overflow-y:auto; overscroll-behavior:contain; border:0;
+                           border-radius:16px; background:var(--surface, #fff); padding:6px 0;
+                           box-shadow:0 2px 6px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14);
+                           transform-origin:calc(100% - 28px) 100%;
+                           transform:translateY(18px) scale(.94); opacity:0; visibility:hidden;
+                           transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease,
+                                      visibility 0s linear .24s; }
+body.ui2.hastabs .navdrop.open{ transform:none; opacity:1; visibility:visible;
+                                transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease; }
+body.ui2.hastabs .navdrop a, body.ui2.hastabs .navgrp{ font-size:var(--t3); padding:11px 16px; }
+body.ui2.hastabs .navsub a{ padding-left:28px; }
+body.ui2 .menushade{ display:none; }
+body.ui2.hastabs .navdrop.open + .menushade{ display:block; position:fixed; inset:0; z-index:0;
+                                            background:rgba(28,28,26,.16); }
+body.ui2.hastabs:has(.navdrop.open) .tabbar{ z-index:600; }
 body.ui2.hastabs::after{ content:''; display:block; flex:0 0 auto; height:var(--tabroom); }
 body.ui2.hastabs .foot{ bottom:var(--tabroom); padding-bottom:10px; }
 /* Pull to refresh's mark (pullToRefresh, nala-shared.js): a white disc

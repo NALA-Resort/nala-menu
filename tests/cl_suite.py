@@ -139,9 +139,11 @@ with sync_playwright() as p:
     # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
     ck("cleans 6 services 2 done 2", hd["c"]=="6" and hd["s"]=="2" and hd["dn"]=="2")
     ck("management login sees menu", hd["nav"]=="block")
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
-    pg.locator(".stats").click(); pg.wait_for_timeout(150)
+    #  The shade over the page while the menu is open from the foot (30 Sep)
+    #  takes the tap that shuts it; the stats where there is no bar.
+    pg.locator("#menuShade:visible, .stats").first.click(); pg.wait_for_timeout(150)
     t=pg.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(b=>{
       o[b.querySelector('.rn').textContent]={cls:b.className,txt:b.textContent};});return o;}""")
     ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
@@ -1280,7 +1282,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1310,7 +1312,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1328,7 +1330,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1475,7 +1477,7 @@ with sync_playwright() as p:
     # signing out must take the subscription with it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     label=pg.evaluate("()=>navNotify.textContent")
     print("   notify toggle in a plain tab:", label)
     ck("the menu offers notifications", pg.evaluate("()=>!!document.getElementById('navNotify')"))
@@ -1694,7 +1696,7 @@ with sync_playwright() as p:
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
     pg.evaluate("()=>{window.__out=0; window.NALA_SIGNOUT=function(){window.__out++;};}")
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     pg.locator("#navSignout").click(); pg.wait_for_timeout(200)
     ck("sign out calls NALA_SIGNOUT", pg.evaluate("()=>window.__out")==1)
     ck("and does not navigate away to '#'", "cleaners.html" in pg.url and "#" not in pg.url)

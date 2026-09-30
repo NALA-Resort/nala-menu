@@ -1,8 +1,10 @@
 """The tab bar: icons along the foot of the screen for the pages used most.
 
-Asked by the owner, 30 Sep: one icon a page, five at most, and a page a
-login cannot open is not there; the admin's five are Dashboard,
-Reservations, Cleans, Chat and Tasks. buildTabs in nala-shared.js draws it
+Asked by the owner, 30 Sep: one icon a page, and a page a login cannot
+open is not there; the admin's five are Dashboard, Reservations, Cleans,
+Chat and Tasks - then, the same day, the menu after them ("5 pages plus
+the menu", mock-menu-rise.html), which rises from the foot of the screen
+beside its icon. buildTabs in nala-shared.js draws it
 from TABBAR, and tests/nav_canon.json ("tabs") is what this suite expects of
 it: the order, the cap, and what each role is offered with Chat and Tasks
 shut and open. The phone_cases.json pattern: the app's list and the canon
@@ -18,8 +20,9 @@ answer to each other, and whichever side a change misses fails by name.
      served, and no bar for a login with one page or no staff record. And
      drawn as the iPhone's own (iOS 26), the owner's ask the same day: a
      capsule 62pt tall floating 21pt above the foot and in from the sides,
-     icons in a 28pt box, the page you are on in a grey capsule, and two
-     or three tabs on a narrow bar. The icons are Lucide's line icons, the
+     icons in a 28pt box, the page you are on in the phone's blue with no
+     pill ("just change icon colour to blue"), the menu last, and two or
+     three icons on a narrow bar. The icons are Lucide's line icons, the
      owner's choice the same day, whole, drawn thinner than Lucide's own
      and with no name under them, both his asks - the name kept out of
      sight for a screen reader.
@@ -27,12 +30,22 @@ answer to each other, and whichever side a change misses fails by name.
      and Publish's bar - with no row showing between them, a sheet and the
      select and save bars cover it, the foot of a long page scrolls clear
      of it, and beside the capsule a finger still reaches the page.
-  5. The menu's counts ride on its icons, and not on the page you are on.
+  5. The menu's counts ride on its icons, the page you are on's included
+     ("Don't mute the counters when the icon is selected"); the menu's icon
+     carries what the bar does not show; and a count is blue ("Counter is
+     blue", after a red try).
   6. It fits: no sideways scroll at 320, and held sideways it is the
      phone's compact bar, while the Cleans board keeps its villas on a
      screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
+  9. The menu from the foot: where the bar is, the hamburger at the top
+     stands down; the last icon raises the menu from above the bar beside
+     itself, the size it always was, every row with its page's icon; the
+     bar stays above the shade, so the icon shuts it again; a tap on the
+     shade shuts it without pressing what is under it; and on a page the
+     bar does not carry, the menu icon is blue. A page without the bar
+     keeps the hamburger, its menu dropping from it.
   8. Pull to refresh, which took the Refresh buttons' place the same day so
      the boards' footers could go: in the Home Screen app a long pull from
      the top reloads Reservations, Cleans and the Dashboard, and nothing
@@ -134,12 +147,15 @@ with sync_playwright() as p:
     ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
     app = pg.evaluate("""()=>({order:TABBAR, max:TABBAR_MAX,
         top:NAV.filter(e=>e.href).map(e=>e.href),
-        icons:TABBAR.map(h=>(TAB_ICONS[h]||'').length)})""")
+        icons:TABBAR.map(h=>(PAGE_ICONS[h]||'').length),
+        menu:[].concat(...NAV.map(e=>e.items||[e])).filter(i=>i.href)
+             .filter(i=>!(PAGE_ICONS[i.href]||'').length).map(i=>i.href)})""")
     ck("TABBAR is the canon's order", app["order"] == TABS["order"], app["order"])
-    ck("TABBAR_MAX is the canon's five", app["max"] == TABS["max"] == 5, app["max"])
+    ck("TABBAR_MAX is the canon's five, and the menu comes after them", app["max"] == TABS["max"] == 5, app["max"])
     ck("every page on the bar is a board on the menu's top level",
        all(h in app["top"] and h in LABEL for h in app["order"]))
     ck("and every one has a drawing of its own", all(n > 0 for n in app["icons"]), app["icons"])
+    ck("as has every page in the menu, which draws each with its own", app["menu"] == [], app["menu"])
     ck("the admin's five lead the order: Dashboard, Reservations, Cleans, Chat, Tasks",
        [LABEL[h] for h in TABS["order"][:5]] == ["Dashboard", "Reservations", "Cleans", "Chat", "Tasks"])
 
@@ -153,7 +169,7 @@ with sync_playwright() as p:
            got["shut"][r] == TABS["roles"][r], got["shut"][r])
         ck("%s, Chat and Tasks open: %s" % (r, [LABEL[h] for h in TABS["roles_open"][r]] or "no bar"),
            got["open"][r] == TABS["roles_open"][r], got["open"][r])
-    ck("never more than five, whoever it is",
+    ck("never more than five pages, whoever it is",
        all(len(v) <= 5 for s in got.values() for v in s.values()))
     # A page switched off for a role in Settings leaves the bar, and the next
     # page the role may open takes the place.
@@ -178,6 +194,8 @@ with sync_playwright() as p:
            [(t["label"]) for t in bar["tabs"]] == [LABEL[h] for h in TABS["roles"]["admin"]],
            [t["label"] for t in bar["tabs"]])
         ck("every icon is drawn", all(t["icon"] > 0 for t in bar["tabs"]))
+        order = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > *')].map(e=>e.id)")
+        ck("and the menu last, the sixth", order[-1:] == ["tab-menu"] and len(order) == 6, order)
         cur = [t for t in bar["tabs"] if t["cur"]]
         ck("the page you are on is marked, once, and is not a link",
            len(cur) == 1 and cur[0]["id"] == "tab-tally" and cur[0]["cur"] == "page"
@@ -224,6 +242,7 @@ with sync_playwright() as p:
           grid:[v.x, v.y, v.width, v.height],
           glyph:[+((g.width+sw)*m.a).toFixed(1), +((g.height+sw)*m.d).toFixed(1)], parts,
           name:l.textContent, shown:[Math.round(lr.width), Math.round(lr.height)],
+          colour:getComputedStyle(t).color,
           pill:{bg:getComputedStyle(t).backgroundColor, h:Math.round(t.getBoundingClientRect().height),
                 r:px(getComputedStyle(t).borderTopLeftRadius)}};});}""")
     ck("its icons stand in a 28pt box, the phone's", all(t["box"] == [28, 28] for t in look),
@@ -244,11 +263,13 @@ with sync_playwright() as p:
        [t["name"] for t in look] == [LABEL[h] for h in TABS["roles"]["admin"]],
        [(t["id"], t["name"], t["shown"]) for t in look])
     cur = [t for t in look if t["id"] == "tab-tally"]
-    ck("the page you are on sits in a grey capsule as tall as the bar, the selection grey",
-       cur and cur[0]["pill"]["bg"] == "rgba(28, 28, 26, 0.1)" and cur[0]["pill"]["h"] == 58
-       and cur[0]["pill"]["r"] >= 29, cur and cur[0]["pill"])
-    ck("and no other page does", all(t["pill"]["bg"] == "rgba(0, 0, 0, 0)" for t in look if t["id"] != "tab-tally"),
-       [(t["id"], t["pill"]["bg"]) for t in look])
+    ck("the page you are on is the phone's blue, with no pill (\"just change icon colour to blue\")",
+       cur and cur[0]["colour"] == "rgb(26, 102, 194)" and cur[0]["pill"]["bg"] == "rgba(0, 0, 0, 0)",
+       cur and (cur[0]["colour"], cur[0]["pill"]))
+    ck("and every other icon is grey, and pill-less too",
+       all(t["colour"] == "rgb(95, 95, 88)" and t["pill"]["bg"] == "rgba(0, 0, 0, 0)"
+           for t in look if t["id"] != "tab-tally"),
+       [(t["id"], t["colour"], t["pill"]["bg"]) for t in look])
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html")
@@ -256,11 +277,11 @@ with sync_playwright() as p:
     ck("housekeeping on Cleans: Cleans and Calendar, Cleans marked",
        bool(bar) and [(t["label"], bool(t["cur"])) for t in bar["tabs"]] == [("Cleans", True), ("Calendar", False)],
        bar and [(t["label"], t["cur"]) for t in bar["tabs"]])
-    # Two tabs keep the phone's narrow bar rather than two long pills.
-    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > a')].map(a=>a.getBoundingClientRect().width)")
+    # Two pages and the menu keep the phone's narrow bar, not three long pills.
+    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > *')].map(a=>a.getBoundingClientRect().width)")
     c = bar and bar["cap"]
-    ck("and two tabs keep a narrow bar, 98pt a tab, centred",
-       w == [98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
+    ck("and two pages and the menu keep a narrow bar, 98pt an icon, centred",
+       w == [98, 98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html", perms=PREVIEW_OPEN)
@@ -268,10 +289,11 @@ with sync_playwright() as p:
     ck("and Tasks joins them once the owner opens it",
        bool(bar) and [t["label"] for t in bar["tabs"]] == ["Cleans", "Tasks", "Calendar"],
        bar and [t["label"] for t in bar["tabs"]])
-    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > a')].map(a=>a.getBoundingClientRect().width)")
+    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > *')].map(a=>a.getBoundingClientRect().width)")
     c = bar and bar["cap"]
-    ck("three still keep the narrow bar, centred: the phone fills the width from four",
-       w == [98, 98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
+    ck("three pages and the menu fill the bar: the phone fills its width from four icons",
+       len(w) == 4 and len(set(round(x) for x in w)) == 1 and bool(c) and c["left"] == 21 and c["right"] == 390 - 21,
+       (w, c))
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["spa"], "spa.html")
@@ -368,6 +390,17 @@ with sync_playwright() as p:
     ck("Chat and Tasks wear the menu's counts on their icons, and no icon a count the menu lacks",
        bool(menu.get("guest-contact.html")) and bool(menu.get("tasks.html")) and
        pairs and all(on_icon == in_menu for _h, on_icon, in_menu in pairs), (pairs, menu))
+    # What the menu holds and the bar does not show - Spa, for the admin -
+    # rides on the menu's icon, so nothing waits behind a closed menu.
+    on_bar = {t["href"] for t in (bar or {}).get("tabs", [])}
+    rest = sum(int(n) for h, n in menu.items() if h not in on_bar)
+    mt = pg.evaluate("()=>{const b=document.querySelector('#tab-menu .navbadge');return b?b.textContent:'';}")
+    ck("and the menu's icon carries the counts the bar does not show, Spa's",
+       bool(menu.get("spa.html")) and rest > 0 and mt == str(rest), (mt, rest, menu))
+    blue = pg.evaluate("""()=>[...document.querySelectorAll('#tabBar .navbadge, #navDrop .navbadge')]
+        .map(b=>getComputedStyle(b).backgroundColor)""")
+    ck("a count is blue, the accent's, on the bar and in the menu (\"Counter is blue\")",
+       blue and all(c == "rgb(26, 102, 194)" for c in blue), blue)
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["admin"], "guest-contact.html")
@@ -376,21 +409,21 @@ with sync_playwright() as p:
     ck("Chat's list, whose Send lives in a conversation, keeps the fade",
        g["image"].startswith("linear-gradient"), g)
     bar = pg.evaluate(BAR)
-    ck("on Chat, its own icon asks for no count, and Tasks still wears one",
-       bool(bar) and [t["badge"] for t in bar["tabs"] if t["id"] == "tab-guest-contact"] == [""]
-       and [t["badge"] for t in bar["tabs"] if t["id"] == "tab-tasks"][0] != "",
-       bar and [(t["id"], t["badge"]) for t in bar["tabs"]])
+    mt = pg.evaluate("()=>{const b=document.querySelector('#tab-menu .navbadge');return b?b.textContent:'';}")
+    ck("on Chat, its own icon keeps its count (\"Don't mute the counters when the icon is selected\")",
+       bool(bar) and [t["badge"] for t in bar["tabs"] if t["id"] == "tab-guest-contact"] == ["1"]
+       and mt != "", bar and ([(t["id"], t["badge"]) for t in bar["tabs"]], mt))
     ctx.close()
 
     # ── 6. it fits ────────────────────────────────────────────────────
     for w in (360, 320):
         ctx, pg = open_as(b, EMAIL["admin"], "tally.html", w=w)
-        m = pg.evaluate("""()=>{const t=[...document.querySelectorAll('#tabBar .tabrow > a')];
+        m = pg.evaluate("""()=>{const t=[...document.querySelectorAll('#tabBar .tabrow > *')];
             return {side:document.documentElement.scrollWidth-document.documentElement.clientWidth,
                     inside:t.every(a=>{const r=a.getBoundingClientRect();return r.left>=-0.5&&r.right<=innerWidth+0.5;}),
                     n:t.length};}""")
-        ck("at %d all five icons sit on the screen, and nothing scrolls sideways" % w,
-           m["n"] == 5 and m["inside"] and m["side"] <= 1, m)
+        ck("at %d all six icons, the menu's among them, sit on the screen, and nothing scrolls sideways" % w,
+           m["n"] == 6 and m["inside"] and m["side"] <= 1, m)
         ctx.close()
     # Held sideways it stays. It stepped aside under 600pt until the Cleans
     # footer went the same day, which gave the board back more than the bar
@@ -497,6 +530,64 @@ with sync_playwright() as p:
     g = pulled(pg)
     ck("in a browser tab the pull is the browser's own: none of ours",
        not g["armed"] and g["reloaded"] is False, g)
+    ctx.close()
+
+    # ── 9. the menu from the foot ─────────────────────────────────────
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
+    top = pg.evaluate("""()=>{const b=document.getElementById('navBtn');
+        return {there:!!b, shown:!!b && b.getBoundingClientRect().width>0};}""")
+    ck("where the bar is, the hamburger at the top stands down (its code stays, hidden)",
+       top["there"] and not top["shown"], top)
+    nxt = pg.evaluate("""()=>{const r=document.getElementById('dNext').getBoundingClientRect();
+        return {x:r.left+r.width/2, y:r.top+r.height/2, date:document.getElementById('date').textContent};}""")
+    miss = press(pg, "#tab-menu"); pg.wait_for_timeout(300)
+    pg.wait_for_timeout(300)          # the menu's rise, a quarter second
+    m = pg.evaluate("""()=>{const d=document.getElementById('navDrop'), r=d.getBoundingClientRect(),
+        t=document.getElementById('tab-menu'), c=document.querySelector('#tabBar .tabrow').getBoundingClientRect(),
+        tr=t.getBoundingClientRect(), hit=document.elementFromPoint(tr.left+tr.width/2, tr.top+tr.height/2);
+        return {open:d.classList.contains('open'), bottom:Math.round(r.bottom), right:Math.round(r.right),
+                width:Math.round(r.width), barTop:Math.round(c.top), barRight:Math.round(c.right),
+                expanded:t.getAttribute('aria-expanded'), colour:getComputedStyle(t).color,
+                iconOnTop:!!hit && !!hit.closest('#tab-menu'),
+                icons:[...d.querySelectorAll('a')].filter(a=>a.offsetParent).map(a=>!!a.querySelector('.navic svg'))};}""")
+    ck("the menu icon raises the menu from above the bar, beside itself, the size it always was",
+       not miss and m["open"] and 8 <= m["barTop"] - m["bottom"] <= 12
+       and abs(m["right"] - m["barRight"]) <= 1 and m["width"] == 260, miss or m)
+    ck("every row in it wears its icon", m["icons"] and all(m["icons"]), m["icons"])
+    ck("and the menu's icon is blue while the menu is open",
+       m["expanded"] == "true" and m["colour"] == "rgb(26, 102, 194)", m)
+    ck("the bar stays above the shade, so the icon is there to shut it", m["iconOnTop"], m)
+    miss = press(pg, "#tab-menu"); pg.wait_for_timeout(300)
+    ck("and pressed again, it shuts the menu",
+       not miss and not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"), miss)
+    miss = press(pg, "#tab-menu"); pg.wait_for_timeout(300)
+    # A tap on the shade over the page shuts the menu, and does not also
+    # press what is under it: here the next-day arrow.
+    pg.mouse.click(nxt["x"], nxt["y"]); pg.wait_for_timeout(400)
+    m2 = pg.evaluate("""()=>({open:document.getElementById('navDrop').classList.contains('open'),
+        date:document.getElementById('date').textContent})""")
+    ck("a tap on the shade shuts it, and presses nothing under it",
+       not m2["open"] and m2["date"] == nxt["date"], (m2, nxt["date"]))
+    ctx.close()
+
+    # On a page the bar does not carry, the menu icon is the one in blue:
+    # that page is in there, as with the phone's More tab.
+    ctx, pg = open_as(b, EMAIL["admin"], "front-desk.html")
+    m = pg.evaluate("""()=>{const t=document.getElementById('tab-menu');
+        return {here:t.classList.contains('here'), colour:getComputedStyle(t).color,
+                current:[...document.querySelectorAll('#tabBar a[aria-current]')].length};}""")
+    ck("on a page the bar does not carry, the menu's icon is the blue one",
+       m["here"] and m["colour"] == "rgb(26, 102, 194)" and m["current"] == 0, m)
+    ctx.close()
+
+    ctx, pg = open_as(b, EMAIL["spa"], "spa.html")
+    miss = press(pg, "#navBtn"); pg.wait_for_timeout(300)
+    m = pg.evaluate("""()=>{const b=document.getElementById('navBtn').getBoundingClientRect(),
+        d=document.getElementById('navDrop');
+        return {bar:!!document.getElementById('tabBar'), open:d.classList.contains('open'),
+                below:d.getBoundingClientRect().top>=b.bottom-1};}""")
+    ck("a page without the bar keeps the hamburger, and its menu drops from it",
+       not miss and not m["bar"] and m["open"] and m["below"], miss or m)
     ctx.close()
 
     b.close()

@@ -338,11 +338,15 @@ summary open.
 Measured in a headless browser, which has no home strip, no keyboard and no
 San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
 
-1. **Five icons along the foot**: Dashboard, Reservations, Cleans, Chat,
-   Tasks. **Expect** a white capsule floating over the page, as the
-   phone's own apps draw theirs now, with the home strip in the space
-   below it; the page you are on in a grey capsule, and icons only, no
-   names under them. Set it beside the Clock or the App Store: **expect**
+1. **Five icons and the menu along the foot**: Dashboard, Reservations,
+   Cleans, Chat, Tasks, then the menu. **Expect** a white capsule floating
+   over the page, as the phone's own apps draw theirs now, with the home
+   strip in the space below it; the page you are on in blue, the counts
+   in blue and still on the icon of the page you are on, and icons only,
+   no names under them. Press the menu icon: **expect** the menu rising
+   from the foot beside it, the size it always was, every row with its
+   icon; tap the dimmed page: **expect** it to shut and nothing else to
+   happen. No hamburger at the top. Set it beside the Clock or the App Store: **expect**
    the same height, the same space below and icons of the same size -
    thinner line icons where theirs are filled, which is the set you chose.
    With VoiceOver on, **expect** each icon read by its page's name.
@@ -355,8 +359,8 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
    login still sees the key there.
 4. **Chat, in a conversation, typing.** **Expect** the message box and Send
    reachable above the keyboard, the bar not riding up over them.
-5. **Turn the phone sideways** on Cleans. **Expect** the shorter bar, each
-   icon beside its name, and all seventeen villas still on one screen.
+5. **Turn the phone sideways** on Cleans. **Expect** the shorter bar and
+   all seventeen villas still on one screen.
 6. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
    that login may open, and the icons in the same places on every page.
    The chef's includes Statistics.

@@ -345,15 +345,17 @@ with sync_playwright() as p:
     # them, so the hamburger drew and did nothing.
     ck("the menu is built, with links in it",
        pg.evaluate("()=>document.querySelectorAll('#navDrop a').length") > 3)
-    pg.click("#navBtn")
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click()
     pg.wait_for_timeout(150)
     ck("and the hamburger opens it",
        pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))
     #  On the date, which is plain type and beside the menu rather than
     #  under it: the middle of #board is wherever the cards put it, and once
     #  the Refresh row went (30 Sep) it was the FOH Sheet's print link, so
-    #  the tap went there instead.
-    pg.click("#title")
+    #  the tap went there instead. Where the tab bar opens the menu from the
+    #  foot (30 Sep) the page wears a shade while it is open, and the tap
+    #  lands on that: it shuts the menu and presses nothing under it.
+    pg.locator("#menuShade:visible, #title").first.click()
     pg.wait_for_timeout(150)
     ck("and a tap anywhere else shuts it again",
        not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))

@@ -132,7 +132,7 @@ STATES = {
                            pg.click(".extguests .vrow >> nth=0"))),
                        ("the invite sheet", lambda pg: (pg.click(".extguests > summary"),
                            pg.click("#extInvite")))],
-  "dashboard.html": [("the menu", lambda pg: pg.click("#navBtn"))],
+  "dashboard.html": [("the menu", lambda pg: pg.locator("#tab-menu:visible, #navBtn:visible").first.click())],
   "publish.html": [("Remove armed", lambda pg: pg.click("#rmBtn")),
                    ("the published screen", lambda pg: pg.click("#pubBtn"))],
   "tag.html": [("a hidden dietary", lambda pg: pg.click("#mng .mtog >> nth=0")),
