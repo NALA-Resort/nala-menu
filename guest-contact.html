@@ -58,7 +58,13 @@
      cannot be told, and the pencil that corrects it at /phonefix. */
   .vrow .num .conf { margin-left:4px; }
   .vrow .num .conf.ok { color:var(--law-green); }
-  .vrow .num .pen { margin-left:3px; padding:2px 4px; cursor:pointer; }
+  /* The pencil at the line's right-hand end, under the time: in the middle
+     of the row it took the tap that opens the conversation. */
+  .vrow .l3 { display:flex; align-items:flex-start; }
+  .vrow .l3 .det { flex:1 1 auto; min-width:0; }
+  .vrow .l3 .num { white-space:nowrap; }
+  .vrow .l3 .num + .meta::before { content:'\00b7'; margin:0 6px; }
+  .vrow .l3 .pen { flex:0 0 auto; margin-left:8px; padding:0 6px; cursor:pointer; }
   /* The states, colour-law tokens and nothing else (CLAUDE.md): a message
      nobody has sorted is work to do, white; a task still open is amber,
      chase this; only we have written is the waiting grey; nothing sent, or
@@ -545,7 +551,9 @@ function rowHTML(r, showTab){
     ? ' · <span class="open">' + esc(Object.keys(teams).join(', ')) + ' open</span>' : '';
   /* The number as the SMS pages show it; on a number on no booking, whose
      name is the number, the mark alone. The pencil corrects a booking's. */
-  var num = r.b ? phoneBadgeHTML(r.b.phoneRaw, true) : phoneBadgeHTML('+' + r.ck, false, true);
+  var num = r.b ? phoneBadgeHTML(r.b.phoneRaw, false) : phoneBadgeHTML('+' + r.ck, false, true);
+  /* phoneBadgeHTML's pencil, set apart at the line's end */
+  var pen = r.b ? '<span class="pen" role="button" aria-label="Edit number">\u270e</span>' : '';
   /* A row with no number cannot be opened, but its pencil can be pressed:
      a card, not a button, since a disabled one - aria-disabled included -
      disables the pencil inside it for a screen reader too. */
@@ -559,8 +567,8 @@ function rowHTML(r, showTab){
     '<span class="tm">' + esc(r.t ? whenShort(r.t.lastAt) : '') + '</span></div>' +
     /* The details first, the last message at the bottom (the owner, 30 Sep:
        "Needs the details first and the chat excerpt at the bottom"). */
-    '<div class="l3">' + (num ? '<span class="num">' + num + '</span> · ' : '') +
-    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></div>' +
+    '<div class="l3"><span class="det">' + (num ? '<span class="num">' + num + '</span>' : '') +
+    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></span>' + pen + '</div>' +
     '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
     (n ? '<span class="cnt">' + n + '</span>' : '') + '</div></div></' + tag + '>';
 }

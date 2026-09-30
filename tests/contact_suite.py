@@ -440,17 +440,25 @@ with sync_playwright() as p:
        all(sty(k)["borderStyle"] == "dashed" and float(sty(k)["opacity"]) < 0.7 for k in ("61411000016", "b-hana")))
     # The owner, 30 Sep: "the phone number, its validity" as on the SMS pages.
     ck("each guest's number as the SMS pages show it: the number, its tick, the pencil",
-       by[SARAH]["num"] == "0412 345 678\u2713\u270e" and by[SARAH]["pen"] and
-       by[LEA]["num"] == "+33 6 12 34 56 78\u2713\u270e", [by[SARAH]["num"], by[LEA]["num"]])
+       by[SARAH]["num"] == "0412 345 678\u2713" and by[SARAH]["pen"] and
+       by[LEA]["num"] == "+33 6 12 34 56 78\u2713" and by[LEA]["pen"], [by[SARAH], by[LEA]])
+    geo = pg.evaluate("""(k)=>{const r=document.querySelector('.vrow[data-ck="'+k+'"]'),
+        pe=r.querySelector('.pen'); if(!pe) return {penAt:0, midIsPen:false};
+        const p=pe.getBoundingClientRect(), b=r.getBoundingClientRect(),
+        mid=document.elementFromPoint(b.left+b.width/2, b.top+b.height/2);
+        return {penAt:(p.left-b.left)/b.width, midIsPen:!!(mid&&mid.closest('.pen'))}}""", SARAH)
+    ck("the pencil sits at the line's right-hand end, clear of the middle where a tap opens the conversation",
+       geo["penAt"] > 0.8 and not geo["midIsPen"], geo)
     ck("a number on no booking, already its name, wears the tick alone and no pencil",
        by[UNK]["num"] == "\u2713" and not by[UNK]["pen"], by[UNK])
     ck("the details first, the last message at the bottom (the owner, 30 Sep)",
        by[SARAH]["order"] == ["l1", "l3", "l2"], by[SARAH]["order"])
     ck("a booking with no mobile says so, with the pencil to add one",
-       by["b-hana"]["num"] == "no number\u270e", by["b-hana"])
+       by["b-hana"]["num"] == "no number" and by["b-hana"]["pen"], by["b-hana"])
     del WRITES[:]
-    pg.once("dialog", lambda d: d.accept("0411 999 888"))
-    pg.click('.vrow[data-b="b-hana"] .pen'); pg.wait_for_timeout(500)
+    if pg.query_selector('.vrow[data-b="b-hana"] .pen'):
+        pg.once("dialog", lambda d: d.accept("0411 999 888"))
+        pg.click('.vrow[data-b="b-hana"] .pen'); pg.wait_for_timeout(500)
     fix = [w for w in WRITES if w["p"] == "/phonefix/b-hana.json"]
     ck("the pencil saves the corrected number at /phonefix, as the SMS pages' does, and opens nothing",
        fix and fix[0]["m"] == "PUT" and fix[0]["b"]["phone"] == "+61411999888" and
