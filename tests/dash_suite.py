@@ -355,7 +355,10 @@ with sync_playwright() as p:
     #  the tap went there instead. Where the tab bar opens the menu from the
     #  foot (30 Sep) the page wears a shade while it is open, and the tap
     #  lands on that: it shuts the menu and presses nothing under it.
-    pg.locator("#menuShade:visible, #title").first.click()
+    #  Its corner, not its middle: the menu itself rises over the middle.
+    shade = pg.locator("#menuShade:visible")
+    if shade.count(): shade.click(position={"x": 12, "y": 12})
+    else: pg.click("#title")
     pg.wait_for_timeout(150)
     ck("and a tap anywhere else shuts it again",
        not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))

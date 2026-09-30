@@ -143,7 +143,11 @@ with sync_playwright() as p:
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
     #  The shade over the page while the menu is open from the foot (30 Sep)
     #  takes the tap that shuts it; the stats where there is no bar.
-    pg.locator("#menuShade:visible, .stats").first.click(); pg.wait_for_timeout(150)
+    #  At the shade's corner: the menu itself rises over its middle.
+    shade = pg.locator("#menuShade:visible")
+    if shade.count(): shade.click(position={"x": 12, "y": 12})
+    else: pg.locator(".stats").click()
+    pg.wait_for_timeout(150)
     t=pg.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(b=>{
       o[b.querySelector('.rn').textContent]={cls:b.className,txt:b.textContent};});return o;}""")
     ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
