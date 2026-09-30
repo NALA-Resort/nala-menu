@@ -68,7 +68,7 @@
      and single nothing out. Its band, All done, tells it from New. */
   .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
   .vrow.b-none, .vrow.b-nophone { border-style:dashed; opacity:.62; }
-  .vrow:disabled, .vrow[aria-disabled="true"] { cursor:default; }
+  .vrow:disabled, div.vrow { cursor:default; }
 
   /* ── one conversation ── */
   .ctx { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:-6px 2px 0; }
@@ -547,19 +547,22 @@ function rowHTML(r, showTab){
      name is the number, the mark alone. The pencil corrects a booking's. */
   var num = r.b ? phoneBadgeHTML(r.b.phoneRaw, true) : phoneBadgeHTML('+' + r.ck, false, true);
   /* A row with no number cannot be opened, but its pencil can be pressed:
-     aria-disabled, not disabled, which would swallow the pencil's tap. */
-  return '<button class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
-         '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '"' +
-         (r.state === 'nophone' ? ' aria-disabled="true"' : '') + '>' +
+     a card, not a button, since a disabled one - aria-disabled included -
+     disables the pencil inside it for a screen reader too. */
+  var tag = r.state === 'nophone' ? 'div' : 'button';
+  return '<' + tag + ' class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
+         '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '">' +
     '<div class="v">' + esc(r.b ? r.b.villa : '?') + '</div><div class="mid">' +
     /* A name may trim; a number standing in for one never does. */
     '<div class="l1 trimrow"><span class="nm' + (r.b || (r.t && r.t.profile) ? ' trim' : '') + '">' +
     esc(rowName(r)) + '</span>' +
     '<span class="tm">' + esc(r.t ? whenShort(r.t.lastAt) : '') + '</span></div>' +
-    '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
-    (n ? '<span class="cnt">' + n + '</span>' : '') + '</div>' +
+    /* The details first, the last message at the bottom (the owner, 30 Sep:
+       "Needs the details first and the chat excerpt at the bottom"). */
     '<div class="l3">' + (num ? '<span class="num">' + num + '</span> · ' : '') +
-    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></div></div></button>';
+    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></div>' +
+    '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
+    (n ? '<span class="cnt">' + n + '</span>' : '') + '</div></div></' + tag + '>';
 }
 
 function drawList(){
@@ -627,7 +630,7 @@ document.getElementById('board').onclick = function(e){
     });
     return;
   }
-  if (!r || r.disabled || r.getAttribute('aria-disabled') === 'true') return;
+  if (!r || r.tagName !== 'BUTTON' || r.disabled) return;
   var q = 'c=' + r.getAttribute('data-ck') + (r.getAttribute('data-b') ? '&b=' + r.getAttribute('data-b') : '') +
           '&t=' + TAB;
   location.href = 'guest-contact.html?' + q;

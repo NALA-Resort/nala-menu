@@ -364,7 +364,8 @@ with sync_playwright() as p:
           ck:e.dataset.ck, b:e.dataset.b, s:e.dataset.state, v:e.querySelector('.v').textContent,
           nm:e.querySelector('.nm').textContent, l3:(e.querySelector('.l3 .meta')||e.querySelector('.l3')).textContent,
           num:(e.querySelector('.l3 .num')||{}).textContent||'', pen:!!e.querySelector('.l3 .pen'),
-          pv:e.querySelector('.pv').textContent, dis:e.disabled||e.getAttribute('aria-disabled')==='true'}))""")
+          pv:e.querySelector('.pv').textContent, dis:e.tagName!=='BUTTON'||e.disabled,
+          order:[...e.querySelector('.mid').children].map(x=>x.className.split(' ')[0])}))""")
     def shot(pg, name):
         if SHOTS: pg.screenshot(path=os.path.join(SHOTS, name + ".png"), full_page=True)
 
@@ -443,6 +444,8 @@ with sync_playwright() as p:
        by[LEA]["num"] == "+33 6 12 34 56 78\u2713\u270e", [by[SARAH]["num"], by[LEA]["num"]])
     ck("a number on no booking, already its name, wears the tick alone and no pencil",
        by[UNK]["num"] == "\u2713" and not by[UNK]["pen"], by[UNK])
+    ck("the details first, the last message at the bottom (the owner, 30 Sep)",
+       by[SARAH]["order"] == ["l1", "l3", "l2"], by[SARAH]["order"])
     ck("a booking with no mobile says so, with the pencil to add one",
        by["b-hana"]["num"] == "no number\u270e", by["b-hana"])
     del WRITES[:]

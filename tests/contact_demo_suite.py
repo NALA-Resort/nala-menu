@@ -210,8 +210,9 @@ with sync_playwright() as p:
     ck("a link out of the demo is stopped, and says why",
        pg.url.split("?")[0].endswith("guest-contact.html") and "Only Chat and Tasks" in pg.text_content("#demoSay"))
     pg.click("#demoReset"); pg.wait_for_timeout(1200)
+    # Jonah as seeded: only the pre-arrival form an SMS page sent him
     ck("Start again puts the made-up guests back as they were",
-       [r["s"] for r in rows() if r["ck"] == "61411000016"] == ["none"])
+       [r["s"] for r in rows() if r["ck"] == "61411000016"] == ["sent"])
     for w in (390, 320):
         pg.set_viewport_size({"width": w, "height": 900}); pg.wait_for_timeout(300)
         ck("the demo bar has no sideways scroll at %d" % w,
