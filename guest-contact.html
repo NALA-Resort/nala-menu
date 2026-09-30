@@ -267,7 +267,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
   </div>
   <div class="savefail" id="sendErr"></div>
   <div class="foot" id="foot">
-    <button class="btn" id="backBtn" style="display:none">Write instead</button>
+    <button class="btn" id="writeBtn" style="display:none">Write instead</button>
     <button class="btn" id="viaBtn" style="display:none">SMS instead</button>
     <button class="btn solid" id="sendBtn">Send</button>
   </div>
@@ -881,7 +881,7 @@ function drawCompose(){
   var tpls = document.getElementById('tpls'), prev = document.getElementById('tplPrev');
   var via = document.getElementById('viaBtn'), send = document.getElementById('sendBtn');
   var foot = document.getElementById('foot');
-  var tb = document.getElementById('tmplBtn'), back = document.getElementById('backBtn');
+  var tb = document.getElementById('tmplBtn'), back = document.getElementById('writeBtn');
   tpls.innerHTML = ''; prev.innerHTML = '';
   box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
   tb.style.display = 'none'; back.style.display = 'none';
@@ -1224,7 +1224,7 @@ document.getElementById('sheet').addEventListener('click', function(e){
   document.getElementById('sendErr').textContent = '';
   closeSheet(); drawCompose();
 });
-document.getElementById('backBtn').onclick = function(){ PICKT = null; drawCompose(); };
+document.getElementById('writeBtn').onclick = function(){ PICKT = null; drawCompose(); };
 
 /* Sent as its page sends it: the booking, the villa tonight, or the
    treatment, and the template's words; the Worker reads everything else

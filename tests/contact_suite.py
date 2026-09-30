@@ -1162,14 +1162,15 @@ with sync_playwright() as p:
         cmp = pg.evaluate("""()=>({win:document.getElementById('win').textContent,
           prev:(document.querySelector('#tplPrev .bub')||{}).innerText,
           box:getComputedStyle(document.getElementById('msgBox')).display,
-          back:document.getElementById('backBtn').offsetParent!==null,
+          back:document.getElementById('writeBtn').offsetParent!==null,
+          head:document.getElementById('backBtn').offsetParent!==null,
           sheet:document.getElementById('backdrop').className})""")
         ck("[%s] picked, the box shows its words as the guest will read them, and says how it goes" % tz,
            cmp["prev"] == "Tonight\u2019s menu is ready. Nala Resort\nhttps://menu.nalaresort.com/?t=\u2026" and
            "Goes by SMS as Invitations sends it" in cmp["win"] and cmp["box"] == "none" and
-           cmp["back"] and "show" not in cmp["sheet"], cmp)
+           cmp["back"] and cmp["head"] and "show" not in cmp["sheet"], cmp)
         before = len([r for r in READS if r[0] == "/invites/2026-09-29.json"])
-        pg.click("#sendBtn"); pg.wait_for_timeout(900)
+        pg.click("#sendBtn"); pg.wait_for_timeout(1500)
         ck("[%s] Send asks the SMS pages' sender for tonight's villa, as Invitations would" % tz,
            len(INV) == 1 and INV[0].get("kind") is None and INV[0].get("date") == TODAY and
            INV[0].get("villas") == ["9"] and INV[0].get("template") == "ready" and
@@ -1192,13 +1193,13 @@ with sync_playwright() as p:
        pg.inner_text("#tplPrev .bub") == want and "Hello Priya" in want and "10:30 am" in want,
        [pg.inner_text("#tplPrev .bub"), want])
     shot(pg, "gc-template")
-    pg.click("#sendBtn"); pg.wait_for_timeout(900)
+    pg.click("#sendBtn"); pg.wait_for_timeout(1500)
     ck("and goes as a spa reminder for that treatment",
        len(INV) == 1 and INV[0].get("kind") == "spa" and INV[0].get("treatments") == [{"b": "b-priya", "t": "t7"}]
        and INV[0].get("template") == "remind", INV)
     pg.click("#tmplBtn"); pg.wait_for_timeout(500)
     pg.click('#sheet button[data-tset="menu"][data-tid="join"]'); pg.wait_for_timeout(200)
-    pg.click("#backBtn"); pg.wait_for_timeout(150)
+    pg.click("#writeBtn"); pg.wait_for_timeout(150)
     ck("Write instead goes back to typing, nothing sent",
        len(INV) == 1 and pg.is_visible("#msgBox") and not pg.evaluate("()=>PICKT"))
     done(pg)
@@ -1217,7 +1218,7 @@ with sync_playwright() as p:
     ck("in test mode the box says a template is not held back",
        "Test mode does not hold this back: it goes to James." in pg.text_content("#win"),
        pg.text_content("#win"))
-    pg.click("#sendBtn"); pg.wait_for_timeout(900)
+    pg.click("#sendBtn"); pg.wait_for_timeout(1500)
     ck("the form goes as Pre-arrival SMS sends it, by booking",
        len(INV) == 1 and INV[0].get("kind") == "pre" and INV[0].get("bookings") == ["b-james"] and
        INV[0].get("template") == "nudge", INV)
