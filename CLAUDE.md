@@ -155,7 +155,10 @@ started after every change to Chat). A change to nala-shared.js
 makes `--changed` select everything, so while building, name the
 feature's suites instead. And a publish for Chat's demo, while the
 module is the admin's alone, needs the suites that cover the change, not
-the full run (the owner, 30 Sep: "It's just a demo").
+the full run (the owner, 30 Sep: "It's just a demo"). Nor does a small
+change to one page's screen: its covering suites, and those of any
+shared file it rides with (the owner, 30 Sep: "Doesn't need full run for
+a small ui change on one page").
 
 `run.py` has a `COVERS` map for exactly this. Use it. Running everything after
 every small edit is what burns the session and hangs the tool.
