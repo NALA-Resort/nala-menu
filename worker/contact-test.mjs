@@ -8,7 +8,8 @@
  */
 import worker, { normalisePhone as workerNorm, waWindow as wWindow,
                  contactChannel as wChannel, contactTemplateText as wTemplate,
-                 mayDo as wMayDo, twilioSignature, forgetToken } from "./guest-contact.js";
+                 mayDo as wMayDo, previewShut as wPreview, twilioSignature,
+                 forgetToken } from "./guest-contact.js";
 import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 
@@ -47,8 +48,9 @@ const page = new Function([cut("normalisePhone"), cut("parseISO"), cut("parseDep
   cut("WA_WINDOW_MS", "var"), cut("waWindow"), cut("waAgreed"), cut("contactChannel"),
   cut("CONTACT_TEMPLATES", "var"), cut("contactTemplateText"),
   cut("ROLE_GRANTS", "var"), cut("normaliseRole"), cut("grantedByDefault"), "var PERMISSIONS = null;",
-  cut("setPermissions"), cut("can")].join("\n") +
-  "\nreturn { normalisePhone, waWindow, contactChannel, contactTemplateText, setPermissions, can };")();
+  cut("setPermissions"), cut("can"), cut("pageKey"), cut("PREVIEW_PAGES", "var"),
+  cut("previewShut")].join("\n") +
+  "\nreturn { normalisePhone, waWindow, contactChannel, contactTemplateText, setPermissions, can, previewShut };")();
 
 {
   const phones = JSON.parse(readFileSync(new URL("../tests/phone_cases.json", import.meta.url), "utf8")).cases;
@@ -92,6 +94,9 @@ const envOf = (over = {}) => Object.assign({
   TWILIO_WA_FROM: "+61480000000", TPL_QUESTION_SID: "HXquestion", TPL_ARRIVAL_SID: "HXarrival",
   CONTACT_EMAIL: "559210@staff.nala", CONTACT_PASSWORD: "559210", FB_API_KEY: "fb", BUZZ: "1" }, over);
 let STORE, SENT, BUZZ, STATE, WRITES, CDN;
+/* Chat and Tasks opened to the staff, as Settings does it: the world these
+   checks run in. The preview's shut side is checked on its own below. */
+const OPEN = { "guest-contact": true, tasks: true };
 const SARAH = "61412345678", LEA = "33612345678";
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Brisbane",
   year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -99,6 +104,7 @@ function install() {
   STORE = {}; SENT = []; BUZZ = []; WRITES = []; CDN = [];
   STATE = { email: "waiter@nala.x", tokenOk: true, loginOk: true, twilioOk: true };
   forgetToken();
+  STORE["/permissions"] = { open: Object.assign({}, OPEN) };
   STORE["/staff/waiter@nala,x"] = { role: "waiter" };
   STORE["/staff/chef@nala,x"] = { role: "chef" };
   STORE["/staff/mgr@nala,x"] = { role: "manager" };
@@ -121,7 +127,15 @@ function install() {
     }
     if (u.startsWith("https://api.twilio.com/") && u.endsWith("/Messages.json")) {
       const form = Object.fromEntries(new URLSearchParams(opt.body));
-      SENT.push({ form, auth: opt.headers.Authorization });
+      SENT.push({ form, auth: opt.headers.Authorization, signal: !!opt.signal });
+      /* the line dropping before Twilio's answer came back */
+      if (STATE.twilioNoAnswer) throw new TypeError("network connection lost");
+      /* Twilio's callback beating its own answer back to the Worker */
+      if (STATE.receiptFirst) {
+        const cb = new URL(form.StatusCallback);
+        await worker.fetch(signed(cb.pathname + cb.search, { MessageSid: "SM" + SENT.length,
+          MessageStatus: STATE.receiptFirst }), envOf());
+      }
       if (!STATE.twilioOk)
         return new Response(JSON.stringify({ code: 21211, message: "The 'To' number is not valid." }), { status: 400 });
       return new Response(JSON.stringify({ sid: "SM" + SENT.length, status: "queued" }), { status: 201 });
@@ -160,6 +174,8 @@ function install() {
     const token = new URLSearchParams(query.slice(1)).get("auth");
     /* dbRefuse: the rules before their paste, which refuse the Worker */
     if (STATE.dbRefuse && token === "MACHINE") return new Response('{"error":"Permission denied"}', { status: 401 });
+    /* failRead: one node the database cannot serve just now */
+    if (method === "GET" && STATE.failRead === path) return new Response('{"error":"unavailable"}', { status: 503 });
     if (method !== "GET") WRITES.push({ method, path, token });
     if (method === "PUT") { STORE[path] = JSON.parse(opt.body); return new Response(opt.body); }
     if (method === "PATCH") {
@@ -295,7 +311,7 @@ install(); STATE.tokenOk = false;
 ck("an unverifiable token is refused", (await desk({ kind: "hello" })).status === 401);
 install(); STATE.email = "chef@nala.x";
 ck("a login without editBookings is refused", (await desk({ kind: "hello" })).status === 403);
-install(); STORE["/permissions"] = { editBookings: { waiter: false } };
+install(); STORE["/permissions"] = { open: OPEN, editBookings: { waiter: false } };
 ck("and so is a waiter the matrix has switched off", (await desk({ kind: "hello" })).status === 403);
 install(); STATE.email = "mgr@nala.x";
 ck("the manager is let in", (await desk({ kind: "hello" })).status === 200);
@@ -583,7 +599,7 @@ function replyWorld(perms) {
   STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: at(3), lastIn: at(3),
                                  lastInCh: "wa", lastInWa: at(3) };
   STORE["/contact/" + LEA] = { phone: "+33612345678", lastAt: at(3), lastIn: at(3), lastInCh: "sms" };
-  if (perms) STORE["/permissions"] = perms;
+  if (perms) STORE["/permissions"] = Object.assign({ open: OPEN }, perms);
   STATE.email = "ray@nala.x";
   return at;
 }
@@ -648,7 +664,7 @@ replyWorld(HK_ON);
 r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] }, envOf({ TWILIO_WA_FROM: "" }));
 j = await r.json();
 ck("with WhatsApp not set up, the card says SMS", j.routes["bar/t1"].ch === "sms", j.routes);
-teamWorld(); STORE["/permissions"] = { guestReply: { waiter: false } };
+teamWorld(); STORE["/permissions"] = { open: OPEN, guestReply: { waiter: false } };
 STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
   lastIn: new Date().toISOString(), lastInCh: "sms" };
 r = await desk({ kind: "send", ck: SARAH, text: "hi" });
@@ -790,6 +806,110 @@ ck("the manager may not delete", (await desk({ kind: "delete", ck: SARAH, m: "in
    !!STORE["/contactmsgs/" + SARAH + "/in-MMb"]);
 STATE.email = "waiter@nala.x";
 ck("nor the desk", (await desk({ kind: "delete", ck: SARAH, m: "in-MMb" })).status === 403);
+
+/* ── the review of 30 Sep ───────────────────────────────────────────
+   The owner: "run a check over the code to ensure we have a solid system.
+   And includes error handling, mobile phone number checks, country code
+   checking etc." Each check below is one of that review's findings. */
+{
+  const T = JSON.parse(readFileSync(new URL("../tests/contact_cases.json", import.meta.url), "utf8"));
+  const off = (f) => T.preview.cases.filter(([pg, role, perms, shut]) => f(pg, role, perms) !== shut);
+  const pageShut = (pg, role, perms) => { page.setPermissions(perms); return page.previewShut(role, pg + ".html"); };
+  ck("who the preview shuts out: the Worker agrees with contact_cases.json", !off(wPreview).length, off(wPreview));
+  ck("and so does the page's previewShut", !off(pageShut).length, off(pageShut));
+}
+install(); STORE["/permissions"] = {};
+ck("before Settings opens Chat, a desk login is refused at the Worker's door, not only off the menu",
+   (await desk({ kind: "hello" })).status === 403);
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
+  lastIn: new Date().toISOString(), lastInCh: "sms" };
+r = await desk({ kind: "send", ck: SARAH, text: "Hello" });
+ck("and cannot send", r.status === 403 && SENT.length === 0 && /admin's alone/.test((await r.json()).error));
+STORE["/staff/admin@nala,x"] = { role: "admin" }; STATE.email = "admin@nala.x";
+ck("while the admin is let in", (await desk({ kind: "hello" })).status === 200);
+install(); STORE["/permissions"] = { open: { "guest-contact": true } };
+ck("a task card's requests are Tasks', shut until Tasks is opened too",
+   (await desk({ kind: "tasklog", tasks: [] })).status === 403 && (await desk({ kind: "hello" })).status === 200);
+
+install(); STORE["/permissions"] = { open: OPEN, guestReply: { waiter: false } };
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
+  lastIn: new Date().toISOString(), lastInCh: "sms" };
+STATE.failRead = "/permissions";
+r = await desk({ kind: "send", ck: SARAH, text: "Hello" });
+ck("a permissions read that fails refuses, rather than falling back to what the waiter ships with",
+   r.status === 403 && SENT.length === 0 && /Try again/.test((await r.json()).error));
+
+install();
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: new Date().toISOString(),
+  optout: { at: new Date().toISOString(), word: "STOP" } };
+STATE.failRead = "/contact/" + SARAH;
+r = await desk({ kind: "send", ck: SARAH, booking: "b-sarah", text: "Hello" });
+ck("a conversation that cannot be read refuses the send: the STOP in it is not taken as absent",
+   r.status === 503 && SENT.length === 0 && /conversation/.test((await r.json()).error));
+
+/* the number the texts go from, however it was typed into Cloudflare */
+const fresh2 = new Date().toISOString();
+install();
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: fresh2, lastIn: fresh2, lastInCh: "sms" };
+await desk({ kind: "send", ck: SARAH, text: "Hi" }, envOf({ TWILIO_FROM: "0480 000 000" }));
+ck("TWILIO_FROM typed as a national number still goes out from +61480000000",
+   SENT[0] && SENT[0].form.From === "+61480000000", SENT[0] && SENT[0].form);
+install();
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: fresh2, lastIn: fresh2, lastInCh: "wa", lastInWa: fresh2 };
+await desk({ kind: "send", ck: SARAH, text: "Hi" }, envOf({ TWILIO_WA_FROM: "whatsapp:+61 480 000 000" }));
+ck("and TWILIO_WA_FROM typed with its whatsapp: already on is not doubled",
+   SENT[0] && SENT[0].form.From === "whatsapp:+61480000000", SENT[0] && SENT[0].form);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+c = await check(envOf({ TWILIO_FROM: "0480 000 000", TWILIO_WA_FROM: "whatsapp:+61480000000" }));
+ck("the setup check reads the numbers as the sends do",
+   c.by.number && c.by.number.ok === true && c.by.whatsapp.say === "WhatsApp is set up on +61480000000.",
+   [c.by.number, c.by.whatsapp]);
+
+/* Twilio's answer and its receipts, in either order */
+install();
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: fresh2, lastIn: fresh2, lastInCh: "sms" };
+STATE.receiptFirst = "delivered";
+r = await desk({ kind: "send", ck: SARAH, text: "Your table is ready." }); j = await r.json();
+m = STORE["/contactmsgs/" + SARAH + "/" + j.id];
+ck("a receipt that beats Twilio's own answer is not put back to queued by it",
+   r.status === 200 && m && m.status === "delivered" && m.sid === "SM1", m);
+install();
+STORE["/contact/" + SARAH] = { phone: "+61412345678", lastAt: fresh2, lastIn: fresh2, lastInCh: "sms" };
+STATE.twilioNoAnswer = true;
+r = await desk({ kind: "send", ck: SARAH, text: "See you at 7." }); j = await r.json();
+m = STORE["/contactmsgs/" + SARAH + "/" + j.id];
+ck("no answer from Twilio is said as it may still arrive, not as refused",
+   r.status === 502 && /may still arrive/.test(j.error) && m.status === "failed" && !m.sid, { j, m });
+ck("and the send waits only as long as the timeout", SENT[0].signal === true);
+STATE.twilioNoAnswer = false;
+await worker.fetch(signed("/twilio/status?ck=" + SARAH + "&m=" + j.id,
+  { MessageSid: "SMlate", MessageStatus: "delivered" }), envOf());
+m = STORE["/contactmsgs/" + SARAH + "/" + j.id];
+ck("its receipt, when it comes, lands over the failed mark: it went",
+   m.status === "delivered" && m.sid === "SMlate" && !m.err, m);
+await worker.fetch(signed("/twilio/status?ck=" + SARAH + "&m=" + j.id,
+  { MessageSid: "SMlate", MessageStatus: "sent" }), envOf());
+ck("and from then on the ladder holds: a late sent does not undo delivered",
+   STORE["/contactmsgs/" + SARAH + "/" + j.id].status === "delivered");
+
+/* a webhook Twilio sends twice */
+install();
+await inbound({ From: "+61412345678", To: "+61480000000", Body: "Fresh towels please", MessageSid: "SMdup",
+                NumMedia: "0" });
+await settle();
+const first = STORE["/contactmsgs/" + SARAH + "/in-SMdup"];
+STORE["/contactmsgs/" + SARAH + "/in-SMdup"] = Object.assign({}, first,
+  { sorted: { by: "waiter@nala.x", at: fresh2 }, tasks: { housekeeping: "t9" } });
+delete STORE["/contactnew/" + SARAH + "/in-SMdup"];
+BUZZ.length = 0;
+await inbound({ From: "+61412345678", To: "+61480000000", Body: "Fresh towels please", MessageSid: "SMdup",
+                NumMedia: "0" });
+await settle();
+const again = STORE["/contactmsgs/" + SARAH + "/in-SMdup"];
+ck("a webhook Twilio sends twice files the message once: the desk's sorting stands",
+   again && again.sorted && again.tasks && again.tasks.housekeeping === "t9" && again.at === first.at, again);
+ck("and it does not come back as new, nor buzz the desk again",
+   !STORE["/contactnew/" + SARAH + "/in-SMdup"] && BUZZ.length === 0);
 
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);

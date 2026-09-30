@@ -1,5 +1,5 @@
 {
-  "_why": "One table, two readers. normalisePhone lives in nala-shared.js for the page and again in worker/send-invites.js for the send, because a Worker cannot import from the site. Two copies of one rule is the thing that goes stale, so inv_suite.py and invites-test.mjs both assert against THIS file rather than against their own idea of the rule. A case added here fails whichever copy has not learned it.",
+  "_why": "One table, three readers. normalisePhone lives in nala-shared.js for the page and again in worker/send-invites.js and worker/guest-contact.js for the sends, because a Worker cannot import from the site. Two copies of one rule is the thing that goes stale, so inv_suite.py, invites-test.mjs and contact-test.mjs all assert against THIS file rather than against their own idea of the rule. A case added here fails whichever copy has not learned it.",
   "cases": [
     [
       "0412 345 678",
@@ -123,8 +123,53 @@
     ],
     [
       "+640274875277",
-      "+640274875277",
-      "a national 0 left in after the code is the guest's typo, sent as typed rather than guessed at"
+      "+64274875277",
+      "a 0 typed after the code is New Zealand's trunk prefix, which E.164 drops: nothing follows +64 with a 0 (30 Sep; it went out as typed, to a number that does not exist)"
+    ],
+    [
+      "+44 (0)7700 900123",
+      "+447700900123",
+      "the British way of writing it: the (0) is dropped from abroad"
+    ],
+    [
+      "0044 (0)7700 900123",
+      "+447700900123",
+      "the 00 prefix and the (0) together"
+    ],
+    [
+      "+61 (0)412 345 678",
+      "+61412345678",
+      "and ours the same way: an Australian mobile, not refused"
+    ],
+    [
+      "+61 0412 345 678",
+      "+61412345678",
+      "without the brackets"
+    ],
+    [
+      "+61 (0)2 9876 5432",
+      null,
+      "an Australian landline stays refused, however it is written"
+    ],
+    [
+      "+39 06 1234 5678",
+      "+390612345678",
+      "Italy keeps a real 0 after its code: not on the list, sent as typed"
+    ],
+    [
+      "+225 07 12 34 56 78",
+      "+2250712345678",
+      "so does Cote d'Ivoire: sent as typed"
+    ],
+    [
+      "0412–345–678",
+      "+61412345678",
+      "dashes a phone or a document typed are punctuation too"
+    ],
+    [
+      "+61 412 345 678",
+      "+61412345678",
+      "and a space that does not break"
     ]
   ]
 }
