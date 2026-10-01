@@ -477,8 +477,14 @@ Only the test phones can be messaged. From them:
      (admin, manager and waiter by default); *Villa 7 - new message*, or
      *New guest message* for a guest not staying tonight; the tap opens
      that guest's conversation.
-   - `guestTask` - to the logins in the task's team (Settings, General,
-     Teams), whatever their role; *Villa 7 - Maintenance task*; opens Tasks.
+   - `guestTask` - to the logins in the task's team (Settings, Teams), of
+     the roles ticked for Guest task in Settings, Notifications (every role
+     as it ships, 1 Oct); *Villa 7 - Maintenance task*; opens Tasks. Under
+     the task, the page says how it went - *Buzzed 2 phones in Maintenance*,
+     or why none: the sender's own phone (nobody is buzzed for their own
+     tap, which is why the owner's first test, 1 Oct, buzzed nothing),
+     Tasks not open to the staff yet, quiet hours, or nobody in the team
+     with Notifications on.
    - Neither buzzes a login for a page it cannot open yet: while Chat and
      Tasks are the admin's alone, only the admin. Both follow Settings'
      on/off and quiet hours, as every alert does, and buzz again for each

@@ -536,6 +536,8 @@
     if (s.indexOf('firebasedatabase.app') > -1) return database(s, o);
     if (s.indexOf('nala-contact.') > -1) return messenger(o);
     if (s.indexOf('nala-invites.') > -1) return sender(o);
+    /* the push Worker, as it answers a team's task: one phone buzzed */
+    if (s.indexOf('nala-push.') > -1) return answer(200, { sent:1, removed:0, failed:0, self:0, shut:0 });
     if (s.indexOf('workers.dev') > -1) return answer(200, {});
     return realFetch.apply(this, arguments);
   };

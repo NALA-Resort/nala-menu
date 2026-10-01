@@ -153,6 +153,10 @@
           color:var(--ink); cursor:pointer; }
   .sbtn.saving { background:var(--law-wait); color:var(--mid); }
   .trifail { flex-basis:100%; font-size:var(--t2); color:var(--law-red); }
+  /* How a task's alert went, under the task the moment it is made: grey,
+     and failure's red only when it could not go or a phone refused it. */
+  .tbuzz { flex:1 1 100%; font-size:var(--t2); line-height:1.4; color:var(--mid); }
+  .tbuzz.bad { color:var(--law-red); }
 
   .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
   /* Templates sits on the line that says which way a message goes (the
@@ -325,9 +329,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=10"></script>
+<script src="contact-demo.js?v=11"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=107"></script>
+<script src="nala-shared.js?v=108"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -815,6 +819,38 @@ function dayLabel(iso){
   return dayWords(k);
 }
 
+/* How a task's alert went, said under the task the moment it is made (the
+   owner, 1 Oct: "It didn't work for tasks", when it had gone to nobody:
+   the only phone in the team with Notifications on was his own, and your
+   own tap never buzzes you). The push Worker's own answer, in words, kept
+   until the page is left. */
+var TASKBUZZ = {};
+function buzzWords(res, name){
+  if (!res) return { bad: true, say: 'The team\u2019s phones could not be told just now.' };
+  var n = res.sent | 0, f = res.failed | 0;
+  if (res.skipped) return { say: 'No phone buzzed: ' + res.skipped + ' (Settings, Notifications).' };
+  if (n) return { bad: !!f, say: 'Buzzed ' + n + (n === 1 ? ' phone' : ' phones') + ' in ' + name +
+                                  (f ? ', and ' + f + ' refused it' : '') + '.' };
+  if (f) return { bad: true, say: 'No phone buzzed: ' + f + (f === 1 ? ' phone' : ' phones') +
+                                  ' in ' + name + ' refused it.' };
+  if (res.shut) return { say: 'No phone buzzed: Tasks is still yours alone. Settings, Teams, ' +
+                              'Open to the staff opens it.' };
+  if (res.self) return { say: 'No phone buzzed: yours is the only one in ' + name + ' with ' +
+                              'Notifications on, and your own tap never buzzes you.' };
+  return { say: 'No phone buzzed: nobody in ' + name + ' has Notifications on, or Guest task is ' +
+                'off for their role (Settings, Notifications).' };
+}
+/* The lines for a message's tasks, drawn whether or not the task itself has
+   come back from the database yet: what the alert did is known the moment
+   the push Worker answers. */
+function buzzLines(id){
+  return Object.keys(TASKBUZZ).filter(function(k){ return k.indexOf(id + '/') === 0; })
+    .map(function(k){
+      var bz = TASKBUZZ[k], team = k.slice(id.length + 1);
+      return '<div class="tbuzz' + (bz.bad ? ' bad' : '') + '" id="bz-' + id + '-' + team + '">' +
+             esc(bz.say) + '</div>';
+    }).join('');
+}
 function triHTML(id, m){
   if (m.dir !== 'in') return '';
   var h = '';
@@ -835,7 +871,7 @@ function triHTML(id, m){
   if (TH.fresh[id]){
     return '<div class="tri"><button class="sbtn" id="nt-' + id + '" data-act="notask" data-m="' + id +
            '">No task</button><button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id +
-           '">Task</button><div class="trifail" id="tf-' + id + '"></div></div>';
+           '">Task</button>' + buzzLines(id) + '<div class="trifail" id="tf-' + id + '"></div></div>';
   }
   var ts = m.tasks || {}, notes = '';
   Object.keys(ts).forEach(function(team){
@@ -865,6 +901,7 @@ function triHTML(id, m){
   if (m.sorted)
     h += '<button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id + '">' +
          (Object.keys(ts).length ? 'Another task' : 'Task') + '</button>';
+  notes += buzzLines(id);
   return h ? '<div class="tri">' + h + notes + '<div class="trifail" id="tf-' + id + '"></div></div>' : '';
 }
 
@@ -1212,9 +1249,15 @@ document.getElementById('msgs').onclick = function(e){
        a task to its team's logins, under Settings' on/off and hours. It is
        told the team's name as staff read it, as the first six teams'
        names live here, not in the database. */
-    after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
-                                   { team: team, label: teamLabel(team, SETTINGS),
-                                     url: '/tasks.html' }); };
+    after = function(){
+      var name = teamLabel(team, SETTINGS), here = CK;
+      notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
+                 { team: team, label: name, url: '/tasks.html' })
+        .then(function(res){
+          TASKBUZZ[id + '/' + team] = buzzWords(res, name);
+          if (CK === here) drawThread();
+        });
+    };
   } else if (act === 'notesave'){
     /* An empty note takes the note off: the rules keep a note from being
        empty, so saying nothing is saying there is no note. */

@@ -305,8 +305,8 @@
       <div id="notifList"></div>
       <div class="note">Tapping a row saves it straight away. Turning every one
       off for a role is the same as turning notifications off for those people.
-      Chat&rsquo;s tasks go to the people in each team (General, Teams),
-      whatever their role.</div>
+      A guest task goes only to the people in its team (Teams), and only
+      for the roles ticked here. Nobody is told about their own tap.</div>
       <div class="err" id="err"></div>
     </div>
 
@@ -398,7 +398,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=107"></script>
+<script src="nala-shared.js?v=108"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -427,7 +427,11 @@ var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['spaCancelled','Massage cancelled'],
               ['spaStay','Stay changed under a massage'],
               /* Chat, 29 Sep: a guest's message has arrived. */
-              ['guestMessage','Guest message']];
+              ['guestMessage','Guest message'],
+              /* and 1 Oct, a task made from one: told to the people in
+                 its team, of the roles ticked here (the owner: "It also
+                 doesn't have the option to allow task notifications"). */
+              ['guestTask','Guest task']];
 var STAFF = {}, CFG = null;
 
 (function(){

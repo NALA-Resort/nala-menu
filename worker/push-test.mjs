@@ -181,6 +181,32 @@ await post(TASK);
 ck("while Tasks is still the admin's alone, a team's housekeeper is not buzzed for it",
    JSON.stringify(whom()) === '["ana"]', whom());
 
+/* Settings' Guest task row (1 Oct): the team decides who, the row which of
+   their roles; until the row is drawn, every role. */
+world({ notify: { on: true, events: { guestTask: { admin: true, housekeeping: false } } } });
+r = await post(TASK);
+ck("Guest task off for housekeeping in Settings: the team's housekeeper is not told, its admin is",
+   JSON.stringify(whom()) === '["ana"]' && r.j.sent === 1, [whom(), r.j]);
+world({ notify: { on: true, events: { guestTask: { admin: true, housekeeping: true } } } });
+await post({ ...TASK, team: "bar", label: "Bar" });
+ck("Bar's waiter, waiter not ticked for Guest task, is not told; nor is anyone outside Bar",
+   JSON.stringify(whom()) === '[]', whom());
+world();
+await post(TASK);
+ck("with no Guest task row yet, every role of the team is told", JSON.stringify(whom()) === '["ana","hk"]', whom());
+
+/* The reply counts what was passed over, so the page can say why no phone
+   buzzed: the sender's own, and phones whose login cannot open Tasks yet. */
+world();
+r = await post({ ...TASK, actor: "hk@x" });
+ck("the sender's own phone, passed over, is counted", r.j.self === 1 && r.j.sent === 1 && r.j.shut === 0, r.j);
+world({ permissions: { open: { "guest-contact": true } } });
+r = await post(TASK);
+ck("and a team member's phone the preview keeps from Tasks", r.j.shut === 1 && r.j.sent === 1 && r.j.self === 0, r.j);
+world();
+r = await post({ idToken: "T-desk", event: "cleaned", villa: 4, actor: "hk@x" });
+ck("every event's reply carries the counts", r.j.self === 1 && r.j.sent === 2 && r.j.shut === 0, r.j);
+
 world();
 r = await post({ ...TASK, team: "Maint!" });
 const r2 = await post({ ...TASK, team: undefined });
