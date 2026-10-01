@@ -64,8 +64,14 @@ with sync_playwright() as p:
     byn = {x[0]: x for x in nums}
     ck("each guest shows their number with its tick, as on the SMS pages",
        byn["61412345678"][1].startswith("+61412345678\u2713"), byn.get("61412345678"))
-    ck("and Jonah, whom Chat never wrote to, shows the pre-arrival form an SMS page sent him",
-       byn["61411000016"][2].startswith("Pre-arrival form:"), byn.get("61411000016"))
+    # The demo sends tonight's invitations at 4:02pm (contact-demo.js), so
+    # from then his newest text is tonight's; before it, the pre-arrival
+    # form. Written for the morning on 30 Sep, it failed every afternoon.
+    late = pg.evaluate("()=>{const d=new Date();return d.getHours()*60+d.getMinutes()>=16*60+2;}")
+    ck("and Jonah, whom Chat never wrote to, shows the newest text an SMS page sent him: "
+       "the pre-arrival form, or from 4:02pm tonight's dinner invitation",
+       byn["61411000016"][2].startswith("Dinner invitation:" if late else "Pre-arrival form:"),
+       (late, byn.get("61411000016")))
     # every text the pages sent, in the conversation (the owner, 30 Sep)
     go("guest-contact.html?c=61412345678")
     metas = pg.evaluate("()=>[...document.querySelectorAll('#msgs .meta')].map(e=>e.textContent)")
