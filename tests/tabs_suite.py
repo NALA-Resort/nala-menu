@@ -36,9 +36,9 @@ answer to each other, and whichever side a change misses fails by name.
      ("Don't mute the counters when the icon is selected"); the menu's icon
      carries what the bar does not show; and a count is blue ("Counter is
      blue", after a red try).
-  6. It fits, as Safari sizes it too, for every role: no sideways scroll at 320, and held sideways it is the
-     phone's compact bar, while the Cleans board keeps its villas on a
-     screen.
+  6. It fits, as Safari sizes it too, for every role: no sideways scroll
+     at 320, and held sideways it is the phone's compact bar, while the
+     Cleans board keeps its villas on a screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
   9. The menu from the foot: where the bar is, the hamburger at the top
@@ -61,7 +61,8 @@ answer to each other, and whichever side a change misses fails by name.
      and the same leave the bar as it stood; a kept page gone from the menu
      is left out; the passcode's cover covers the bar; Logout forgets them.
  11. The keyboard (the owner, 1 Oct: "Not sticky on settings page"): on a
-     phone the bar stands down while a field is typed in, and is back at
+     phone the bar stands down while a field is typed in, its room with it
+     so what stands on it comes down onto the keyboard, and is back at
      the foot when it is left, the page not moved; a switch leaves it be;
      with a mouse there is no keyboard and it stays.
 
@@ -115,11 +116,13 @@ def ck(name, cond, detail=""):
     P, F = (P + 1, F) if cond else (P, F + 1)
 
 def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
-            kept=None, hold=None, out=False, settle=2000):
+            kept=None, hold=None, out=False, settle=2000, ticking=False):
     """A page on the fixture night, signed in as email, settled. app: as the
     Home Screen app, on a touch screen; touch: a touch screen in a tab.
     kept: the tab bar's icons this phone was last given; hold: the login
-    lands that many ms in; out: nobody is signed in; settle: ms to wait."""
+    lands that many ms in; out: nobody is signed in; settle: ms to wait;
+    ticking: the page's clock and timers are the test's, run on with
+    pg.clock.run_for."""
     if perms is None: TREE.pop("permissions", None)
     else: TREE["permissions"] = perms
     state = {"cookies": [], "origins": []}
@@ -131,7 +134,8 @@ def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
     pg = ctx.new_page()
     if app:
         pg.add_init_script("Object.defineProperty(navigator,'standalone',{get:function(){return true;}});")
-    pg.clock.set_fixed_time(CLOCK)
+    if ticking: pg.clock.install(time=CLOCK)
+    else: pg.clock.set_fixed_time(CLOCK)
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
     if hold: pg.add_init_script("window.__HOLD=%d;" % hold)
@@ -449,6 +453,34 @@ with sync_playwright() as p:
        and mt != "", bar and ([(t["id"], t["badge"]) for t in bar["tabs"]], mt))
     ctx.close()
 
+    # The counts move while a page stays open (the owner, 1 Oct: a guest's
+    # text did not show on Chat's icon "until after a page refresh").
+    # Chat's and Tasks' are asked again every 30 seconds while the page is
+    # in front, every count when the phone brings the app back; Spa's,
+    # which reads every booking, only then.
+    had = json.loads(json.dumps(TREE.get("contactnew") or {}))
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", ticking=True)
+    SPA = []
+    pg.route("**firebasedatabase.app/spa.json**", lambda r: (SPA.append(1), r.fallback()))
+    icon = lambda: pg.evaluate("""()=>{const b=document.querySelector('#tab-guest-contact .navbadge');
+        return b?b.textContent:'';}""")
+    inmenu = lambda: pg.evaluate("""()=>{const a=document.querySelector('#navDrop a[href="guest-contact.html"]'),
+        b=a&&a.querySelector('.navbadge'); return [b?b.textContent:'', a?a.classList.contains('hasact'):null];}""")
+    before = icon()
+    TREE["contactnew"] = dict(had, **{"61400000001": {"in-x": True}, "61400000002": {"in-y": True}})
+    pg.clock.run_for(31000); pg.wait_for_timeout(400)
+    n = str(len(TREE["contactnew"]))
+    ck("a guest's text shows on Chat's icon within 30 seconds, without a refresh, and in the menu",
+       before == "1" and icon() == n and inmenu()[0] == n, (before, icon(), inmenu(), n))
+    ck("and the timer leaves Spa's count, which reads every booking, alone", SPA == [], len(SPA))
+    TREE["contactnew"] = {}
+    pg.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); pg.wait_for_timeout(400)
+    ck("back from the lock screen, a queue sorted elsewhere wears no count, here or in the menu",
+       icon() == "" and inmenu() == ["", False], (icon(), inmenu()))
+    ck("and every count is asked again then, Spa's too", len(SPA) >= 1, len(SPA))
+    TREE["contactnew"] = had
+    ctx.close()
+
     # ── 6. it fits ────────────────────────────────────────────────────
     for w in (360, 320):
         ctx, pg = open_as(b, EMAIL["admin"], "tally.html", w=w)
@@ -672,10 +704,13 @@ with sync_playwright() as p:
         coverBg:c?getComputedStyle(c).backgroundColor:null,
         ground:getComputedStyle(document.body).backgroundColor,
         paints:window.__barPaints, role:!!window.NALA_ROLE,
-        kept:localStorage.getItem('nala-tabs')};}"""
+        kept:localStorage.getItem('nala-tabs'),
+        chat:(document.querySelector('#tab-guest-contact .navbadge')||{}).textContent||'',
+        menuN:(document.querySelector('#tab-menu .navbadge')||{}).textContent||''};}"""
     ctx, pg = open_as(b, EMAIL["admin"], "dashboard.html")
     s = pg.evaluate(STAY)
     ck("a login's icons are kept on the phone", s["kept"] == ADMIN, s["kept"])
+    was = s
     # A tap on Reservations, its login held back as on a slow phone.
     pg.add_init_script("window.__HOLD=1500;")
     miss = press(pg, "#tab-tally")
@@ -685,6 +720,10 @@ with sync_playwright() as p:
     ck("the next page draws them before its login lands",
        not miss and not s["role"] and s["cover"] == "waiting" and s["tabs"] == ADMIN, miss or s)
     ck("in its first frame", s["paints"] == 0, s["paints"])
+    # The owner, 1 Oct: the counts were "still flashing between page loads"
+    ck("with the counts they last wore, Chat's and the menu's, so nothing flashes",
+       was["chat"] != "" and was["menuN"] != "" and
+       s["chat"] == was["chat"] and s["menuN"] == was["menuN"], (was, s))
     ck("with its own icon lit", s["here"] == "tab-tally", s["here"])
     ck("standing on the cover, where a finger reaches it", s["onTop"], s)
     ck("and the cover wears the page's own ground, not auth.js's cream",
@@ -700,7 +739,26 @@ with sync_playwright() as p:
     ck("and the menu's icon raises the menu",
        not miss and pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"), miss)
     miss = press(pg, "#navSignout"); pg.wait_for_timeout(200)
-    ck("Logout forgets the icons", not miss and pg.evaluate("()=>localStorage.getItem('nala-tabs')") is None, miss)
+    ck("Logout forgets the icons, and their counts", not miss and
+       pg.evaluate("()=>[localStorage.getItem('nala-tabs'), localStorage.getItem('nala-counts')]") == [None, None], miss)
+    ctx.close()
+
+    # The menu's icon is a sum - Spa's count, for the admin - so it keeps
+    # what it wore until every page it counts for has answered: Chat's
+    # answer landing first must not wipe it for the moment Spa's takes.
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
+    MENU_N = "()=>(document.querySelector('#tab-menu .navbadge')||{}).textContent||''"
+    had = pg.evaluate(MENU_N)
+    HELD = []
+    pg.route("**firebasedatabase.app/spa.json**", lambda r: HELD.append(r))
+    pg.reload(); pg.wait_for_timeout(1500)
+    held = pg.evaluate(MENU_N)
+    chat_in = pg.evaluate("()=>!!window.NALA_ROLE && 'guest-contact.html' in NAV_N")
+    for r in HELD: r.fallback()
+    pg.wait_for_timeout(600)
+    ck("the menu's icon keeps its sum while Spa's answer is still on its way, Chat's already in",
+       had != "" and HELD and chat_in and held == had and pg.evaluate(MENU_N) == had,
+       (had, held, chat_in, len(HELD), pg.evaluate(MENU_N)))
     ctx.close()
 
     # A phone handed to another login: the admin's icons give way to the
@@ -743,7 +801,8 @@ with sync_playwright() as p:
     KB = """()=>{const t=document.getElementById('tabBar'), c=t&&t.querySelector('.tabrow');
       return {shown:!!t&&getComputedStyle(t).display!=='none',
               gap:c?Math.round(innerHeight-c.getBoundingClientRect().bottom):null,
-              coarse:matchMedia('(pointer:coarse)').matches, y:Math.round(scrollY)};}"""
+              coarse:matchMedia('(pointer:coarse)').matches, y:Math.round(scrollY),
+              room:getComputedStyle(document.body).getPropertyValue('--tabroom').trim()};}"""
     ctx, pg = open_as(b, EMAIL["admin"], "staff.html", app=True)
     miss = press(pg, 'button.tab[data-t="tNotify"]'); pg.wait_for_timeout(300)
     pg.evaluate("()=>window.scrollTo(0, 200)")
@@ -751,10 +810,15 @@ with sync_playwright() as p:
     k1 = pg.evaluate(KB)
     ck("on a phone, typing a time on Settings, the bar stands down",
        not miss and k1["coarse"] and not k1["shown"], miss or k1)
+    # Its room goes with it, so what stands on it - Chat's box and Send, a
+    # page's footer, each standing on var(--tabroom) - comes down onto the
+    # keyboard, as the phone's own box does.
+    ck("and the room kept for it goes too, so what stands on it comes down",
+       k1["room"] == "0px", k1)
     pg.evaluate("()=>document.activeElement.blur()"); pg.wait_for_timeout(600)
     k2 = pg.evaluate(KB)
-    ck("and the field left, it is back at the foot, the page where it was",
-       k2["shown"] and k2["gap"] == 21 and k2["y"] == k1["y"], (k1, k2))
+    ck("and the field left, it is back at the foot with its room, the page where it was",
+       k2["shown"] and k2["gap"] == 21 and k2["room"] == "83px" and k2["y"] == k1["y"], (k1, k2))
     pg.focus("#masterTick"); pg.wait_for_timeout(100)
     ck("a switch with focus leaves it be: it is pressed, not typed in", pg.evaluate(KB)["shown"])
     ys = pg.evaluate("""()=>[0, 200, document.documentElement.scrollHeight].map(y=>{

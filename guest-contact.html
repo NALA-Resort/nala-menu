@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Chat</title>
-<link rel="stylesheet" href="nala-ui2.css?v=18">
+<link rel="stylesheet" href="nala-ui2.css?v=19">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* Built 29 Sep from mock-guest-contact.html, the owner's brief of that
@@ -52,6 +52,19 @@
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow .l3 { font-size:var(--t1); color:var(--mid); margin-top:3px; }
   .vrow .l3 .open { color:var(--law-amber-ink); }
+  /* The guest's number as the SMS pages show it (phoneBadgeHTML, the owner,
+     30 Sep: "the phone number, its validity"): the number, the tick where
+     it sits in its country's mobile ranges or the question mark where that
+     cannot be told, and the pencil that corrects it at /phonefix. */
+  .vrow .num .conf { margin-left:4px; }
+  .vrow .num .conf.ok { color:var(--law-green); }
+  /* The pencil at the line's right-hand end, under the time: in the middle
+     of the row it took the tap that opens the conversation. */
+  .vrow .l3 { display:flex; align-items:flex-start; }
+  .vrow .l3 .det { flex:1 1 auto; min-width:0; }
+  .vrow .l3 .num { white-space:nowrap; }
+  .vrow .l3 .num + .meta::before { content:'\00b7'; margin:0 6px; }
+  .vrow .l3 .pen { flex:0 0 auto; margin-left:8px; padding:0 6px; cursor:pointer; }
   /* The states, colour-law tokens and nothing else (CLAUDE.md): a message
      nobody has sorted is work to do, white; a task still open is amber,
      chase this; only we have written is the waiting grey; nothing sent, or
@@ -61,7 +74,7 @@
      and single nothing out. Its band, All done, tells it from New. */
   .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
   .vrow.b-none, .vrow.b-nophone { border-style:dashed; opacity:.62; }
-  .vrow:disabled { cursor:default; }
+  .vrow:disabled, div.vrow { cursor:default; }
 
   /* ── one conversation ── */
   .ctx { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:-6px 2px 0; }
@@ -141,19 +154,41 @@
   .sbtn.saving { background:var(--law-wait); color:var(--mid); }
   .trifail { flex-basis:100%; font-size:var(--t2); color:var(--law-red); }
 
-  .compose { margin-top:18px; }
   .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
   /* Templates sits on the line that says which way a message goes (the
      owner, 30 Sep: "we should have access to all the templates from the
-     send area"). A button, so bordered as one. */
-  .winrow { display:flex; align-items:flex-start; gap:10px; margin:0 2px 8px; }
-  .winrow .win { flex:1; margin:0; }
+     send area"). A button, so bordered as one; and the way back to typing
+     beside it, so the box keeps its row to itself (1 Oct). Where the words
+     leave no room for them, the buttons drop under them together. */
+  .winrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin:0 2px 8px; }
+  .winrow .win { flex:1 1 150px; margin:0; }
+  .wbtns { display:flex; gap:8px; margin-left:auto; }
   .winrow .sbtn { flex:0 0 auto; }
   .sheet .tg { font-size:var(--t2); font-weight:600; margin:16px 0 6px; }
   .sheet .tw { font-size:var(--t2); color:var(--mid); line-height:1.45; margin:0 0 6px; }
   .sheet .tbtns { display:flex; flex-wrap:wrap; gap:8px; }
   .win b { font-weight:600; color:var(--ink); }
-  .compose textarea { min-height:96px; line-height:1.45; resize:vertical; display:block; }
+  /* The box grows with the message, as the phone's does (the owner, 1 Oct:
+     "so the whole message can be seen"): one line to start, a line more
+     for every line typed, to half the screen and then it scrolls
+     (fitBox). Send is the phone's too: a round blue arrow in the box's
+     right end, held at its foot as the box grows, so it takes no row of
+     its own ("on side of text Box"). Grey until there are words to send.
+     The arrow is Lucide's arrow-up, its path unchanged and its line a
+     touch heavier than Lucide's 2, as the phone's arrow is bold. */
+  .inrow { position:relative; }
+  body.ui2 .compose textarea { display:block; min-height:40px; height:40px; padding:8px 48px 8px 14px;
+                              border-radius:20px; line-height:22px; resize:none; overflow-y:hidden; }
+  #tplPrev:not(:empty) { padding-right:44px; max-height:45vh; overflow-y:auto; }
+  .sendgo { position:absolute; right:4px; bottom:4px; width:32px; height:32px; padding:0;
+            border:0; border-radius:50%; background:#0A84FF; color:#fff; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            font-family:var(--ui-font); font-size:var(--t3); line-height:1; }
+  .sendgo svg { width:20px; height:20px; display:block; fill:none; stroke:currentColor;
+                stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .sendgo:disabled { background:#C9C9C4; cursor:default; }
+  .sendgo.saving { background:#C9C9C4; }
+  .sendgo.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
   .tpls { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
   .chip { display:inline-flex; align-items:center; min-height:36px; padding:0 14px;
           border:1px solid var(--rule); border-radius:var(--pill);
@@ -204,11 +239,22 @@
   .sheet .btn { margin-top:8px; }
   .sheet .err { font-size:var(--t2); color:var(--law-red); line-height:1.45; margin-top:10px; }
   #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
-  /* A conversation's box and its Send sit at the END of the conversation,
-     where the newest message is, not pinned to the screen: a pinned Send
-     floated over the messages while the box it sends stayed out of sight.
-     The page opens scrolled to the bottom instead. */
-  #threadView .foot { position:static; margin-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  /* The box and its Send stand on the tab bar, as the phone's stand on
+     its keyboard (the owner, 1 Oct: "the text area and send button should
+     be sticky above the footer menu ... Same as iPhone"): at the foot of
+     the screen however far back the conversation is read, and at the foot
+     of a short one too, with the messages fading under them. Until then
+     they sat at the end of the conversation, because a pinned Send once
+     floated over the messages while the box it sent stayed out of sight;
+     box and Send are one bar now, so neither is seen without the other.
+     The strip under the bar is solid here, as under any page's footer. */
+  #threadView { display:flex; flex-direction:column; flex:1 0 auto; }
+  #threadView .compose { position:sticky; bottom:var(--tabroom); z-index:4; margin-top:auto;
+                         padding:14px 0 10px;
+                         background:linear-gradient(to bottom, transparent, var(--ground) 14px); }
+  body.ui2:not(.hastabs) #threadView .compose { padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+  body.ui2.hastabs.inthread .tabbar { background:var(--ground); }
+  body.inthread #errBar:empty { margin:0; }
   #sendErr { margin:8px 2px 0; }
 
 /* ── paper ───────────────────────────────────────────────────────────
@@ -260,16 +306,17 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
   <div id="msgs"></div>
   <div class="compose" id="compose">
     <div class="winrow"><div class="win" id="win"></div>
-      <button class="sbtn" id="tmplBtn" type="button" style="display:none">Templates</button></div>
+      <div class="wbtns">
+        <button class="sbtn" id="writeBtn" type="button" style="display:none">Write instead</button>
+        <button class="sbtn" id="viaBtn" type="button" style="display:none">SMS instead</button>
+        <button class="sbtn" id="tmplBtn" type="button" style="display:none">Templates</button></div></div>
     <div class="tpls" id="tpls"></div>
-    <div id="tplPrev"></div>
-    <textarea id="msgBox" aria-label="Message"></textarea>
-  </div>
-  <div class="savefail" id="sendErr"></div>
-  <div class="foot" id="foot">
-    <button class="btn" id="writeBtn" style="display:none">Write instead</button>
-    <button class="btn" id="viaBtn" style="display:none">SMS instead</button>
-    <button class="btn solid" id="sendBtn">Send</button>
+    <div class="inrow" id="inRow">
+      <div id="tplPrev"></div>
+      <textarea id="msgBox" rows="1" aria-label="Message"></textarea>
+      <button class="sendgo" id="sendBtn" type="button" aria-label="Send" title="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+    </div>
+    <div class="savefail" id="sendErr"></div>
   </div>
 </div>
 
@@ -278,9 +325,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=9"></script>
+<script src="contact-demo.js?v=10"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=105"></script>
+<script src="nala-shared.js?v=108"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -400,6 +447,7 @@ function bookingsFrom(nights, fixes){
 var STAYS_MS = 5 * 60 * 1000;
 var STAYS = null, STAYS_AT = 0;
 var SETTINGS = null;        /* /contactsettings: the teams, read at the bookings' pace */
+var PAGES = null;           /* the SMS pages' records, for the list's last line: { pre, spa, inv } */
 function loadStays(){
   if (STAYS && Date.now() - STAYS_AT < STAYS_MS) return Promise.resolve(STAYS);
   var from = plusDays(-WINDOW_DAYS), to = plusDays(WINDOW_DAYS);
@@ -407,7 +455,15 @@ function loadStays(){
     whole('/stays', 'orderBy=' + encodeURIComponent('"$key"') +
           '&startAt=' + encodeURIComponent('"' + from + '"') +
           '&endAt=' + encodeURIComponent('"' + to + '"')),
-    whole('/phonefix'), whole('/contactsettings')
+    whole('/phonefix'), whole('/contactsettings'),
+    /* What the SMS pages sent, for each row's last message: read whole as
+       those pages read them, the invitations for the fortnight a stay's
+       texts are looked for in. A failed read leaves Chat's own. */
+    whole('/previnvites').catch(function(){ return null; }),
+    whole('/spareminders').catch(function(){ return null; }),
+    whole('/invites', 'orderBy=' + encodeURIComponent('"$key"') +
+          '&startAt=' + encodeURIComponent('"' + plusDays(-14) + '"') +
+          '&endAt=' + encodeURIComponent('"' + plusDays(0) + '"')).catch(function(){ return null; })
   ]).then(function(res){
     var nights = {};
     Object.keys(res[0] || {}).forEach(function(d){
@@ -415,6 +471,7 @@ function loadStays(){
     });
     STAYS = bookingsFrom(nights, res[1] || {});
     SETTINGS = res[2] || {};
+    PAGES = { pre: res[3] || {}, spa: res[4] || {}, inv: res[5] || {} };
     STAYS_AT = Date.now();
     return STAYS;
   });
@@ -470,6 +527,13 @@ function rowsOf(){
     var b = DATA.bookings[id];
     var t = b.ck ? DATA.threads[b.ck] : null;
     if (b.ck) seen[b.ck] = true;
+    /* A text an SMS page sent after Chat's own last message is the row's
+       last message: its line, its time, and ours to have written. The
+       guest's own messages, and so the state they set, are Chat's alone. */
+    var pl = pageLast(b), pat = pl && parseISO(pl.at), tat = t && parseISO(t.lastAt);
+    if (pat && (!tat || pat > tat))
+      t = Object.assign({}, t || {}, { lastAt: pl.at, dir: 'out', page: true,
+        preview: pl.kind + ': ' + String(pl.body || '').replace(/\s+/g, ' ') });
     rows.push({ b: b, ck: b.ck, t: t, tab: b.tab,
                 state: contactRowState(t, b.ck ? freshOf(b.ck) : 0,
                                        b.ck ? tasksOf(b.ck).length : 0, !!b.ck) });
@@ -510,7 +574,7 @@ function rowHTML(r, showTab){
   var n = r.ck ? freshOf(r.ck) : 0, open = r.ck ? tasksOf(r.ck) : [];
   var pv = r.state === 'nophone' ? 'No mobile number on the booking'
          : !r.t || !r.t.lastAt ? 'Nothing sent yet'
-         : (r.t.dir === 'out' ? 'You: ' : '') + (r.t.preview || '');
+         : (r.t.dir === 'out' && !r.t.page ? 'You: ' : '') + (r.t.preview || '');
   var l3 = [];
   if (showTab) l3.push({ up:'Upcoming', 'in':'In-house', past:'Past' }[r.tab]);
   if (chWord(r.t)) l3.push(chWord(r.t));
@@ -519,17 +583,28 @@ function rowHTML(r, showTab){
   open.forEach(function(x){ teams[teamLabel(x.team, SETTINGS)] = true; });
   var openWords = Object.keys(teams).length
     ? ' · <span class="open">' + esc(Object.keys(teams).join(', ')) + ' open</span>' : '';
-  return '<button class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
-         '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '"' +
-         (r.state === 'nophone' ? ' disabled' : '') + '>' +
+  /* The number as the SMS pages show it; on a number on no booking, whose
+     name is the number, the mark alone. The pencil corrects a booking's. */
+  var num = r.b ? phoneBadgeHTML(r.b.phoneRaw, false) : phoneBadgeHTML('+' + r.ck, false, true);
+  /* phoneBadgeHTML's pencil, set apart at the line's end */
+  var pen = r.b ? '<span class="pen" role="button" aria-label="Edit number">\u270e</span>' : '';
+  /* A row with no number cannot be opened, but its pencil can be pressed:
+     a card, not a button, since a disabled one - aria-disabled included -
+     disables the pencil inside it for a screen reader too. */
+  var tag = r.state === 'nophone' ? 'div' : 'button';
+  return '<' + tag + ' class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
+         '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '">' +
     '<div class="v">' + esc(r.b ? r.b.villa : '?') + '</div><div class="mid">' +
     /* A name may trim; a number standing in for one never does. */
     '<div class="l1 trimrow"><span class="nm' + (r.b || (r.t && r.t.profile) ? ' trim' : '') + '">' +
     esc(rowName(r)) + '</span>' +
     '<span class="tm">' + esc(r.t ? whenShort(r.t.lastAt) : '') + '</span></div>' +
+    /* The details first, the last message at the bottom (the owner, 30 Sep:
+       "Needs the details first and the chat excerpt at the bottom"). */
+    '<div class="l3"><span class="det">' + (num ? '<span class="num">' + num + '</span>' : '') +
+    '<span class="meta">' + esc(l3.join(' · ')) + openWords + '</span></span>' + pen + '</div>' +
     '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
-    (n ? '<span class="cnt">' + n + '</span>' : '') + '</div>' +
-    '<div class="l3">' + esc(l3.join(' · ')) + openWords + '</div></div></button>';
+    (n ? '<span class="cnt">' + n + '</span>' : '') + '</div></div></' + tag + '>';
 }
 
 function drawList(){
@@ -585,7 +660,19 @@ document.getElementById('knob').onclick = function(e){
 };
 document.getElementById('find').oninput = function(){ if (DATA) drawList(); };
 document.getElementById('board').onclick = function(e){
-  var r = e.target.closest('.vrow'); if (!r || r.disabled) return;
+  var r = e.target.closest('.vrow'), pen = e.target.closest('.pen');
+  /* The pencil corrects the booking's number, as on the SMS pages: saved at
+     /phonefix, which outranks Mews wherever a number is read. */
+  if (pen && r){
+    e.stopPropagation();
+    var b = (STAYS || {})[r.getAttribute('data-b')]; if (!b) return;
+    editPhoneNumber({ id: b.id, name: b.name, current: b.phoneRaw, was: b.raw }, function(err){
+      document.getElementById('errBar').textContent = err || '';
+      if (!err){ STAYS_AT = 0; refresh(); }
+    });
+    return;
+  }
+  if (!r || r.tagName !== 'BUTTON' || r.disabled) return;
   var q = 'c=' + r.getAttribute('data-ck') + (r.getAttribute('data-b') ? '&b=' + r.getAttribute('data-b') : '') +
           '&t=' + TAB;
   location.href = 'guest-contact.html?' + q;
@@ -618,50 +705,70 @@ function bookingFor(ck){
    again keeps the one it replaced under earlier (send-invites.js), so both
    are here. A number on no booking can only have been an outside guest,
    so its last fortnight of /extinvites is read instead. */
-function smsPageSends(b, phone){
-  var reads = [], kinds = [], today = dkey(new Date());
-  function read(path, kind){
-    reads.push(whole(path).catch(function(){ return null; })); kinds.push(kind);
+/* Every text an SMS page sent this number, from those pages' own records:
+   the pre-arrival form and the ones it replaced, each spa reminder, each
+   night's dinner invitation. The conversation lays them among Chat's own
+   messages; the list takes the newest for its line (the owner, 30 Sep:
+   "an excerpt of its last chat"). One reading for both. pre is the
+   booking's /previnvites record, spa its /spareminders node, nights the
+   /invites (or /extinvites) nodes of the nights that count. */
+function pageTexts(pre, spa, nights, phone){
+  var out = [];
+  function one(rec, kind){
+    if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
+    if (rec.to && normalisePhone(rec.to) !== phone) return;
+    out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
+               kind: kind, page: true,
+               status: rec.status === 'failed' ? 'failed'
+                     : rec.delivery === 'failed' ? 'undelivered'
+                     : rec.delivery === 'delivered' ? 'delivered' : 'sent',
+               err: rec.error || rec.deliveryText || '' });
   }
-  var d, i;
+  function add(rec, kind){
+    one(rec, kind);
+    var was = rec && rec.earlier;
+    if (was && typeof was === 'object')
+      Object.keys(was).forEach(function(k){ one(was[k], kind); });
+  }
+  add(pre, 'Pre-arrival form');
+  Object.keys(spa || {}).forEach(function(k){ add(spa[k], 'Spa reminder'); });
+  (nights || []).forEach(function(n){
+    Object.keys(n || {}).forEach(function(k){ add(n[k], 'Dinner invitation'); });
+  });
+  return out;
+}
+/* The conversation's reads: this booking's records, or for a number on no
+   booking an outside guest's invitations of the last fortnight. */
+function smsPageSends(b, phone){
+  var today = dkey(new Date()), nights = [], d, i;
+  var get = function(path){ return whole(path).catch(function(){ return null; }); };
   if (b){
-    read('/previnvites/' + b.id, 'pre');
-    read('/spareminders/' + b.id, 'spa');
     var end = b.depart < today ? b.depart : today;
     for (d = parseDepDate(b.arrive), i = 0; d && dkey(d) <= end && i < 14; i++){
-      read('/invites/' + dkey(d), 'night'); d = new Date(d.getTime() + 86400000);
+      nights.push(get('/invites/' + dkey(d))); d = new Date(d.getTime() + 86400000);
     }
-  } else {
-    for (d = parseDepDate(today), i = 0; d && i < 14; i++){
-      read('/extinvites/' + dkey(d), 'night'); d = new Date(d.getTime() - 86400000);
-    }
+    return Promise.all([get('/previnvites/' + b.id), get('/spareminders/' + b.id)].concat(nights))
+      .then(function(res){ return pageTexts(res[0], res[1], res.slice(2), phone); });
   }
-  return Promise.all(reads).then(function(res){
-    var out = [];
-    function one(rec, kind){
-      if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
-      if (rec.to && normalisePhone(rec.to) !== phone) return;
-      out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
-                 kind: kind, page: true,
-                 status: rec.status === 'failed' ? 'failed'
-                       : rec.delivery === 'failed' ? 'undelivered'
-                       : rec.delivery === 'delivered' ? 'delivered' : 'sent',
-                 err: rec.error || rec.deliveryText || '' });
-    }
-    function add(rec, kind){
-      one(rec, kind);
-      var was = rec && rec.earlier;
-      if (was && typeof was === 'object')
-        Object.keys(was).forEach(function(k){ one(was[k], kind); });
-    }
-    res.forEach(function(r, i){
-      if (kinds[i] === 'pre') return add(r, 'Pre-arrival form');
-      Object.keys(r || {}).forEach(function(k){
-        add(r[k], kinds[i] === 'spa' ? 'Spa reminder' : 'Dinner invitation');
-      });
-    });
-    return out;
+  for (d = parseDepDate(today), i = 0; d && i < 14; i++){
+    nights.push(get('/extinvites/' + dkey(d))); d = new Date(d.getTime() - 86400000);
+  }
+  return Promise.all(nights).then(function(res){ return pageTexts(null, null, res, phone); });
+}
+/* The newest text an SMS page sent a booking's guest, for the list's line,
+   from the pages' nodes read at the bookings' pace. One that failed never
+   reached them, so it is not what they last heard from us. */
+function pageLast(b){
+  if (!b || !b.ck || !PAGES) return null;
+  var today = dkey(new Date()), end = b.depart < today ? b.depart : today, nights = [], best = null;
+  Object.keys(PAGES.inv || {}).forEach(function(n){
+    if (n >= b.arrive && n <= end) nights.push(PAGES.inv[n]);
   });
+  pageTexts((PAGES.pre || {})[b.id], (PAGES.spa || {})[b.id], nights, '+' + b.ck).forEach(function(m){
+    var at = parseISO(m.at);
+    if (m.status !== 'failed' && at && (!best || at > best.at)) best = { at: at, m: m };
+  });
+  return best && best.m;
 }
 
 var SENT_AT = 0;             /* when the SMS pages' records were last read */
@@ -861,7 +968,7 @@ function drawThread(){
   loadPhotos();
   drawCompose();
   DRAWN = true;
-  if (atEnd) window.scrollTo(0, el.scrollHeight);
+  if (atEnd) toEnd();
 }
 
 /* The box, which says which way the words will go before they go. */
@@ -875,15 +982,15 @@ function untilWords(ms){
   var d = new Date(ms);
   return timeOf(d.toISOString()) + (dkey(d) === dkey(new Date()) ? ' today' : ' tomorrow');
 }
-function drawCompose(){
+function drawCompose(){ composeState(); fitBox(); armSend(); }
+function composeState(){
   var c = channelNow(), t = TH.t || {};
   var win = document.getElementById('win'), box = document.getElementById('msgBox');
   var tpls = document.getElementById('tpls'), prev = document.getElementById('tplPrev');
-  var via = document.getElementById('viaBtn'), send = document.getElementById('sendBtn');
-  var foot = document.getElementById('foot');
+  var via = document.getElementById('viaBtn'), row = document.getElementById('inRow');
   var tb = document.getElementById('tmplBtn'), back = document.getElementById('writeBtn');
   tpls.innerHTML = ''; prev.innerHTML = '';
-  box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
+  box.style.display = ''; row.style.display = ''; via.style.display = 'none';
   tb.style.display = 'none'; back.style.display = 'none';
   var name = TH.b ? TH.b.first : '';
   /* Reply to guests, a switch per role in Settings (30 Sep): switched off,
@@ -891,17 +998,16 @@ function drawCompose(){
   if (!can(window.NALA_ROLE, 'guestReply')){
     win.innerHTML = 'Replying to guests is switched off for this login. An admin can switch it ' +
       'on in Settings, General, Roles.';
-    box.style.display = 'none'; foot.style.display = 'none';
+    row.style.display = 'none';
     return;
   }
   if (c.ch === 'none'){
     win.innerHTML = 'This guest texted <b>' + esc(t.optout.word || 'STOP') + '</b> ' +
       esc(stampOf(t.optout.at)) + '. Nothing can be sent until they text START.';
-    box.style.display = 'none'; foot.style.display = 'none';
+    row.style.display = 'none';
     return;
   }
   tb.style.display = '';
-  send.disabled = !window.__idToken;
   /* A template of an SMS page's, chosen from the sheet: its words as the
      guest will read them, then Send, or back to typing. */
   if (PICKT){
@@ -937,8 +1043,55 @@ function drawCompose(){
       (HELLO && !HELLO.wa && waAgreed(t) ? ' · WhatsApp is not set up yet' : '');
   if (c.chosen){ via.style.display = ''; via.textContent = 'Approved message'; }
   box.placeholder = 'Message ' + (name || 'the guest');
-  send.disabled = !window.__idToken;
 }
+/* Send waits for words, as the phone's does: grey while the box is empty,
+   and never mid-send. A template's words, when shown, are the words. */
+function armSend(){
+  var s = document.getElementById('sendBtn'), box = document.getElementById('msgBox');
+  if (s.__saving || s.classList.contains('saved')) return;
+  s.disabled = !window.__idToken || (box.style.display !== 'none' && !box.value.trim());
+}
+/* The box as tall as what is in it, to half the screen; past that it
+   scrolls. The row holds its height while the box is measured, so the
+   page never shortens under the reader for that instant. */
+function fitBox(){
+  var box = document.getElementById('msgBox');
+  if (!box.offsetParent) return;
+  var row = box.parentNode, cs = getComputedStyle(box);
+  row.style.minHeight = row.offsetHeight + 'px';
+  box.style.height = 'auto';
+  var want = box.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  var max = Math.max(84, Math.round((window.visualViewport ? visualViewport.height : window.innerHeight) / 2));
+  box.style.height = Math.min(want, max) + 'px';
+  box.style.overflowY = want > max ? 'auto' : 'hidden';
+  row.style.minHeight = '';
+}
+document.getElementById('msgBox').addEventListener('input', function(){ fitBox(); armSend(); });
+window.addEventListener('resize', fitBox);
+/* The newest message stays in sight, as the phone keeps it: a reader at
+   the end of the conversation stays at the end while anything grows
+   under them - a guest's photo arriving after the page opened, the box
+   growing a line, a template's words taking its place. Until 1 Oct a
+   photo pushed the newest lines out of sight on opening. A reader
+   further back is left where they are.
+   Only the reader's own scrolling says where they are: the page's jump to
+   the end is told apart by where it left the page, since its scroll
+   event can arrive after the photo has already grown. */
+var STICK = true, OWN_TOP = -1;
+function toEnd(){
+  var el = document.scrollingElement || document.documentElement;
+  window.scrollTo(0, el.scrollHeight);
+  OWN_TOP = el.scrollTop; STICK = true;
+}
+window.addEventListener('scroll', function(){
+  var el = document.scrollingElement || document.documentElement;
+  if (el.scrollTop === OWN_TOP) return;
+  OWN_TOP = -1;
+  STICK = el.scrollTop + window.innerHeight >= el.scrollHeight - 80;
+}, { passive:true });
+if (window.ResizeObserver) new ResizeObserver(function(){
+  if (CK && DRAWN && STICK) toEnd();
+}).observe(document.getElementById('threadView'));
 
 /* Photos come through the Worker, which fetches them from Twilio with the
    account's credentials; the page never holds those. */
@@ -1055,12 +1208,13 @@ document.getElementById('msgs').onclick = function(e){
     patch['contactmsgs/' + CK + '/' + id + '/tasks/' + team] = tid;
     patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
     patch['contactnew/' + CK + '/' + id] = null;
-    /* The team's phones buzz once the push Worker knows guestTask: the
-       Worker's hello says so (BUZZ in Cloudflare), and until then nothing
-       is sent to a Worker that would not know what to do with it. */
-    if (HELLO && HELLO.buzz)
-      after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
-                                     { team: team, url: '/tasks.html' }); };
+    /* The team's phones buzz: the push Worker (worker/nala-push.js) sends
+       a task to its team's logins, under Settings' on/off and hours. It is
+       told the team's name as staff read it, as the first six teams'
+       names live here, not in the database. */
+    after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
+                                   { team: team, label: teamLabel(team, SETTINGS),
+                                     url: '/tasks.html' }); };
   } else if (act === 'notesave'){
     /* An empty note takes the note off: the rules keep a note from being
        empty, so saying nothing is saying there is no note. */
@@ -1080,7 +1234,8 @@ document.getElementById('msgs').onclick = function(e){
   } else return;
   saveFeedback(btn, function(){ return sortWrite(patch); }, {
     busy: 'Saving', done: 'Saved', hold: 300, fail: fail,
-    then: function(){ PICK = null; if (after) after(); refresh(); }
+    /* the icons' counts move with it, now rather than at their next ask */
+    then: function(){ PICK = null; if (after) after(); refresh(); navRecount(true); }
   });
 };
 
@@ -1265,9 +1420,8 @@ function sendTemplate(btn){
           e = new Error(one.error || 'it did not send'); e.said = true; throw e;
         }
       });
-  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
-       then: function(){ PICKT = null; SENT_AT = 0; var s = document.getElementById('sendBtn');
-                         armSave(s); s.textContent = 'Send';
+  }, { busy:'\u2026', done:'\u2713', hold:400, fail: err,
+       then: function(){ PICKT = null; SENT_AT = 0; armSave(document.getElementById('sendBtn'));
                          /* back to typing now: the refresh redraws only a
                             conversation that has moved */
                          drawCompose();
@@ -1298,9 +1452,9 @@ document.getElementById('sendBtn').onclick = function(){
           e.said = true; throw e;
         }
       });
-  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
-       then: function(){ box.value = ''; VIA = ''; var s = document.getElementById('sendBtn');
-                         armSave(s); s.textContent = 'Send'; refresh(); } });
+  }, { busy:'\u2026', done:'\u2713', hold:400, fail: err,
+       then: function(){ box.value = ''; VIA = ''; armSave(document.getElementById('sendBtn'));
+                         fitBox(); armSend(); refresh(); } });
 };
 
 /* ── the whole page ──────────────────────────────────────────── */
@@ -1410,6 +1564,7 @@ function showAccess(allowed, e){
   box.className = 'noaccess' + (on ? ' show' : '');
   document.getElementById('listView').style.display = on || CK ? 'none' : '';
   document.getElementById('threadView').style.display = on || !CK ? 'none' : '';
+  document.body.classList.toggle('inthread', !on && !!CK);
   if (on) return;
   if (CK){
     var back = document.getElementById('backBtn');

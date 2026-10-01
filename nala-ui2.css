@@ -383,9 +383,16 @@ body.ui2 > #nalaCover.waiting{ background:var(--ground) !important; }
    the owner, 1 Oct, "Not sticky on settings page", the bar 294pt up on
    Settings - the number pad its 07:30 and 18:00 call up, 216, with its
    44 of Done bar and 34 of home strip. nala-shared.js puts it back at
-   the foot when the keyboard goes. A mouse brings no keyboard: there it
-   stays. */
+   the foot when the keyboard goes. What stands on the bar comes down
+   with it, onto the keyboard, as the phone's own box does: Chat's box
+   and Send, a page's footer. A mouse brings no keyboard: there it stays.
+   The two rules ask the same question, one for the room, one for the
+   bar. */
 @media (pointer:coarse){
+  body.ui2.hastabs:has(:is(textarea, select, [contenteditable="true"],
+      input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"],
+                 [type="reset"], [type="range"], [type="color"], [type="file"],
+                 [type="image"], [type="hidden"])):focus){ --tabroom:0px; }
   body.ui2.hastabs:has(:is(textarea, select, [contenteditable="true"],
       input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"],
                  [type="reset"], [type="range"], [type="color"], [type="file"],

@@ -99,6 +99,22 @@ of where the conversation stands (`contactRowState`, the colour law):
 | All done | plain white, not green (the owner, 30 Sep: "Otherwise, all the cards would be green") | everything they sent is sorted, nothing open |
 | No messages | sunk, dashed | nothing either way, or no mobile on the booking |
 
+Each row carries the guest's number as the SMS pages show it
+(`phoneBadgeHTML`, the owner, 30 Sep: "the phone number, its validity"):
+the number, the tick where it sits in its country's mobile ranges or the
+question mark where that cannot be told, and the pencil, which corrects
+it at `/phonefix` exactly as the SMS pages' does. A number on no booking,
+already the row's name, wears the mark alone.
+
+The row's line and time are the conversation's last message, the SMS
+pages' texts included ("an excerpt of its last chat"): a guest Chat never
+wrote to, but whom Pre-arrival SMS, Invitations or Spa reminders did,
+shows that text by its page's name and sits in Sent, no reply rather than
+No messages. One reading, `pageTexts`, for the conversation and the list;
+the list reads `/previnvites` and `/spareminders` whole and a fortnight of
+`/invites`, at the bookings' five-minute pace. What the guest wrote, and
+so New, Task open and All done, is still Chat's alone.
+
 A number on no booking - a caller about dinner, a guest from months ago -
 still lands on In-house, its number in place of a name.
 
@@ -137,9 +153,22 @@ and incoming message including dinner invitations and pre-arrival form"):
   reply opens free text again. Or **SMS instead**.
 - *This guest texted STOP* - nothing can be sent until they text START.
 
+The box is the iPhone's (the owner, 1 Oct): it stands on the tab bar at
+the foot of the screen however far back the conversation is read, grows a
+line for every line typed (to half the screen, then scrolls), and Send is
+a round blue arrow in its right end, grey until there are words. A reader
+at the newest message stays there while a photo loads or the box grows.
+
 **Tasks** (`tasks.html`, beside it in the menu). Each login sees the open
 tasks of its teams, in the guest's own words, and presses Done. The desk
 sees every team. The menu entry counts what is open.
+
+Both counts, Chat's new messages and Tasks' open ones, move while a page
+stays open (the owner, 1 Oct: a test text did not show "until after a page
+refresh"): asked again every 30 seconds while the page is in front, the
+moment the phone brings the app back, and straight after the desk sorts a
+message or a team presses Done. They are the menu's and the tab bar's
+alike (`navRecount`, nala-shared.js).
 
 A task carries what the team needs to do it (the owner, 29 Sep: "can we
 get some drinks by the pool? This becomes a task with no other
@@ -441,20 +470,38 @@ Only the test phones can be messaged. From them:
 
 1. **Remove `TEST_NUMBERS`** in Cloudflare. Chat can now message
    guests; the everyday texts are still ClickSend's.
-2. **Alerts.** Staff phones buzz once the push Worker (`nala-push`) knows two
-   events, and `BUZZ` is set to `1` on `nala-contact`. The push Worker lives
-   only in Cloudflare, so its code has to come into this repo first. The
-   change it needs:
+2. **Alerts.** The push Worker's source is `worker/nala-push.js`: it came
+   into the repo on 29 Aug on a branch that never reached main, and joined
+   main on 1 Oct with Chat's two events (worker/push-test.mjs):
    - `guestMessage` - to the roles ticked for it in Settings, Notifications
-     (admin, manager and waiter by default); text *Villa 7 - new message*;
-     opens `url` from the payload.
-   - `guestTask` - to the logins in `/contactsettings/teams/<team>/members`,
-     `team` from the payload; text *Villa 7 - Maintenance task*; opens
-     `/tasks.html`.
-   - `guestMessage` is sent by `nala-contact` itself, signed in as the
-     `contact` login, with no `actor`: the push Worker has to accept that
-     login as a sender.
-   Until `BUZZ` is set nothing is sent to it, and the menu counts still work.
+     (admin, manager and waiter by default); *Villa 7 - new message*, or
+     *New guest message* for a guest not staying tonight; the tap opens
+     that guest's conversation.
+   - `guestTask` - to the logins in the task's team (Settings, General,
+     Teams), whatever their role; *Villa 7 - Maintenance task*; opens Tasks.
+   - Neither buzzes a login for a page it cannot open yet: while Chat and
+     Tasks are the admin's alone, only the admin. Both follow Settings'
+     on/off and quiet hours, as every alert does, and buzz again for each
+     new one.
+   The switch is the app's own, Settings, Notifications: the Guest message
+   row per role, and for tasks the teams (the owner, 1 Oct: "Wouldn't buzz
+   get set ... from inside the application settings"). The `BUZZ` variable
+   that held them back until the push Worker knew the events is gone, and
+   one left in Cloudflare is ignored. To switch them on: paste
+   https://github.com/NALA-Resort/nala-menu/blob/main/worker/nala-push.js
+   into `nala-push` and Deploy, then
+   https://github.com/NALA-Resort/nala-menu/blob/main/worker/guest-contact.js
+   into `nala-contact` and Deploy, in that order:
+   the old push Worker would send a guest's message as "Villa 7 -
+   guestMessage", opening the Cleans board.
+   And `nala-contact` reaches `nala-push` through a **Service binding**
+   (Settings, Bindings, Add, Service binding: name `PUSH`, Worker
+   `nala-push`). Cloudflare refuses one Worker calling another's
+   workers.dev address on the same account (its error 1042), so without
+   it no guest's message buzzes anyone, though the page's task alerts,
+   sent from the browser, still do. Found 1 Oct, after both pastes; the
+   setup check on Chat says whether the binding reaches the push Worker
+   and what it answered for the last guest's message.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
    *own number* in ClickSend (its code arrives in Chat as a message;
    if ClickSend sends it from a name rather than a number, Chat has

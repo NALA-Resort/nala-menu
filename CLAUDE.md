@@ -108,7 +108,9 @@ Already done this way — follow these:
   And who may use the desk or reply to a guest (`can`, the Worker's
   `mayDo`), 30 Sep with the Reply to guests switch; and whom the preview
   shuts out (`previewShut`, twinned in the Worker the same day, after the
-  owner's review found the door open where the menu was shut).
+  owner's review found the door open where the menu was shut, and in the
+  push Worker, `worker/nala-push.js`, 1 Oct, so no phone is buzzed for a
+  page its login cannot open).
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -183,7 +185,10 @@ started after every change to Chat). A change to nala-shared.js
 makes `--changed` select everything, so while building, name the
 feature's suites instead. And a publish for Chat's demo, while the
 module is the admin's alone, needs the suites that cover the change, not
-the full run (the owner, 30 Sep: "It's just a demo").
+the full run (the owner, 30 Sep: "It's just a demo"). Nor does a small
+change to one page's screen: its covering suites, and those of any
+shared file it rides with (the owner, 30 Sep: "Doesn't need full run for
+a small ui change on one page").
 
 `run.py` has a `COVERS` map for exactly this. Use it. Running everything after
 every small edit is what burns the session and hangs the tool.
@@ -566,6 +571,29 @@ after it was):
 
 "Firebase rules change: yes" means rules.json moved and needs its paste into
 the console - say whether the feature limps or fails without it.
+
+## Workers
+
+The Cloudflare Workers' source is in `worker/`, and the repo is where the
+owner pastes them from (the owner, 1 Oct: "The push code is in the repo
+that's where we copy it from"). Never ask him to copy a Worker out of the
+dashboard. A file missing from main may sit on a branch that never merged:
+search the branches (`git ls-tree -r --name-only origin/<branch>`) before
+calling anything missing. `worker/nala-push.js` sat on one from 29 Aug to
+1 Oct, while main's docs said the push Worker was not in the repo.
+
+A Worker calls another Worker through a Service binding, never by the
+other's workers.dev address: Cloudflare refuses that between Workers on
+one account (its error 1042), and a call nobody waits on fails without a
+word. Chat's alerts were lost that way until 1 Oct; nala-contact now
+reaches nala-push as `env.PUSH`. `worker/mews-sync.js` still calls
+nala-push by its address, three times.
+
+When he is to paste one, give the file's full link on main, never a path
+in the repo (the owner, 1 Oct: "Why are you only showing part of the
+URLs"): `https://github.com/NALA-Resort/nala-menu/blob/main/worker/<file>`,
+whose Copy raw file button takes the whole file. The link shows the new
+code only once it is published.
 
 ## Secrets
 

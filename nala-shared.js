@@ -412,7 +412,8 @@ function normalisePhone(raw){
       s = '+' + TRUNK_ZERO[i] + s.slice(TRUNK_ZERO[i].length + 2); break;
     }
   if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
-  if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
+  /* the plus went missing, and perhaps the national 0 was left in too */
+  if (/^610?4\d{8}$/.test(s)) return '+61' + s.slice(-9);
   /* Our own country we can judge: +61 must be a mobile, a landline is
      refused rather than sent. Any other full country code is not a guess -
      the guest typed where they live - and is sent as typed. Widened 25 Aug
@@ -465,12 +466,14 @@ function phoneConfidence(raw){
    itself - by delegation on a page built from strings, by onclick on one
    built from nodes - and both hand the tap to editPhoneNumber below.
    showPen=false leaves the pencil out where editing has nothing to offer
-   (a completed form needs no number and a dead pencil reads as broken). */
-function phoneBadgeHTML(raw, showPen){
+   (a completed form needs no number and a dead pencil reads as broken).
+   bare leaves the number itself out, for a line that already shows it:
+   Chat's row for a number on no booking, whose name is the number. */
+function phoneBadgeHTML(raw, showPen, bare){
   raw = String(raw == null ? '' : raw).trim();
   var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
-  var h = '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
+  var h = bare ? '' : '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
   var confidence = raw ? phoneConfidence(raw) : null;
   if (confidence === 'mobile')
     h += '<span class="conf ok" title="Sits in this country’s published ' +
@@ -3237,7 +3240,7 @@ function buildNav(){
     var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
     /* The tab bar's icons kept on this phone were this login's: the next
        login is drawn its own. */
-    try { localStorage.removeItem(TABS_KEPT); } catch (ex){}
+    try { localStorage.removeItem(TABS_KEPT); localStorage.removeItem(COUNTS_KEPT); } catch (ex){}
     /* Unsubscribe first, while the token is still valid enough to delete
        the record. If it fails, sign out anyway: being stuck signed in
        would be the worse outcome. */
@@ -3319,6 +3322,19 @@ function tabsFor(role){
    What it offered is kept on the phone, for the next page to draw at once
    (below).                                                              */
 var TABS_KEPT = 'nala-tabs';
+/* The counts the bar last wore, kept beside its icons (the owner, 1 Oct:
+   they were "still flashing between page loads", gone until each page's
+   login landed and asked again). Drawn with the bar, then the live ones
+   take their place as they land (drawNavCounts). Logout forgets them. */
+var COUNTS_KEPT = 'nala-counts';
+function keptCounts(){
+  var k = {};
+  try { k = JSON.parse(localStorage.getItem(COUNTS_KEPT) || '{}') || {}; } catch (e){ k = {}; }
+  Object.keys(k).forEach(function(id){
+    var t = /^tab-[a-z-]+$/.test(id) && document.getElementById(id);
+    if (t && +k[id] > 0) navBadge(t.querySelector('.tabic'), +k[id]);
+  });
+}
 function buildTabs(role){
   if (!tabsPage()) return;
   var tabs = tabsFor(role);
@@ -3390,6 +3406,7 @@ function drawTabs(tabs){
   row.appendChild(m);
   bar.appendChild(row);
   body.appendChild(bar);
+  keptCounts();
   /* Behind the open menu, a shade over the page: a tap on it only shuts the
      menu, where a tap on the page would also press what is under it. */
   var drop = document.getElementById('navDrop');
@@ -3923,8 +3940,9 @@ function spaReminderRows(day, spa, rems, stays, bookings, fixes, nowMs){
 /* ── the action icon ─────────────────────────────────────────
    A number beside a menu entry meaning: something in there waits on you.
    Never stored - it is recomputed from the queue it counts on every page
-   load, which is exactly why it "stays until the action is done" without
-   anything having to remember to clear it. Owner's naming, 25 Aug, first
+   load, and while the page stays open (navRecount), which is exactly why
+   it "stays until the action is done" without anything having to
+   remember to clear it. Owner's naming, 25 Aug, first
    carried by Spa: suggestions the masseuse has made that the desk has not
    yet put to the guest. Add an entry to NAV_ACTIONS for the next feature
    that earns one.
@@ -3967,7 +3985,7 @@ var NAV_ACTIONS = [
   /* Chat, 29 Sep: the guests with a message nobody has sorted.
      /contactnew holds exactly those, one child per guest, so the count is
      its keys - asked shallow, because the badge needs no message text. */
-  { href: 'guest-contact.html', need: 'editBookings', count: function(role, cb){
+  { href: 'guest-contact.html', need: 'editBookings', live: true, count: function(role, cb){
       if (typeof DB === 'undefined') return;
       fetch(DB + '/contactnew.json?shallow=true&v=' + Date.now())
         .then(function(r){
@@ -3980,7 +3998,7 @@ var NAV_ACTIONS = [
   /* Tasks: the open tasks this login does. A team's own login counts its
      teams; the desk, who sort every message, counts every team's. All the
      teams or no badge: a count missing a team says less than it knows. */
-  { href: 'tasks.html', need: 'tasks', count: function(role, cb){
+  { href: 'tasks.html', need: 'tasks', live: true, count: function(role, cb){
       if (typeof DB === 'undefined') return;
       var u = window.NALA_USER;
       fetch(DB + '/contactsettings.json?v=' + Date.now())
@@ -4001,57 +4019,93 @@ var NAV_ACTIONS = [
         .catch(function(){});
   } }
 ];
-var NAV_BADGED = {};       /* one count per entry per page load */
-var NAV_MENU_N = 0;        /* what the menu holds that the bar does not show */
-function menuCount(n){
-  var t = document.getElementById('tab-menu');
-  if (!t) return;
-  NAV_MENU_N += n;
-  var b = t.querySelector('.navbadge');
-  if (!b){
-    b = document.createElement('span');
-    b.className = 'navbadge';
-    t.querySelector('.tabic').appendChild(b);
+/* Asked when a page opens, and again while it stays open (the owner,
+   1 Oct: a guest's text did not show on Chat's icon "until after a page
+   refresh"). Chat's and Tasks', a guest waiting on the answer, every 30
+   seconds while the page is in front; every count the moment the phone
+   brings the app back, or the back button brings a page back. Each live
+   ask is small - Chat's is /contactnew's keys alone, Tasks' the open
+   tasks - and Spa's, which reads every booking, waits for those moments.
+   A failed ask keeps the count it had: the last one known, rather than a
+   badge gone because a queue could not be asked this once. */
+var NAV_N = {};            /* href: the last count heard */
+var NAV_ROLE = null;
+var NAV_EVERY = 30000;
+function navLink(href){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return null;
+  var links = drop.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++){
+    if ((links[i].getAttribute('href') || '').split('?')[0] === href) return links[i];
   }
-  b.textContent = NAV_MENU_N > 9 ? '9+' : String(NAV_MENU_N);
+  return null;
 }
 function navActionBadges(role){
-  var drop = document.getElementById('navDrop');
-  if (!drop) return;
+  var first = NAV_ROLE === null;
+  NAV_ROLE = role;
+  navRecount(false);
+  if (!first) return;
+  setInterval(function(){ if (!document.hidden) navRecount(true); }, NAV_EVERY);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) navRecount(false);
+  });
+  window.addEventListener('pageshow', function(e){ if (e.persisted) navRecount(false); });
+}
+function navRecount(liveOnly){
+  var role = NAV_ROLE;
   NAV_ACTIONS.forEach(function(a){
-    if (NAV_BADGED[a.href] || !can(role, a.need) || !canOpen(role, a.href)) return;
-    var links = drop.getElementsByTagName('a'), link = null;
-    for (var i = 0; i < links.length; i++){
-      if ((links[i].getAttribute('href') || '').split('?')[0] === a.href){
-        link = links[i]; break;
-      }
-    }
+    if (liveOnly && !a.live) return;
+    if (!can(role, a.need) || !canOpen(role, a.href)) return;
     /* The tab bar's icon for the page wears the same count (30 Sep), from
        the same one fetch - on the page you are on too: the owner, "Don't
        mute the counters when the icon is selected". The menu leaves out
        the page you are on, so there the icon alone carries it. */
-    var tab = document.getElementById('tab-' + pageKey(a.href));
-    if (!link && !tab) return;       /* on the page, and not on the bar */
-    NAV_BADGED[a.href] = true;
+    if (!navLink(a.href) && !document.getElementById('tab-' + pageKey(a.href))) return;
+    var asked = a.asked = (a.asked || 0) + 1;
     a.count(role, function(n){
-      if (!n) return;
-      function badge(){
-        var b = document.createElement('span');
-        b.className = 'navbadge';
-        b.textContent = n > 9 ? '9+' : String(n);
-        return b;
-      }
-      if (link){
-        if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
-        link.appendChild(badge());
-      }
-      if (tab) tab.querySelector('.tabic').appendChild(badge());
-      /* A count whose page is in the menu and not on the bar - Spa, for
-         the admin - adds to the menu icon's, so nothing waits behind a
-         closed menu. */
-      else if (link) menuCount(n);
+      if (asked < (a.heard || 0)) return;          /* an older answer, come late */
+      a.heard = asked;
+      NAV_N[a.href] = n || 0;
+      drawNavCounts();
     });
   });
+}
+function navBadge(host, n){
+  var b = host.querySelector('.navbadge');
+  if (!n){ if (b) b.parentNode.removeChild(b); return; }
+  if (!b){
+    b = document.createElement('span');
+    b.className = 'navbadge';
+    host.appendChild(b);
+  }
+  b.textContent = n > 9 ? '9+' : String(n);
+}
+function drawNavCounts(){
+  var rest = 0, waiting = false, keep = {};
+  try { keep = JSON.parse(localStorage.getItem(COUNTS_KEPT) || '{}') || {}; } catch (e){ keep = {}; }
+  NAV_ACTIONS.forEach(function(a){
+    var link = navLink(a.href), tab = document.getElementById('tab-' + pageKey(a.href));
+    if (!(a.href in NAV_N)){
+      /* a page the menu's icon counts for, not answered yet this page */
+      if (link && !tab && can(NAV_ROLE, a.need) && canOpen(NAV_ROLE, a.href)) waiting = true;
+      return;
+    }
+    var n = NAV_N[a.href];
+    if (link){
+      navBadge(link, n);
+      link.classList.toggle('hasact', !!n);
+    }
+    if (tab){ navBadge(tab.querySelector('.tabic'), n); keep[tab.id] = n; }
+    /* A count whose page is in the menu and not on the bar - Spa, for
+       the admin - adds to the menu icon's, so nothing waits behind a
+       closed menu. */
+    else if (link) rest += n;
+  });
+  /* The menu's icon is a sum: it keeps what it wore until every page it
+     counts for has answered, rather than flashing a part of it. */
+  var m = document.getElementById('tab-menu');
+  if (m && !waiting){ navBadge(m.querySelector('.tabic'), rest); keep['tab-menu'] = rest; }
+  try { localStorage.setItem(COUNTS_KEPT, JSON.stringify(keep)); } catch (e){}
 }
 
 /* A submenu with nothing in it. A role that may open none of the printed

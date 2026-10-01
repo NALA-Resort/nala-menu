@@ -183,6 +183,11 @@ PREVINVITES = {"b-sarah": {"sentAt": "2026-09-22T10:02:00+10:00", "status": "sen
                            "earlier": [{"sentAt": "2026-09-20T16:30:00+10:00", "status": "sent",
                                         "to": "+61412345678", "by": "ben@x", "delivery": "delivered",
                                         "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=q9w3ze"}]}}
+# Robyn, who has left, heard from us only by the pre-arrival form an SMS page
+# sent: Chat's list takes it for her last message (30 Sep).
+PREVINVITES["b-robyn"] = {"sentAt": "2026-09-15T15:10:00+10:00", "status": "sent", "to": "+61411000003",
+                          "by": "ben@x", "delivery": "delivered",
+                          "body": "Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=r0b1n5"}
 # the dinner invitations, as invitations.html's Worker records them, and an
 # outside guest's, for the number on no booking
 INVITES = {"2026-09-28": {"7": {"sentAt": "2026-09-28T16:02:00+10:00", "status": "sent", "to": "+61412345678",
@@ -208,7 +213,7 @@ SPA = {"b-priya": {"t7": {"status": "booked", "day": "2026-09-30", "time": "10:3
 MENU = {"published": "2026-09-29T13:05:00+10:00", "bread": {"name": "Sourdough"}, "entree": {"name": "Crudo"},
         "main": {"name": "Lamb shoulder"}, "dessert": {"name": "Lemon tart"}}
 
-STATE = {"hello": {"ready": True, "wa": True, "test": False, "buzz": False}, "send": None,
+STATE = {"hello": {"ready": True, "wa": True, "test": False}, "send": None,
          "readfail": False, "menu": MENU, "inv": None}
 WRITES, SENT, BUZZ, READS, INV = [], [], [], [], []
 # a 1x1 photo in the mock's neutral grey: a red stand-in read as a fault
@@ -250,6 +255,11 @@ def fb(route, request):
             key = json.loads(q["orderBy"][0]) if "orderBy" in q else None
             want = json.loads(q["equalTo"][0]) if "equalTo" in q else None
             body = {k: v for k, v in team.items() if key is None or v.get(key) == want} or None
+    elif path == "/previnvites.json": body = PREVINVITES
+    elif path == "/spareminders.json": body = None
+    elif path == "/invites.json":
+        lo, hi = json.loads(q["startAt"][0]), json.loads(q["endAt"][0])
+        body = {d: v for d, v in INVITES.items() if lo <= d <= hi} or None
     elif path.startswith("/previnvites/"): body = PREVINVITES.get(path[13:-5])
     elif path.startswith("/invites/"): body = INVITES.get(path[9:-5])
     elif path.startswith("/extinvites/"): body = EXTINVITES.get(path[12:-5])
@@ -352,8 +362,10 @@ with sync_playwright() as p:
     def rows(pg):
         return pg.evaluate("""()=>[...document.querySelectorAll('#board .vrow')].map(e=>({
           ck:e.dataset.ck, b:e.dataset.b, s:e.dataset.state, v:e.querySelector('.v').textContent,
-          nm:e.querySelector('.nm').textContent, l3:e.querySelector('.l3').textContent,
-          pv:e.querySelector('.pv').textContent, dis:e.disabled}))""")
+          nm:e.querySelector('.nm').textContent, l3:(e.querySelector('.l3 .meta')||e.querySelector('.l3')).textContent,
+          num:(e.querySelector('.l3 .num')||{}).textContent||'', pen:!!e.querySelector('.l3 .pen'),
+          pv:e.querySelector('.pv').textContent, dis:e.tagName!=='BUTTON'||e.disabled,
+          order:[...e.querySelector('.mid').children].map(x=>x.className.split(' ')[0])}))""")
     def shot(pg, name):
         if SHOTS: pg.screenshot(path=os.path.join(SHOTS, name + ".png"), full_page=True)
 
@@ -426,6 +438,33 @@ with sync_playwright() as p:
         s.backgroundColor+s.backgroundImage+s.borderTopColor);})"""))
     ck("nothing sent and no number are sunk and dashed",
        all(sty(k)["borderStyle"] == "dashed" and float(sty(k)["opacity"]) < 0.7 for k in ("61411000016", "b-hana")))
+    # The owner, 30 Sep: "the phone number, its validity" as on the SMS pages.
+    ck("each guest's number as the SMS pages show it: the number, its tick, the pencil",
+       by[SARAH]["num"] == "0412 345 678\u2713" and by[SARAH]["pen"] and
+       by[LEA]["num"] == "+33 6 12 34 56 78\u2713" and by[LEA]["pen"], [by[SARAH], by[LEA]])
+    geo = pg.evaluate("""(k)=>{const r=document.querySelector('.vrow[data-ck="'+k+'"]'),
+        pe=r.querySelector('.pen'); if(!pe) return {penAt:0, midIsPen:false};
+        const p=pe.getBoundingClientRect(), b=r.getBoundingClientRect(),
+        mid=document.elementFromPoint(b.left+b.width/2, b.top+b.height/2);
+        return {penAt:(p.left-b.left)/b.width, midIsPen:!!(mid&&mid.closest('.pen'))}}""", SARAH)
+    ck("the pencil sits at the line's right-hand end, clear of the middle where a tap opens the conversation",
+       geo["penAt"] > 0.8 and not geo["midIsPen"], geo)
+    ck("a number on no booking, already its name, wears the tick alone and no pencil",
+       by[UNK]["num"] == "\u2713" and not by[UNK]["pen"], by[UNK])
+    ck("the details first, the last message at the bottom (the owner, 30 Sep)",
+       by[SARAH]["order"] == ["l1", "l3", "l2"], by[SARAH]["order"])
+    ck("a booking with no mobile says so, with the pencil to add one",
+       by["b-hana"]["num"] == "no number" and by["b-hana"]["pen"], by["b-hana"])
+    del WRITES[:]
+    if pg.query_selector('.vrow[data-b="b-hana"] .pen'):
+        pg.once("dialog", lambda d: d.accept("0411 999 888"))
+        pg.click('.vrow[data-b="b-hana"] .pen'); pg.wait_for_timeout(500)
+    fix = [w for w in WRITES if w["p"] == "/phonefix/b-hana.json"]
+    ck("the pencil saves the corrected number at /phonefix, as the SMS pages' does, and opens nothing",
+       fix and fix[0]["m"] == "PUT" and fix[0]["b"]["phone"] == "+61411999888" and
+       "c=" not in pg.evaluate("()=>location.search"), fix)
+    pg.click('.vrow[data-b="b-hana"] .nm'); pg.wait_for_timeout(200)
+    ck("and a row with no number still cannot be opened", "c=" not in pg.evaluate("()=>location.search"))
     ck("and no status here is red", pg.evaluate("""()=>![...document.querySelectorAll('#board *')].some(e=>
         getComputedStyle(e).color==='rgb(168, 50, 30)')"""))
     shot(pg, "gc-list")
@@ -438,7 +477,10 @@ with sync_playwright() as p:
     pg.click("#tabPast"); pg.wait_for_timeout(150)
     rs = rows(pg)
     ck("Past: the guests who have left", [r["nm"] for r in rs] == ["Robyn Carter"] and
-       rs[0]["l3"] == "left Thu 24 Sep" and rs[0]["s"] == "none", rs)
+       rs[0]["l3"] == "SMS · left Thu 24 Sep", rs)
+    ck("and a guest Chat never wrote to shows the last text an SMS page sent them: sent, by the page's name",
+       rs[0]["s"] == "sent" and rs[0]["pv"].startswith("Pre-arrival form: Good afternoon.") and
+       not rs[0]["pv"].startswith("You:"), rs[0])
     pg.fill("#find", "whit"); pg.wait_for_timeout(150)
     rs = rows(pg)
     ck("a search reaches every tab: both Whitfields, wherever their dates are",
@@ -554,7 +596,15 @@ with sync_playwright() as p:
     ck("with the desk's note for the team, in the desk's name",
        rec.get("note") == "Candle on the dessert, table by the window" and rec.get("noteBy") == "ben@x" and
        bool(rec.get("noteAt")), rec)
-    ck("and no buzz goes to a push Worker that does not know the event yet", BUZZ == [])
+    # the buzz follows the write and the button's 300ms Saved hold: waited
+    # for, not guessed at, which a fixed 500ms was under a loaded machine
+    for _ in range(30):
+        if BUZZ: break
+        pg.wait_for_timeout(100)
+    ck("and the team's phones are buzzed, the team named as staff read it, no switch to set",
+       len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "kitchen" and
+       BUZZ[0].get("label") == "Kitchen" and BUZZ[0].get("villa") == "7" and
+       BUZZ[0].get("url") == "/tasks.html", BUZZ)
     del WRITES[:]
     pg.click("#nb-in-SMumbrella-maintenance"); pg.wait_for_timeout(150)
     pg.fill("#te-in-SMumbrella-maintenance", "Bring the long ladder")
@@ -565,7 +615,6 @@ with sync_playwright() as p:
        w["b"].get("tasks/maintenance/t1umbrella/noteBy") == "ben@x", w)
     done(pg)
 
-    STATE["hello"]["buzz"] = True
     pg = page("?c=%s&b=b-sarah" % SARAH)
     del BUZZ[:]
     pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150); pg.click("#tm-in-SMcandle-bar")
@@ -574,10 +623,9 @@ with sync_playwright() as p:
     for _ in range(30):
         if BUZZ: break
         pg.wait_for_timeout(100)
-    ck("once it does, the team's phones are buzzed, the team named",
+    ck("another team's task buzzes that team, by its own name",
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "bar" and
-       BUZZ[0].get("villa") == "7", BUZZ)
-    STATE["hello"]["buzz"] = False
+       BUZZ[0].get("label") == "Bar" and BUZZ[0].get("villa") == "7", BUZZ)
     del WRITES[:]
     pg.click("#dn-in-SMumbrella-maintenance"); pg.wait_for_timeout(500)
     w = WRITES[-1] if WRITES else {"b": {}}
@@ -593,6 +641,47 @@ with sync_playwright() as p:
     ck("a team the message already has a task with is not offered again", "Maintenance" not in teams and "Bar" in teams, teams)
     pg.click("#cx-in-SMumbrella"); pg.wait_for_timeout(150)
     ck("and Cancel puts the message back as it was", tri("in-SMumbrella").startswith("Maintenance · open Done"))
+    # ── the box and Send, the phone's (the owner, 1 Oct) ──────────────
+    # "sticky above the footer menu", a box that grows "so the whole
+    # message can be seen", and Send "on side of text Box"
+    GEO = """()=>{const r=q=>document.querySelector(q).getBoundingClientRect();
+      const c=r('#compose'), t=document.getElementById('tabBar'), x=r('#msgBox'), s=r('#sendBtn');
+      const box=document.getElementById('msgBox'), el=document.scrollingElement;
+      const m=[...document.querySelectorAll('#msgs .msg')].pop();
+      return {ct:c.top, cb:c.bottom, bar:t?t.getBoundingClientRect().top:null,
+              strip:t?getComputedStyle(t).backgroundImage:null,
+              x:[x.left,x.top,x.right,x.bottom], h:x.height, s:[s.left,s.top,s.right,s.bottom],
+              dis:document.getElementById('sendBtn').disabled, sh:box.scrollHeight, ch:box.clientHeight,
+              oy:getComputedStyle(box).overflowY, last:m?m.getBoundingClientRect().bottom:null,
+              top:el.scrollTop, end:el.scrollTop+innerHeight>=el.scrollHeight-1,
+              long:el.scrollHeight>innerHeight*1.5, half:innerHeight/2}}"""
+    g = pg.evaluate(GEO)
+    ck("the box and Send stand on the tab bar, the newest message above them",
+       g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and g["end"] and g["last"] <= g["ct"] + 1, g)
+    ck("and the strip under the bar is solid there, as under any page's footer", g["strip"] == "none", g)
+    ck("the box starts one line tall, with Send, round, in its right end and grey until there are words",
+       g["h"] == 40 and g["s"][2] - g["s"][0] == 32 and g["s"][3] - g["s"][1] == 32 and
+       g["x"][2] - 8 <= g["s"][2] <= g["x"][2] and g["x"][1] <= g["s"][1] and g["s"][3] <= g["x"][3] and
+       g["dis"], g)
+    pg.evaluate("()=>window.scrollTo(0,0)"); pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("read from the top of the conversation, they stay on the bar",
+       g["long"] and g["top"] == 0 and abs(g["cb"] - g["bar"]) <= 1, g)
+    pg.evaluate("()=>window.scrollTo(0,document.scrollingElement.scrollHeight)"); pg.wait_for_timeout(150)
+    pg.fill("#msgBox", "Happy birthday to Tom!\nThe kitchen will bring a candle with dessert.\n"
+                       "Is there a time that suits?\nWe can also chill a bottle of something.\nJust say.")
+    pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("five lines typed: the box grows to show them all, Send at its foot and blue",
+       g["h"] >= 40 + 4 * 22 and g["sh"] <= g["ch"] + 1 and g["oy"] == "hidden" and
+       abs((g["x"][3] - 4) - g["s"][3]) <= 1 and not g["dis"], g)
+    ck("still on the bar, and the page followed, so the newest message is not under the box",
+       abs(g["cb"] - g["bar"]) <= 1 and g["end"] and g["last"] <= g["ct"] + 1, g)
+    pg.fill("#msgBox", "\n".join("Line %d of a very long message" % i for i in range(40)))
+    pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("a very long one stops at half the screen and scrolls inside the box",
+       g["h"] <= g["half"] + 1 and g["oy"] == "auto" and g["sh"] > g["ch"], g)
     del SENT[:]
     pg.fill("#msgBox", "Happy birthday to Tom!")
     pg.click("#sendBtn"); pg.wait_for_timeout(700)
@@ -601,6 +690,9 @@ with sync_playwright() as p:
        len(sends) == 1 and sends[0]["text"] == "Happy birthday to Tom!" and sends[0]["ck"] == SARAH and
        sends[0]["booking"] == "b-sarah" and "via" not in sends[0] and "template" not in sends[0], sends)
     ck("and the box empties once it has gone", pg.input_value("#msgBox") == "")
+    g = pg.evaluate(GEO)
+    ck("back to one line, Send grey again, its arrow back", g["h"] == 40 and g["dis"] and
+       pg.evaluate("()=>!!document.querySelector('#sendBtn svg')"), g)
     done(pg)
 
     STATE["send"] = (403, {"test": True, "error": "Test mode: only the test phones can be messaged."})
@@ -625,6 +717,15 @@ with sync_playwright() as p:
     ck("and offers the approved messages, Your arrival to a guest still to arrive",
        chips == [["A quick question", True], ["Your arrival", False]], chips)
     ck("with no box to type free text into", not pg.is_visible("#msgBox"))
+    g = pg.evaluate("""()=>{const c=document.getElementById('compose').getBoundingClientRect(),
+        t=document.getElementById('tabBar'), el=document.scrollingElement,
+        s=document.getElementById('sendBtn').getBoundingClientRect(),
+        p=document.querySelector('#tplPrev .bub').getBoundingClientRect();
+      return {cb:c.bottom, bar:t?t.getBoundingClientRect().top:null, short:el.scrollHeight<=innerHeight+1,
+              s:[s.left,s.top,s.right,s.bottom], p:[p.left,p.top,p.right,p.bottom], dis:document.getElementById('sendBtn').disabled}}""")
+    ck("a short conversation's words stand on the bar too, Send beside them, never over them",
+       g["short"] and g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and
+       g["s"][0] >= g["p"][2] and g["s"][3] <= g["p"][3] + 1 and not g["dis"], g)
     ck("the preview is the approved words with the guest's name",
        pg.text_content("#tplPrev") == "Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?")
     pg.click("#tpl-arrival"); pg.wait_for_timeout(100)
@@ -1233,7 +1334,7 @@ with sync_playwright() as p:
     # James arrives on the 3rd: the form, and a failure said in red
     del INV[:]
     STATE["inv"] = (200, {"results": {"b-james": {"status": "failed", "error": "no phone number on the booking"}}})
-    STATE["hello"] = {"ready": True, "wa": True, "test": True, "buzz": False}
+    STATE["hello"] = {"ready": True, "wa": True, "test": True}
     pg = page("?c=%s&b=b-james" % JAMES); pg.wait_for_timeout(600)
     pg.click("#tmplBtn"); pg.wait_for_timeout(500)
     o = tsheet(pg)
@@ -1254,7 +1355,7 @@ with sync_playwright() as p:
        pg.evaluate("()=>!!PICKT"), pg.text_content("#sendErr"))
     done(pg)
     STATE["inv"] = None
-    STATE["hello"] = {"ready": True, "wa": True, "test": False, "buzz": False}
+    STATE["hello"] = {"ready": True, "wa": True, "test": False}
 
     # yesterday's menu is not tonight's; a number on no booking has none
     STATE["menu"] = dict(MENU, published="2026-09-28T13:05:00+10:00")

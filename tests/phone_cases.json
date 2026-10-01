@@ -170,6 +170,31 @@
       "+61 412 345 678",
       "+61412345678",
       "and a space that does not break"
+    ],
+    [
+      "610413123456",
+      "+61413123456",
+      "61 without its plus and with the national 0 left in: still ours, a mobile (the owner's check, 30 Sep)"
+    ],
+    [
+      "61 0413 123 456",
+      "+61413123456",
+      "the same, spaced"
+    ],
+    [
+      "+61413 123456",
+      "+61413123456",
+      "the owner's own example: spaced anywhere"
+    ],
+    [
+      "+610413123456",
+      "+61413123456",
+      "and run together with the 0 left in"
+    ],
+    [
+      "6102 9876 5432",
+      null,
+      "a landline stays refused, however it is written"
     ]
   ]
 }

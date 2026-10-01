@@ -114,7 +114,7 @@ export function normalisePhone(raw) {
   const cc = TRUNK_ZERO.find((c) => s.startsWith("+" + c + "0"));
   if (cc) s = "+" + cc + s.slice(cc.length + 2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
-  if (/^614\d{8}$/.test(s))   return "+" + s;
+  if (/^610?4\d{8}$/.test(s)) return "+61" + s.slice(-9);
   /* Our own country we can judge: +61 must be a mobile. Any other full
      country code is not a guess and goes as typed; a foreign number WITHOUT
      its code still returns null - see the twin in nala-shared.js. */

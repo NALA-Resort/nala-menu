@@ -46,11 +46,18 @@
  *                       set, nothing is sent to any other number: the
  *                       module runs on the live app without reaching a
  *                       guest. Delete it to go live.
- *   BUZZ                set to 1 once the push Worker (nala-push) knows
- *                       the events guestMessage and guestTask. Until then
- *                       nothing is sent to it: it is not in this repo, and
- *                       what it does with an event it does not know is
- *                       unknown. GUEST-CONTACT.md has the change it needs.
+ *
+ * Alerts: every new guest message is passed to the push Worker (nala-push,
+ * worker/nala-push.js), which decides who is buzzed from the app's own
+ * Settings, Notifications - the Guest message row, the on/off and the
+ * hours. There is no switch here (the owner, 1 Oct: "Wouldn't buzz get
+ * set ... from inside the application settings"); a BUZZ variable left in
+ * Cloudflare from before is ignored. It goes through a Service binding:
+ *   PUSH                Settings, Bindings, a Service binding to nala-push.
+ *                       Cloudflare refuses one Worker calling another's
+ *                       workers.dev address on the same account (its error
+ *                       1042), so without it no alert arrives; the setup
+ *                       check says so.
  *
  * The sandbox this was written in reaches neither Twilio nor Cloudflare.
  * worker/contact-test.mjs checks the logic against stubs; nothing here has
@@ -60,6 +67,25 @@
 const DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 const TWILIO = "https://api.twilio.com/2010-04-01/Accounts/";
 const PUSH_URL = "https://nala-push.ben-681.workers.dev";
+/* The push Worker, through the binding PUSH when there is one, else its
+   address, which Cloudflare refuses (error 1042): how every guest's alert
+   was lost until 1 Oct, while the page's own calls, from the browser,
+   went through. */
+const pushCall = (env, body) => {
+  const init = { method: "POST", headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify(body) };
+  return env.PUSH && typeof env.PUSH.fetch === "function"
+    ? env.PUSH.fetch(PUSH_URL, init) : fetch(PUSH_URL, init);
+};
+/* What the push Worker answered for the last guest's message, kept in the
+   Worker's memory only, for the setup check, as REFUSED is. */
+let LAST_BUZZ = null;
+async function pushAnswer(r) {
+  const text = await r.text().catch(() => "");
+  let j = null;
+  try { j = JSON.parse(text); } catch { j = null; }
+  return { status: r.status, j, said: j ? "" : text.replace(/\s+/g, " ").trim().slice(0, 120) };
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -90,7 +116,7 @@ export function normalisePhone(raw) {
   const cc = TRUNK_ZERO.find((c) => s.startsWith("+" + c + "0"));
   if (cc) s = "+" + cc + s.slice(cc.length + 2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
-  if (/^614\d{8}$/.test(s))   return "+" + s;
+  if (/^610?4\d{8}$/.test(s)) return "+61" + s.slice(-9);
   if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
   if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   return null;
@@ -209,7 +235,7 @@ async function machineToken(env) {
   TOKEN = j.idToken; TOKEN_AT = Date.now();
   return TOKEN;
 }
-export function forgetToken() { TOKEN = null; TOKEN_AT = 0; REFUSED = null; TW_ERRORS = []; }   /* for the test */
+export function forgetToken() { TOKEN = null; TOKEN_AT = 0; REFUSED = null; TW_ERRORS = []; LAST_BUZZ = null; }   /* for the test */
 
 async function db(env, path, method, body) {
   const t = await machineToken(env);
@@ -441,14 +467,15 @@ async function inbound(request, env, ctx) {
   if (had) return twiml();                    /* the desk was buzzed the first time */
 
   /* Buzz the desk. Fire and tolerate: a lost buzz costs a buzz, the
-     message is already safe. Only once BUZZ is set - see the secrets. */
-  if (!String(env.BUZZ || "").trim()) return twiml();
+     message is already safe. Who, if anyone, is Settings' to say. */
   const buzz = (async () => {
     const villa = await villaOf(env, phone).catch(() => "");
-    await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: await machineToken(env), event: "guestMessage",
-                             villa, url: "/guest-contact.html?c=" + ck }) });
-  })().catch(() => {});
+    const r = await pushCall(env, { idToken: await machineToken(env), event: "guestMessage",
+                                    villa, url: "/guest-contact.html?c=" + ck });
+    LAST_BUZZ = { at: now, ...(await pushAnswer(r)) };
+  })().catch((e) => {
+    LAST_BUZZ = { at: now, status: 0, j: null, said: String((e && e.message) || e).slice(0, 120) };
+  });
   if (ctx && ctx.waitUntil) ctx.waitUntil(buzz); else await buzz;
   return twiml();
 }
@@ -650,7 +677,39 @@ export async function setupCheck(request, env) {
       (te.status ? ": the Worker answered " + te.status + (te.body ? ", " + te.body : "") : "") +
       (te.msg ? ". Twilio says: " + te.msg : "") + ".", te.at);
 
-  /* 5. only so you know */
+  /* 5. phone alerts (1 Oct): whether the push Worker can be reached from
+     here, asked with an empty call it answers without reading or sending
+     anything, and what it said of the last guest's message. */
+  const bound = !!(env.PUSH && typeof env.PUSH.fetch === "function");
+  const probe = await pushCall(env, {}).then(pushAnswer)
+    .catch((e) => ({ status: 0, j: null, said: String((e && e.message) || e).slice(0, 120) }));
+  if (probe.status === 400 && probe.j && probe.j.error)
+    add("alerts", true, "Phone alerts reach the push Worker" + (bound ? ", through its binding." : "."));
+  else if (!bound || /1042/.test(probe.said))
+    add("alerts", false, "Phone alerts cannot reach the push Worker: Cloudflare refuses one Worker " +
+      "calling another's address (its error 1042). In Cloudflare, nala-contact, Settings, Bindings: " +
+      "add a Service binding named PUSH to the Worker nala-push, then Deploy.");
+  else
+    add("alerts", false, "The push Worker answered " + (probe.status || "nothing") +
+      (probe.said ? ": " + probe.said : "") + ". Paste worker/nala-push.js into nala-push and Deploy.");
+  if (LAST_BUZZ) {
+    const b = LAST_BUZZ, j = b.j || {};
+    const n = j.sent | 0;
+    add("buzz", b.status !== 200 || j.failed ? false : null,
+      b.status !== 200
+        ? "The last guest message's alert did not go: the push Worker answered " + (b.status || "nothing") +
+          (b.said ? ": " + b.said : "") + "."
+        : j.skipped
+        ? "The last guest message buzzed no phone: " + j.skipped + " (Settings, Notifications)."
+        : !n && !j.failed
+        ? "The last guest message buzzed no phone: none of the roles ticked for Guest message in " +
+          "Settings, Notifications has a phone with Notifications on in the menu."
+        : "The last guest message buzzed " + n + (n === 1 ? " phone" : " phones") +
+          (j.failed ? ", and " + j.failed + (j.failed === 1 ? " phone's" : " phones'") +
+                      " push service refused it" : "") + ".", b.at);
+  }
+
+  /* 6. only so you know */
   const tl = testList(env);
   add("test", null, tl ? "Test mode is on: Chat can only message " + tl.length +
                          (tl.length === 1 ? " phone" : " phones") + ", the ones in TEST_NUMBERS."
@@ -812,7 +871,6 @@ async function desk(request, env) {
   const test = !!testList(env);
   if (kind === "hello")
     return reply(200, { test, wa: !!(env.TWILIO_WA_FROM || "").trim(),
-                        buzz: !!String(env.BUZZ || "").trim(),
                         ready: !!((env.TWILIO_ACCOUNT_SID || "").trim() && (env.TWILIO_FROM || "").trim()) });
 
   /* A reply from a team's task card (30 Sep): a login that is not the

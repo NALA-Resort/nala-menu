@@ -57,6 +57,21 @@ with sync_playwright() as p:
     ck("In-house shows the made-up guests, work first",
        rs and rs[0]["s"] == "fresh" and by["61412345678"]["nm"] == "Sarah Whitfield" and
        by["61411000009"]["s"] == "task" and by["61411000002"]["s"] == "done", rs[:4])
+    # the number as the SMS pages show it, and a page's text as the last line
+    # for a guest Chat never wrote to (the owner, 30 Sep)
+    nums = pg.evaluate("""()=>[...document.querySelectorAll('#board .vrow')].map(e=>
+        [e.dataset.ck, (e.querySelector('.l3 .num')||{}).textContent||'', e.querySelector('.pv').textContent])""")
+    byn = {x[0]: x for x in nums}
+    ck("each guest shows their number with its tick, as on the SMS pages",
+       byn["61412345678"][1].startswith("+61412345678\u2713"), byn.get("61412345678"))
+    # The demo sends tonight's invitations at 4:02pm (contact-demo.js), so
+    # from then his newest text is tonight's; before it, the pre-arrival
+    # form. Written for the morning on 30 Sep, it failed every afternoon.
+    late = pg.evaluate("()=>{const d=new Date();return d.getHours()*60+d.getMinutes()>=16*60+2;}")
+    ck("and Jonah, whom Chat never wrote to, shows the newest text an SMS page sent him: "
+       "the pre-arrival form, or from 4:02pm tonight's dinner invitation",
+       byn["61411000016"][2].startswith("Dinner invitation:" if late else "Pre-arrival form:"),
+       (late, byn.get("61411000016")))
     # every text the pages sent, in the conversation (the owner, 30 Sep)
     go("guest-contact.html?c=61412345678")
     metas = pg.evaluate("()=>[...document.querySelectorAll('#msgs .meta')].map(e=>e.textContent)")
@@ -113,6 +128,20 @@ with sync_playwright() as p:
     pg.wait_for_timeout(9500)
     last = pg.evaluate("()=>[...document.querySelectorAll('.msg.out .meta')].map(e=>e.textContent).pop()")
     ck("and its receipts come, as the handset's would", "Read" in last or "Delivered" in last, last)
+
+    # the box and Send, the phone's (the owner, 1 Oct): on the bar, and the
+    # newest message in sight above them once Sarah's photo has come
+    go("guest-contact.html?c=61412345678")
+    g = pg.evaluate("""()=>{const c=document.getElementById('compose').getBoundingClientRect(),
+        t=document.getElementById('tabBar'), ph=document.querySelector('#msgs img.photo'),
+        m=[...document.querySelectorAll('#msgs .msg')].pop().getBoundingClientRect();
+      return {ct:c.top, cb:c.bottom, bar:t?t.getBoundingClientRect().top:null, last:m.bottom,
+              photo:ph?ph.naturalHeight:0}}""")
+    ck("Sarah's conversation opens on her newest message, above the box on the bar, her photo in",
+       g["photo"] > 0 and g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and g["last"] <= g["ct"] + 1, g)
+    pg.fill("#msgBox", "One\nTwo\nThree"); pg.wait_for_timeout(150)
+    h = pg.evaluate("()=>document.getElementById('msgBox').getBoundingClientRect().height")
+    ck("and the box grows with the words", h >= 40 + 2 * 22, h)
 
     # past the 24 hours: James
     go("guest-contact.html?c=61438220761&t=up")
@@ -201,8 +230,9 @@ with sync_playwright() as p:
     ck("a link out of the demo is stopped, and says why",
        pg.url.split("?")[0].endswith("guest-contact.html") and "Only Chat and Tasks" in pg.text_content("#demoSay"))
     pg.click("#demoReset"); pg.wait_for_timeout(1200)
+    # Jonah as seeded: only the pre-arrival form an SMS page sent him
     ck("Start again puts the made-up guests back as they were",
-       [r["s"] for r in rows() if r["ck"] == "61411000016"] == ["none"])
+       [r["s"] for r in rows() if r["ck"] == "61411000016"] == ["sent"])
     for w in (390, 320):
         pg.set_viewport_size({"width": w, "height": 900}); pg.wait_for_timeout(300)
         ck("the demo bar has no sideways scroll at %d" % w,

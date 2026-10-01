@@ -656,8 +656,9 @@ None of these can move without him.
       lands under a live treatment. Until the paste, only the taps staff make
       on the Spa board buzz; a guest's own form ask stays silent until
       somebody opens the board.
-    - **Teach `nala-push` the five events** (that Worker is not in this repo;
-      it routes an event to the roles whose `/notify/events/<event>/<role>`
+    - **Teach `nala-push` the five events** (done in `worker/nala-push.js`,
+      29 Aug, the Worker's source, in main from 1 Oct; pasting that file into
+      nala-push is the deploy. It routes an event to the roles whose `/notify/events/<event>/<role>`
       is true, and the defaults - including the masseuse's stored `spa` keys,
       which the Settings grid deliberately never draws - seed themselves the
       next time an admin opens the Cleans board or Settings). Suggested
@@ -783,7 +784,11 @@ None of these can move without him.
     replaced under `earlier`. It needs that Worker's paste and the rules'
     paste, in either order: until both, a text sent again replaces the
     first, as it always has.
-    Alerts wait on the push Worker's code coming into this repo. The last
+    Alerts: `worker/nala-push.js` knows Chat's two events (1 Oct); paste it
+    into nala-push, then `worker/guest-contact.js` into nala-contact, and
+    give nala-contact a Service binding PUSH to nala-push (Cloudflare's
+    error 1042 refuses the plain call). Who is buzzed is Settings,
+    Notifications; there is no BUZZ switch. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any
     time and changes nothing until that is set (GUEST-CONTACT.md).
