@@ -111,11 +111,13 @@ def ck(name, cond, detail=""):
     P, F = (P + 1, F) if cond else (P, F + 1)
 
 def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
-            kept=None, hold=None, out=False, settle=2000):
+            kept=None, hold=None, out=False, settle=2000, ticking=False):
     """A page on the fixture night, signed in as email, settled. app: as the
     Home Screen app, on a touch screen; touch: a touch screen in a tab.
     kept: the tab bar's icons this phone was last given; hold: the login
-    lands that many ms in; out: nobody is signed in; settle: ms to wait."""
+    lands that many ms in; out: nobody is signed in; settle: ms to wait;
+    ticking: the page's clock and timers are the test's, run on with
+    pg.clock.run_for."""
     if perms is None: TREE.pop("permissions", None)
     else: TREE["permissions"] = perms
     state = {"cookies": [], "origins": []}
@@ -127,7 +129,8 @@ def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
     pg = ctx.new_page()
     if app:
         pg.add_init_script("Object.defineProperty(navigator,'standalone',{get:function(){return true;}});")
-    pg.clock.set_fixed_time(CLOCK)
+    if ticking: pg.clock.install(time=CLOCK)
+    else: pg.clock.set_fixed_time(CLOCK)
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
     if hold: pg.add_init_script("window.__HOLD=%d;" % hold)
@@ -443,6 +446,34 @@ with sync_playwright() as p:
     ck("on Chat, its own icon keeps its count (\"Don't mute the counters when the icon is selected\")",
        bool(bar) and [t["badge"] for t in bar["tabs"] if t["id"] == "tab-guest-contact"] == ["1"]
        and mt != "", bar and ([(t["id"], t["badge"]) for t in bar["tabs"]], mt))
+    ctx.close()
+
+    # The counts move while a page stays open (the owner, 1 Oct: a guest's
+    # text did not show on Chat's icon "until after a page refresh").
+    # Chat's and Tasks' are asked again every 30 seconds while the page is
+    # in front, every count when the phone brings the app back; Spa's,
+    # which reads every booking, only then.
+    had = json.loads(json.dumps(TREE.get("contactnew") or {}))
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", ticking=True)
+    SPA = []
+    pg.route("**firebasedatabase.app/spa.json**", lambda r: (SPA.append(1), r.fallback()))
+    icon = lambda: pg.evaluate("""()=>{const b=document.querySelector('#tab-guest-contact .navbadge');
+        return b?b.textContent:'';}""")
+    inmenu = lambda: pg.evaluate("""()=>{const a=document.querySelector('#navDrop a[href="guest-contact.html"]'),
+        b=a&&a.querySelector('.navbadge'); return [b?b.textContent:'', a?a.classList.contains('hasact'):null];}""")
+    before = icon()
+    TREE["contactnew"] = dict(had, **{"61400000001": {"in-x": True}, "61400000002": {"in-y": True}})
+    pg.clock.run_for(31000); pg.wait_for_timeout(400)
+    n = str(len(TREE["contactnew"]))
+    ck("a guest's text shows on Chat's icon within 30 seconds, without a refresh, and in the menu",
+       before == "1" and icon() == n and inmenu()[0] == n, (before, icon(), inmenu(), n))
+    ck("and the timer leaves Spa's count, which reads every booking, alone", SPA == [], len(SPA))
+    TREE["contactnew"] = {}
+    pg.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); pg.wait_for_timeout(400)
+    ck("back from the lock screen, a queue sorted elsewhere wears no count, here or in the menu",
+       icon() == "" and inmenu() == ["", False], (icon(), inmenu()))
+    ck("and every count is asked again then, Spa's too", len(SPA) >= 1, len(SPA))
+    TREE["contactnew"] = had
     ctx.close()
 
     # ── 6. it fits ────────────────────────────────────────────────────

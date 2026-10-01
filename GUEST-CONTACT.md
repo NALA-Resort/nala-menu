@@ -163,6 +163,13 @@ at the newest message stays there while a photo loads or the box grows.
 tasks of its teams, in the guest's own words, and presses Done. The desk
 sees every team. The menu entry counts what is open.
 
+Both counts, Chat's new messages and Tasks' open ones, move while a page
+stays open (the owner, 1 Oct: a test text did not show "until after a page
+refresh"): asked again every 30 seconds while the page is in front, the
+moment the phone brings the app back, and straight after the desk sorts a
+message or a team presses Done. They are the menu's and the tab bar's
+alike (`navRecount`, nala-shared.js).
+
 A task carries what the team needs to do it (the owner, 29 Sep: "can we
 get some drinks by the pool? This becomes a task with no other
 information attached"):

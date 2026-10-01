@@ -3895,8 +3895,9 @@ function spaReminderRows(day, spa, rems, stays, bookings, fixes, nowMs){
 /* ── the action icon ─────────────────────────────────────────
    A number beside a menu entry meaning: something in there waits on you.
    Never stored - it is recomputed from the queue it counts on every page
-   load, which is exactly why it "stays until the action is done" without
-   anything having to remember to clear it. Owner's naming, 25 Aug, first
+   load, and while the page stays open (navRecount), which is exactly why
+   it "stays until the action is done" without anything having to
+   remember to clear it. Owner's naming, 25 Aug, first
    carried by Spa: suggestions the masseuse has made that the desk has not
    yet put to the guest. Add an entry to NAV_ACTIONS for the next feature
    that earns one.
@@ -3939,7 +3940,7 @@ var NAV_ACTIONS = [
   /* Chat, 29 Sep: the guests with a message nobody has sorted.
      /contactnew holds exactly those, one child per guest, so the count is
      its keys - asked shallow, because the badge needs no message text. */
-  { href: 'guest-contact.html', need: 'editBookings', count: function(role, cb){
+  { href: 'guest-contact.html', need: 'editBookings', live: true, count: function(role, cb){
       if (typeof DB === 'undefined') return;
       fetch(DB + '/contactnew.json?shallow=true&v=' + Date.now())
         .then(function(r){
@@ -3952,7 +3953,7 @@ var NAV_ACTIONS = [
   /* Tasks: the open tasks this login does. A team's own login counts its
      teams; the desk, who sort every message, counts every team's. All the
      teams or no badge: a count missing a team says less than it knows. */
-  { href: 'tasks.html', need: 'tasks', count: function(role, cb){
+  { href: 'tasks.html', need: 'tasks', live: true, count: function(role, cb){
       if (typeof DB === 'undefined') return;
       var u = window.NALA_USER;
       fetch(DB + '/contactsettings.json?v=' + Date.now())
@@ -3973,57 +3974,85 @@ var NAV_ACTIONS = [
         .catch(function(){});
   } }
 ];
-var NAV_BADGED = {};       /* one count per entry per page load */
-var NAV_MENU_N = 0;        /* what the menu holds that the bar does not show */
-function menuCount(n){
-  var t = document.getElementById('tab-menu');
-  if (!t) return;
-  NAV_MENU_N += n;
-  var b = t.querySelector('.navbadge');
-  if (!b){
-    b = document.createElement('span');
-    b.className = 'navbadge';
-    t.querySelector('.tabic').appendChild(b);
+/* Asked when a page opens, and again while it stays open (the owner,
+   1 Oct: a guest's text did not show on Chat's icon "until after a page
+   refresh"). Chat's and Tasks', a guest waiting on the answer, every 30
+   seconds while the page is in front; every count the moment the phone
+   brings the app back, or the back button brings a page back. Each live
+   ask is small - Chat's is /contactnew's keys alone, Tasks' the open
+   tasks - and Spa's, which reads every booking, waits for those moments.
+   A failed ask keeps the count it had: the last one known, rather than a
+   badge gone because a queue could not be asked this once. */
+var NAV_N = {};            /* href: the last count heard */
+var NAV_ROLE = null;
+var NAV_EVERY = 30000;
+function navLink(href){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return null;
+  var links = drop.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++){
+    if ((links[i].getAttribute('href') || '').split('?')[0] === href) return links[i];
   }
-  b.textContent = NAV_MENU_N > 9 ? '9+' : String(NAV_MENU_N);
+  return null;
 }
 function navActionBadges(role){
-  var drop = document.getElementById('navDrop');
-  if (!drop) return;
+  var first = NAV_ROLE === null;
+  NAV_ROLE = role;
+  navRecount(false);
+  if (!first) return;
+  setInterval(function(){ if (!document.hidden) navRecount(true); }, NAV_EVERY);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) navRecount(false);
+  });
+  window.addEventListener('pageshow', function(e){ if (e.persisted) navRecount(false); });
+}
+function navRecount(liveOnly){
+  var role = NAV_ROLE;
   NAV_ACTIONS.forEach(function(a){
-    if (NAV_BADGED[a.href] || !can(role, a.need) || !canOpen(role, a.href)) return;
-    var links = drop.getElementsByTagName('a'), link = null;
-    for (var i = 0; i < links.length; i++){
-      if ((links[i].getAttribute('href') || '').split('?')[0] === a.href){
-        link = links[i]; break;
-      }
-    }
+    if (liveOnly && !a.live) return;
+    if (!can(role, a.need) || !canOpen(role, a.href)) return;
     /* The tab bar's icon for the page wears the same count (30 Sep), from
        the same one fetch - on the page you are on too: the owner, "Don't
        mute the counters when the icon is selected". The menu leaves out
        the page you are on, so there the icon alone carries it. */
-    var tab = document.getElementById('tab-' + pageKey(a.href));
-    if (!link && !tab) return;       /* on the page, and not on the bar */
-    NAV_BADGED[a.href] = true;
+    if (!navLink(a.href) && !document.getElementById('tab-' + pageKey(a.href))) return;
+    var asked = a.asked = (a.asked || 0) + 1;
     a.count(role, function(n){
-      if (!n) return;
-      function badge(){
-        var b = document.createElement('span');
-        b.className = 'navbadge';
-        b.textContent = n > 9 ? '9+' : String(n);
-        return b;
-      }
-      if (link){
-        if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
-        link.appendChild(badge());
-      }
-      if (tab) tab.querySelector('.tabic').appendChild(badge());
-      /* A count whose page is in the menu and not on the bar - Spa, for
-         the admin - adds to the menu icon's, so nothing waits behind a
-         closed menu. */
-      else if (link) menuCount(n);
+      if (asked < (a.heard || 0)) return;          /* an older answer, come late */
+      a.heard = asked;
+      NAV_N[a.href] = n || 0;
+      drawNavCounts();
     });
   });
+}
+function navBadge(host, n){
+  var b = host.querySelector('.navbadge');
+  if (!n){ if (b) b.parentNode.removeChild(b); return; }
+  if (!b){
+    b = document.createElement('span');
+    b.className = 'navbadge';
+    host.appendChild(b);
+  }
+  b.textContent = n > 9 ? '9+' : String(n);
+}
+function drawNavCounts(){
+  var rest = 0;
+  NAV_ACTIONS.forEach(function(a){
+    if (!(a.href in NAV_N)) return;
+    var n = NAV_N[a.href], link = navLink(a.href);
+    var tab = document.getElementById('tab-' + pageKey(a.href));
+    if (link){
+      navBadge(link, n);
+      link.classList.toggle('hasact', !!n);
+    }
+    if (tab) navBadge(tab.querySelector('.tabic'), n);
+    /* A count whose page is in the menu and not on the bar - Spa, for
+       the admin - adds to the menu icon's, so nothing waits behind a
+       closed menu. */
+    else if (link) rest += n;
+  });
+  var m = document.getElementById('tab-menu');
+  if (m) navBadge(m.querySelector('.tabic'), rest);
 }
 
 /* A submenu with nothing in it. A role that may open none of the printed
