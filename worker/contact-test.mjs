@@ -92,7 +92,7 @@ const BASE = "https://nala-contact.example.workers.dev";
 const envOf = (over = {}) => Object.assign({
   TWILIO_ACCOUNT_SID: "AC123", TWILIO_AUTH_TOKEN: AUTH, TWILIO_FROM: "+61480000000",
   TWILIO_WA_FROM: "+61480000000", TPL_QUESTION_SID: "HXquestion", TPL_ARRIVAL_SID: "HXarrival",
-  CONTACT_EMAIL: "559210@staff.nala", CONTACT_PASSWORD: "559210", FB_API_KEY: "fb", BUZZ: "1" }, over);
+  CONTACT_EMAIL: "559210@staff.nala", CONTACT_PASSWORD: "559210", FB_API_KEY: "fb" }, over);
 let STORE, SENT, BUZZ, STATE, WRITES, CDN;
 /* Chat and Tasks opened to the staff, as Settings does it: the world these
    checks run in. The preview's shut side is checked on its own below. */
@@ -254,8 +254,9 @@ ck("the desk is buzzed, as the Worker, with the villa the number is staying in",
 install();
 await inbound({ From: "+61412345678", Body: "Hello", MessageSid: "SMq1" }, undefined, envOf({ BUZZ: "" }));
 await settle();
-ck("but not until BUZZ says the push Worker knows the event",
-   BUZZ.length === 0 && STORE["/contactnew/" + SARAH + "/in-SMq1"] === true);
+ck("with no switch in Cloudflare: a BUZZ left empty there changes nothing, Settings decides who",
+   BUZZ.length === 1 && BUZZ[0].event === "guestMessage" &&
+   STORE["/contactnew/" + SARAH + "/in-SMq1"] === true, BUZZ);
 
 install();
 STORE["/contact/" + SARAH] = { waBad: true, phone: "+61412345678" };
@@ -304,7 +305,7 @@ install();
 r = await desk({ kind: "hello" });
 let j = await r.json();
 ck("hello says it is set up, WhatsApp too, and not in test mode", r.status === 200 && j.ready && j.wa && !j.test);
-ck("and whether the buzz is on", j.buzz === true);
+ck("and no longer a buzz switch: Settings, Notifications is that", !("buzz" in j), j);
 r = await desk({ kind: "hello" }, envOf({ TEST_NUMBERS: "0412 345 678, +33 6 12 34 56 78" }));
 ck("and says so when it is in test mode", (await r.json()).test === true);
 install(); STATE.tokenOk = false;

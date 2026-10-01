@@ -46,10 +46,13 @@
  *                       set, nothing is sent to any other number: the
  *                       module runs on the live app without reaching a
  *                       guest. Delete it to go live.
- *   BUZZ                set to 1 once the push Worker (nala-push) runs
- *                       worker/nala-push.js of 1 Oct or later, which knows
- *                       the events guestMessage and guestTask. Until then
- *                       nothing is sent to it. GUEST-CONTACT.md, Alerts.
+ *
+ * Alerts: every new guest message is passed to the push Worker (nala-push,
+ * worker/nala-push.js), which decides who is buzzed from the app's own
+ * Settings, Notifications - the Guest message row, the on/off and the
+ * hours. There is no switch here (the owner, 1 Oct: "Wouldn't buzz get
+ * set ... from inside the application settings"); a BUZZ variable left in
+ * Cloudflare from before is ignored.
  *
  * The sandbox this was written in reaches neither Twilio nor Cloudflare.
  * worker/contact-test.mjs checks the logic against stubs; nothing here has
@@ -440,8 +443,7 @@ async function inbound(request, env, ctx) {
   if (had) return twiml();                    /* the desk was buzzed the first time */
 
   /* Buzz the desk. Fire and tolerate: a lost buzz costs a buzz, the
-     message is already safe. Only once BUZZ is set - see the secrets. */
-  if (!String(env.BUZZ || "").trim()) return twiml();
+     message is already safe. Who, if anyone, is Settings' to say. */
   const buzz = (async () => {
     const villa = await villaOf(env, phone).catch(() => "");
     await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" },
@@ -811,7 +813,6 @@ async function desk(request, env) {
   const test = !!testList(env);
   if (kind === "hello")
     return reply(200, { test, wa: !!(env.TWILIO_WA_FROM || "").trim(),
-                        buzz: !!String(env.BUZZ || "").trim(),
                         ready: !!((env.TWILIO_ACCOUNT_SID || "").trim() && (env.TWILIO_FROM || "").trim()) });
 
   /* A reply from a team's task card (30 Sep): a login that is not the

@@ -483,9 +483,15 @@ Only the test phones can be messaged. From them:
      Tasks are the admin's alone, only the admin. Both follow Settings'
      on/off and quiet hours, as every alert does, and buzz again for each
      new one.
-   To switch them on: paste `worker/nala-push.js` into `nala-push` and
-   Deploy, then set `BUZZ` to `1` on `nala-contact`. Until `BUZZ` is set
-   nothing is sent, and the menu counts still work.
+   The switch is the app's own, Settings, Notifications: the Guest message
+   row per role, and for tasks the teams (the owner, 1 Oct: "Wouldn't buzz
+   get set ... from inside the application settings"). The `BUZZ` variable
+   that held them back until the push Worker knew the events is gone, and
+   one left in Cloudflare is ignored. To switch them on: paste
+   `worker/nala-push.js` into `nala-push` and Deploy, then
+   `worker/guest-contact.js` into `nala-contact` and Deploy, in that order:
+   the old push Worker would send a guest's message as "Villa 7 -
+   guestMessage", opening the Cleans board.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
    *own number* in ClickSend (its code arrives in Chat as a message;
    if ClickSend sends it from a name rather than a number, Chat has

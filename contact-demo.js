@@ -340,7 +340,7 @@
   function messenger(o){
     var b = {};
     try { b = JSON.parse((o && o.body) || '{}'); } catch (e){}
-    if (b.kind === 'hello') return answer(200, { test:false, wa:true, buzz:false, ready:true });
+    if (b.kind === 'hello') return answer(200, { test:false, wa:true, ready:true });
     /* The setup check (30 Sep): the demo's is all working, so Chat shows none. */
     if (b.kind === 'check') return answer(200, { check:[
       { key:'twilio', ok:true, say:'Twilio accepts the Account SID and the Auth Token.' },

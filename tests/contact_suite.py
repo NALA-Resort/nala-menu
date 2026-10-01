@@ -213,7 +213,7 @@ SPA = {"b-priya": {"t7": {"status": "booked", "day": "2026-09-30", "time": "10:3
 MENU = {"published": "2026-09-29T13:05:00+10:00", "bread": {"name": "Sourdough"}, "entree": {"name": "Crudo"},
         "main": {"name": "Lamb shoulder"}, "dessert": {"name": "Lemon tart"}}
 
-STATE = {"hello": {"ready": True, "wa": True, "test": False, "buzz": False}, "send": None,
+STATE = {"hello": {"ready": True, "wa": True, "test": False}, "send": None,
          "readfail": False, "menu": MENU, "inv": None}
 WRITES, SENT, BUZZ, READS, INV = [], [], [], [], []
 # a 1x1 photo in the mock's neutral grey: a red stand-in read as a fault
@@ -596,7 +596,15 @@ with sync_playwright() as p:
     ck("with the desk's note for the team, in the desk's name",
        rec.get("note") == "Candle on the dessert, table by the window" and rec.get("noteBy") == "ben@x" and
        bool(rec.get("noteAt")), rec)
-    ck("and no buzz goes out until BUZZ is set on the Chat Worker", BUZZ == [])
+    # the buzz follows the write and the button's 300ms Saved hold: waited
+    # for, not guessed at, which a fixed 500ms was under a loaded machine
+    for _ in range(30):
+        if BUZZ: break
+        pg.wait_for_timeout(100)
+    ck("and the team's phones are buzzed, the team named as staff read it, no switch to set",
+       len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "kitchen" and
+       BUZZ[0].get("label") == "Kitchen" and BUZZ[0].get("villa") == "7" and
+       BUZZ[0].get("url") == "/tasks.html", BUZZ)
     del WRITES[:]
     pg.click("#nb-in-SMumbrella-maintenance"); pg.wait_for_timeout(150)
     pg.fill("#te-in-SMumbrella-maintenance", "Bring the long ladder")
@@ -607,7 +615,6 @@ with sync_playwright() as p:
        w["b"].get("tasks/maintenance/t1umbrella/noteBy") == "ben@x", w)
     done(pg)
 
-    STATE["hello"]["buzz"] = True
     pg = page("?c=%s&b=b-sarah" % SARAH)
     del BUZZ[:]
     pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150); pg.click("#tm-in-SMcandle-bar")
@@ -616,10 +623,9 @@ with sync_playwright() as p:
     for _ in range(30):
         if BUZZ: break
         pg.wait_for_timeout(100)
-    ck("once it does, the team's phones are buzzed, the team named, as staff read its name",
+    ck("another team's task buzzes that team, by its own name",
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "bar" and
        BUZZ[0].get("label") == "Bar" and BUZZ[0].get("villa") == "7", BUZZ)
-    STATE["hello"]["buzz"] = False
     del WRITES[:]
     pg.click("#dn-in-SMumbrella-maintenance"); pg.wait_for_timeout(500)
     w = WRITES[-1] if WRITES else {"b": {}}
@@ -1328,7 +1334,7 @@ with sync_playwright() as p:
     # James arrives on the 3rd: the form, and a failure said in red
     del INV[:]
     STATE["inv"] = (200, {"results": {"b-james": {"status": "failed", "error": "no phone number on the booking"}}})
-    STATE["hello"] = {"ready": True, "wa": True, "test": True, "buzz": False}
+    STATE["hello"] = {"ready": True, "wa": True, "test": True}
     pg = page("?c=%s&b=b-james" % JAMES); pg.wait_for_timeout(600)
     pg.click("#tmplBtn"); pg.wait_for_timeout(500)
     o = tsheet(pg)
@@ -1349,7 +1355,7 @@ with sync_playwright() as p:
        pg.evaluate("()=>!!PICKT"), pg.text_content("#sendErr"))
     done(pg)
     STATE["inv"] = None
-    STATE["hello"] = {"ready": True, "wa": True, "test": False, "buzz": False}
+    STATE["hello"] = {"ready": True, "wa": True, "test": False}
 
     # yesterday's menu is not tonight's; a number on no booking has none
     STATE["menu"] = dict(MENU, published="2026-09-28T13:05:00+10:00")

@@ -1208,14 +1208,13 @@ document.getElementById('msgs').onclick = function(e){
     patch['contactmsgs/' + CK + '/' + id + '/tasks/' + team] = tid;
     patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
     patch['contactnew/' + CK + '/' + id] = null;
-    /* The team's phones buzz once BUZZ is set on the Chat Worker, whose
-       hello says so: the push Worker (worker/nala-push.js) sends a task to
-       its team's logins. It is told the team's name as staff read it, as
-       the first six teams' names live here, not in the database. */
-    if (HELLO && HELLO.buzz)
-      after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
-                                     { team: team, label: teamLabel(team, SETTINGS),
-                                       url: '/tasks.html' }); };
+    /* The team's phones buzz: the push Worker (worker/nala-push.js) sends
+       a task to its team's logins, under Settings' on/off and hours. It is
+       told the team's name as staff read it, as the first six teams'
+       names live here, not in the database. */
+    after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
+                                   { team: team, label: teamLabel(team, SETTINGS),
+                                     url: '/tasks.html' }); };
   } else if (act === 'notesave'){
     /* An empty note takes the note off: the rules keep a note from being
        empty, so saying nothing is saying there is no note. */
