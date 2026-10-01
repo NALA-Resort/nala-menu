@@ -143,7 +143,7 @@ BOARDS = {
   "front-desk.html": [("an incomplete form", click_text("#board button.arr", "Sharma")),
                       ("a completed arrival's summary", click_text("#board button.arr", "Reilly")),
                       ("the key card run", lambda pg: pg.click(".keybtn"))],
-  "dashboard.html": [("the menu", lambda pg: pg.click("#navBtn"))],
+  "dashboard.html": [("the menu", lambda pg: pg.locator("#tab-menu:visible, #navBtn:visible").first.click())],
   "cleaners.html": [("a villa's sheet", lambda pg: pg.click(".tile >> nth=0")),
                     ("a finished villa's sheet", lambda pg: pg.click(".tile.done >> nth=0"))],
   "spa.html": [("a booked card", click_text(".vrow", "James")),

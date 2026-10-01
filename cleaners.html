@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui2.css?v=17">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
     /* This page's OWN colours. the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
@@ -51,7 +51,10 @@
      it and silently does nothing. flex:1 1, not the shared 1 0, because a
      wrap that refuses to shrink pushes the page past the screen however
      small the tiles are told to be.                                     */
-  body > .wrap { max-width:var(--appw); margin:0 auto; flex:1 1 auto; min-height:0; }
+  /* padding-bottom: the grid's own gap between it and the tab bar, since
+     the footer that stood there went (30 Sep). */
+  body > .wrap { max-width:var(--appw); margin:0 auto; flex:1 1 auto; min-height:0;
+                 padding-bottom:var(--s2); }
 
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
        font-family:var(--ui-font); }
@@ -320,7 +323,6 @@
   .tile.sel    { outline:2px solid var(--ink); outline-offset:-2px; }
   body.selmode .tile { opacity:.3; }
   body.selmode .tile.selectable { opacity:1; }
-  .btn.active  { background:var(--ink); color:var(--cream); }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
             font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); }
@@ -349,8 +351,17 @@
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 
-  .bar { margin-top:22px; gap:10px; }
-  /* .btn wears nala-ui.css's shared dress; .foot .bar lays it out. */
+  /* Select multiple, in the key's eighteenth cell since 30 Sep: the owner
+     cleared the footer for the tab bar and gave the control the cell. It
+     goes to the logins that can set a job, the only ones its Options sheet
+     serves; everyone else keeps the key there. In select mode it reads
+     Cancel, then Options, and wears ink, as it did in the footer. */
+  .seltile { display:flex; align-items:center; justify-content:center; margin:0;
+             padding:6px; border:1.2px solid var(--rule); border-radius:10px;
+             background:transparent; color:var(--ink); text-align:center;
+             font-family:var(--ui-font); font-size:var(--t2); line-height:1.25;
+             cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .seltile.active { background:var(--ink); border-color:var(--ink); color:var(--cream); }
 
   /* popup */
   .ov { position:fixed; inset:0; background:rgba(28,28,26,.45); display:none;
@@ -399,7 +410,8 @@
 /* the tiles were white already, only never lifted; the legend cell was
    see-through */
 body.paper .tile { box-shadow:var(--lift); }
-body.paper #legend { background:var(--surface); box-shadow:var(--lift); }
+body.paper #legend, body.paper #selToggle { background:var(--surface); box-shadow:var(--lift); }
+body.paper #selToggle.active { background:var(--ink); }
 </style>
 </head>
 <body class="tier-app ui2 paper">
@@ -452,9 +464,11 @@ body.paper #legend { background:var(--surface); box-shadow:var(--lift); }
         /* The board paints before sign in resolves, so the first paint does
            not know who you are and your own claim came back at you as your
            name rather than as You. Repaint once it does. */
+        /* Before the repaint: the eighteenth cell is the key or Select
+           multiple by it. */
+        window.IS_MANAGER = can(role,'setJob');
         if (typeof render === 'function' && STATE && STATE.rows) render();
         if (typeof ensureNotifySettings === 'function') ensureNotifySettings(role);
-        window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
            breakfast, nothing more. The other marks are hidden rather than
            disabled: this is about not pressing something by accident, so
@@ -514,7 +528,7 @@ body.paper #legend { background:var(--surface); box-shadow:var(--lift); }
       }
     }
     box.className = 'noaccess' + (on ? ' show' : '');
-    ['grid','legend','statsRow','footBar'].forEach(function(id){
+    ['grid','legend','statsRow'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.display = on ? 'none' : '';
     });
@@ -543,18 +557,18 @@ body.paper #legend { background:var(--surface); box-shadow:var(--lift); }
     <span><i class="lgb dash"></i>Unknown</span>
   </div>
 
-  <div class="foot bar" id="footBar">
-    <button class="btn" onclick="location.reload()">Refresh</button>
-    <button class="btn" id="selToggle">Select multiple</button>
-  </div>
+  <!-- The eighteenth cell's other tenant. render() puts one of the two in
+       the grid; the footer that held this and Refresh went 30 Sep, Refresh
+       becoming a pull from the top (pullToRefresh, end of the script). -->
+  <button class="seltile" id="selToggle" type="button">Select multiple</button>
 </div>
 
 <div class="ov" id="ov"><div class="sheet" id="sheetBox"></div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=96"></script>
+<script src="auth.js?v=13"></script>
+<script src="nala-shared.js?v=105"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 /* Browsed dates, same header as every other board: ‹ › Today, and the date
@@ -811,13 +825,15 @@ function arrivingNow(row, h){
    Sheet renders the same hour, and the sheet going blind to what a board
    shows is a fault this file has already paid for once. */
 
-/* The key. Held rather than looked up, because every render clears the grid
-   it now lives in, and a lookup after the first clear finds nothing. */
-var LEGEND = null;
+/* The key, and Select multiple, which share the eighteenth cell. Held rather
+   than looked up, because every render clears the grid they live in, and a
+   lookup after the first clear finds nothing. */
+var LEGEND = null, SELTILE = null;
 
 function render(){
   var g=document.getElementById('grid'); g.innerHTML='';
   if (!LEGEND) LEGEND = document.getElementById('legend');
+  if (!SELTILE) SELTILE = document.getElementById('selToggle');
   var nClean=0,nSvc=0,nDone=0,nPre=0;
   /* The job is derived here, not frozen at load, so setting one takes effect
      on the tile immediately instead of waiting for a refresh - and the villa
@@ -1022,7 +1038,13 @@ function render(){
      the first pass moved the key in and the second deleted it: after one
      refresh the board had no key at all, and getElementById could never find
      it again. */
-  if (LEGEND) g.appendChild(LEGEND);
+  /* One of the two, and the other out of the page: both start outside the
+     grid, where a stray one would sit under it. */
+  var cell = window.IS_MANAGER ? SELTILE : LEGEND;
+  [LEGEND, SELTILE].forEach(function(e){
+    if (e && e !== cell && e.parentNode) e.parentNode.removeChild(e);
+  });
+  if (cell) g.appendChild(cell);
   document.getElementById('nClean').textContent=nClean;
   document.getElementById('nSvc').textContent=nSvc;
   document.getElementById('nDone').textContent=nDone;
@@ -1170,10 +1192,9 @@ function selectableRow(row){ return row.kind === 'ver'; }
 function selCount(){ return Object.keys(selected).length; }
 
 function selLabel(){
-  var t = document.getElementById('selToggle');
-  if (!selectMode) { t.textContent = 'Select multiple'; t.className = 'btn'; return; }
-  t.className = 'btn active';
-  t.textContent = selCount() ? 'Options' : 'Cancel';
+  var t = SELTILE || document.getElementById('selToggle');
+  t.classList.toggle('active', !!selectMode);
+  t.textContent = !selectMode ? 'Select multiple' : selCount() ? 'Options' : 'Cancel';
 }
 
 function exitSelect(){ selectMode = false; selected = {}; document.body.classList.remove('selmode');
@@ -1500,6 +1521,9 @@ setInterval(function(){
 document.addEventListener('visibilitychange', function(){
   if (!document.hidden && !CUR) load(true).catch(function(){});
 });
+
+/* The Refresh button's job since 30 Sep: pull the board down from its top. */
+pullToRefresh();
 </script>
 </body>
 </html>

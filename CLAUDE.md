@@ -53,6 +53,12 @@ Already done this way — follow these:
 - `tests/nav_canon.json` — the menu's shape as the suites assert it. The
   `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
   tests expect, and whichever side a change misses fails by name.
+- `nala-shared.js` → `TABBAR` - the tab bar along the foot of every ui2
+  page with a menu (the owner, 30 Sep): one icon a page, five at most and
+  the menu after them, the first five of `TABBAR` a login may open
+  (`tabsFor`, asking `canOpen`), labelled from `NAV`. The admin's five
+  lead it. `nav_canon.json`'s "tabs" is what each role is offered, as
+  `tabs_suite` asserts.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `tests/form_dinner_cases.json` — the guest's pre-arrival dinner answer as
   every screen must read it (`formDinnerCell`, nala-shared.js). Added 4 Sep,
@@ -114,12 +120,34 @@ while the app is wrong.
 The 28-edit story below is over: the menu markup left the pages on 26 Aug,
 when the hamburger was redesigned (submenus, non-caps) and generated in the
 same stroke. A new page is one entry in `NAV`, the same line in
-`tests/nav_canon.json`, and the `?v=` bumps — which are still hand-
-maintained, see below.
+`tests/nav_canon.json`, its icon in `PAGE_ICONS` (the menu draws every
+page with one since 30 Sep, and `tabs_suite` names a page without), and
+the `?v=` bumps — which are still hand-maintained, see below.
 
 Two things the generator gets right that you would get wrong pasting: each
 page omits its own link, and the permission keys are `resSheet` and
 `cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
+
+A board on the tab bar (30 Sep) is its place in `TABBAR`, its icon in
+`PAGE_ICONS` and the same line in the canon's "tabs"; no page changes, as
+the bar draws itself into every ui2 page with a menu and `nala-ui2.css`
+stands each page's `.foot` on it. The drawing is Lucide's, copied
+unchanged from its file and named beside it (the owner's choice, 30 Sep);
+the bar is otherwise the iPhone's own, to Apple's numbers (STYLEGUIDE.md).
+Its last icon is the menu, which rises from the foot beside it, and where
+the bar is drawn the hamburger at the top stands down (the owner, 30 Sep,
+off `mock-menu-rise.html`); the page's own `#navBtn` still does the
+opening, hidden, so a page's menu code is untouched. A page's own fixed
+bar at the foot stands on `var(--tabroom)` and wears `onbar`, so the
+strip under it is solid, as Publish's does, or rises over the bar with a
+z-index above 5, as Dietary's save bar does - never under it. A board
+that wants a refresh calls `pullToRefresh()`; a Refresh button in a
+footer is what the owner cleared away (30 Sep). The bar stays put from
+page to page (the owner, 30 Sep: "It should stay there"): a page draws
+the icons this phone was last given (`nala-tabs`) as nala-shared.js
+loads, before its login lands, standing on auth.js's cover while that
+only waits (`#nalaCover.waiting`), and `buildTabs` puts the login's own
+in their place when they differ.
 
 A page can go live to the admin alone first (29 Sep, Chat before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the
@@ -263,6 +291,16 @@ Three things this exception does NOT extend to, all settled already:
   diner's, the line Publish's rings already draw (red confirmed, amber only
   staying). The pill still says what they cannot have; the red arrives the
   moment they confirm.
+
+### The tab bar: blue for here, blue for a count
+
+Ruled by the owner, 30 Sep. The page you are on is its tab bar icon in
+the accent's blue, with no pill ("no grey pill, just change icon colour
+to blue"): the grey selection pill is for pills; the bar is the phone's.
+A count stays the accent's blue too, on the bar and in the menu: he
+tried the phone's red the same day and ruled it back ("Red is
+confusing ... Counter is blue"), since red here is failure's. Red never
+came into the law for a count, and should not.
 
 ### Paper: a ground, not a colour
 

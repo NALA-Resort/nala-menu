@@ -2349,20 +2349,21 @@ function loadStaff(cb){
    Only runs in standalone mode, so nothing changes in an ordinary tab. Links
    that leave the site, open a new tab, or do something on the page rather
    than go somewhere are left alone.                                     */
+/* navigator.standalone is a Safari property and is undefined in Chrome,
+   where a saved page still opens without the bars. Asking only Safari
+   meant this did nothing at all on half the phones, which is why the app
+   view kept being handed back to the browser. Shared since 30 Sep with
+   pull to refresh, which only the Home Screen app needs.              */
+function inHomeScreenApp(){
+  if (window.navigator && window.navigator.standalone) return true;
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches ||
+           window.matchMedia('(display-mode: minimal-ui)').matches;
+  } catch (e){ return false; }
+}
 (function(){
-  /* navigator.standalone is a Safari property and is undefined in Chrome,
-     where a saved page still opens without the bars. Asking only Safari
-     meant this did nothing at all on half the phones, which is why the app
-     view kept being handed back to the browser.                        */
-  function inApp(){
-    if (window.navigator && window.navigator.standalone) return true;
-    try {
-      return window.matchMedia('(display-mode: standalone)').matches ||
-             window.matchMedia('(display-mode: fullscreen)').matches ||
-             window.matchMedia('(display-mode: minimal-ui)').matches;
-    } catch (e){ return false; }
-  }
-  if (!inApp()) return;
+  if (!inHomeScreenApp()) return;
   document.addEventListener('click', function(e){
     var a = e.target;
     while (a && a.nodeName !== 'A') a = a.parentNode;
@@ -2935,6 +2936,11 @@ var NAV = [
   { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },
   { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
   { href:'publish.html',      label:'Publish Menu', need:'publishMenu'  },
+  /* Its door was the Stats button in Reservations' footer until 30 Sep,
+     when the owner cleared the footers for the tab bar ("could be placed
+     in the menu or could become one of the icons for the chef"). Both: it
+     is here, and last in TABBAR, where only the chef has room for it. */
+  { href:'stats.html',        label:'Statistics',   need:'resBoard'     },
   { group:'Print', items:[
       { href:'list.html',         label:'FOH Sheet',   need:'resSheet'     },
       { href:'housekeeping.html', label:'Clean Sheet', need:'cleansBoard'  },
@@ -2972,7 +2978,6 @@ var NAV = [
    or the pageaccess suite names it by file.                             */
 var NAV_UNLISTED = [
   { href:'guest.html',     label:'Guest Profile', need:'resBoard'     }, /* a calendar bar */
-  { href:'stats.html',     label:'Statistics',    need:'resBoard'     }, /* Reservations' Stats door */
   { href:'templates.html', label:'SMS Templates', need:'editBookings' }, /* the two SMS pages */
   { href:'debug.html',     label:'Diagnostics',   need:'manageStaff'  }  /* Front Desk's foot */
 ];
@@ -3060,6 +3065,116 @@ var PAGE_GRID = (function(){
   return out;
 })();
 
+/* The massage mark: one centre petal and a mirrored pair, on the fork's own
+   24 grid, stroked so it carries its state in the stroke colour. Drawn for
+   Front Desk's rows on 31 Aug; here since 30 Sep, for any page to draw. */
+var LOTUS_PATHS =
+  '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
+  '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
+  '<path d="M11.4 17.5c-2.8.5-5.2-.2-7-2C2.5 13.6 1.9 11.2 2.2 8.6' +
+  'c2.6-.3 5 .3 6.8 2.1"/>' +
+  '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
+  'c-2.6-.3-5 .3-6.8 2.1"/>';
+var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
+
+/* Every page's icon, one per page in NAV: the tab bar draws the pages on
+   TABBAR with them, and the menu draws every page it lists with its own
+   (buildNav). The suite fails a page on either that has none. Lucide's
+   (lucide.dev), the set the owner chose on 30 Sep off mock-tab-icons.html
+   - "Let's use lucid" - with list-todo for the Dashboard, which "is
+   actually a daily checklist", clock-alert for Tasks, which "are important
+   'do it now' jobs", messages-square for Chat, chart-gantt for Statistics
+   and plane-landing for Arrivals, all his picks; the rest of the menu's
+   as mock-tabbar.html proposed them and he took them with the menu from
+   the foot (mock-menu-tab.html, "B"). Line icons on Lucide's 24 grid,
+   drawn thinner than Lucide's own at his ask (nala-ui2.css); each is
+   copied unchanged from its own file in lucide-static 1.49.0, named
+   beside it, so a swap is a name looked up at lucide.dev and its paths
+   pasted here.
+
+   Lucide's licence, which asks to travel with its icons:
+
+   ISC License
+
+   Copyright (c) 2026 Lucide Icons and Contributors
+
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.   */
+var PAGE_ICONS = {
+  'dashboard.html':     /* list-todo, the day's checklist, which the Dashboard is */
+    '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/>',
+  'tally.html':         /* utensils */
+    '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  'cleaners.html':      /* brush-cleaning */
+    '<path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/>',
+  'guest-contact.html': /* messages-square, the owner's pick */
+    '<path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/>',
+  'tasks.html':         /* clock-alert, the important, do it now jobs */
+    '<path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/>',
+  'front-desk.html':    /* concierge-bell */
+    '<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/>',
+  'spa.html':           /* flower */
+    '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>',
+  'calendar.html':      /* calendar-days */
+    '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/>',
+  'keys.html':          /* key-round */
+    '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+  'publish.html':       /* book-open-text */
+    '<path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/>',
+  'stats.html':         /* chart-gantt, the owner's pick */
+    '<path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/>',
+  /* the rest of the menu, which the bar never carries */
+  'list.html':          /* clipboard-list, the FOH sheet */
+    '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+  'housekeeping.html':  /* clipboard-check, the clean sheet */
+    '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  'registration.html':  /* plane-landing, Arrivals, the owner's pick */
+    '<path d="M2 22h20"/><path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z"/>',
+  'menu-print.html':    /* scroll-text, the printed menu */
+    '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+  'past-menus.html':    /* history */
+    '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  'invitations.html':   /* send */
+    '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  'arrivals-sms.html':  /* clipboard-pen, the pre-arrival form */
+    '<path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  'spa-reminders.html': /* bell */
+    '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  'staff.html':         /* users, General: the staff */
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  'tag.html':           /* wheat-off, Dietary */
+    '<path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/>',
+  'flags.html':         /* flag */
+    '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/>',
+  'pages.html':         /* files */
+    '<path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/>'
+};
+
+/* The menu's own marks, which are not pages: the bar's menu icon, and the
+   menu's Notifications switch and Logout. Lucide's, as above. */
+var MENU_ICONS = {
+  menu:      '<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>',
+  navNotify: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M22 8c0-2.3-.8-4.3-2-6"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/>',
+  signout:   '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>'
+};
+
+/* A menu row's icon, on the second dress only: the printed sheets' older
+   menu has no room drawn for one. */
+function navIcon(key){
+  var d = PAGE_ICONS[key] || MENU_ICONS[key];
+  if (!d || !document.body || !/(^|\s)ui2(\s|$)/.test(document.body.className)) return '';
+  return '<span class="navic"><svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg></span>';
+}
+
 /* Writes the menu into #navDrop. Runs at load on every page that has one;
    pages built without a menu (the printed sheets, the guest pages) simply
    have no div and nothing happens. */
@@ -3077,7 +3192,9 @@ function buildNav(){
     var a = document.createElement('a');
     if (i.action){ a.href = '#'; a.className = 'navaction'; a.id = i.action; }
     else a.href = i.href;
-    a.textContent = i.label;
+    var ic = navIcon(i.action || i.href);
+    if (ic) a.innerHTML = ic + '<span class="navlabel"></span>';
+    (a.querySelector('.navlabel') || a).textContent = i.label;
     return a;
   }
   NAV.forEach(function(e){
@@ -3115,12 +3232,15 @@ function buildNav(){
      careful flavour, for every page. */
   var so = document.createElement('a');
   so.href = '#'; so.className = 'signout'; so.id = 'navSignout';
-  so.textContent = 'Logout';
+  so.innerHTML = navIcon('signout') + '<span class="navlabel">Logout</span>';
   so.onclick = function(ev){
     ev.preventDefault();
     var u = window.NALA_USER || null;
     try { u = firebase.auth().currentUser || u; } catch (ex){}
     var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* The tab bar's icons kept on this phone were this login's: the next
+       login is drawn its own. */
+    try { localStorage.removeItem(TABS_KEPT); } catch (ex){}
     /* Unsubscribe first, while the token is still valid enough to delete
        the record. If it fails, sign out anyway: being stuck signed in
        would be the worse outcome. */
@@ -3130,6 +3250,261 @@ function buildNav(){
   drop.appendChild(so);
 }
 buildNav();
+
+/* ── the tab bar ─────────────────────────────────────────────────────────
+   Icons along the foot of the screen for the pages used most: one icon a
+   page, five at most, and a page this login cannot open is not there; the
+   menu comes after them. The owner, 30 Sep, naming the admin's five:
+   Dashboard, Reservations, Cleans, Chat and Tasks - then, off
+   mock-menu-rise.html, "5 pages plus the menu".
+
+   A shortcut into the menu, not a second menu. Every page on it keeps its
+   place in NAV, its label is its NAV entry's, and whether it is offered is
+   canOpen's answer - the menu filter's own question - so the bar and the
+   menu cannot disagree about a page, and a page switched off for a role in
+   Settings leaves both at once.
+
+   TABBAR is the order of preference: a login gets the first TABBAR_MAX
+   pages of it that it may open, drawn in this order. The admin's five lead,
+   so the admin, who may open everything, gets exactly those. The rest are
+   the other boards on the menu's top level, for the logins that cannot open
+   all five - a housekeeper's Calendar, the masseuse's Spa, the chef's
+   Publish Menu and Statistics. The Print, SMS and Settings pages stay in
+   their submenus.
+
+   Every login with a page to go to draws the same bar, one page and the
+   menu included: the owner, 1 Oct, "They should all be the same". The
+   page you are on stays on the bar, marked and not a link, so the icons
+   never move under the thumb.
+
+   tests/nav_canon.json holds the order and what each role is offered, the
+   menu's own pattern: change the bar there too, or the suites name it.   */
+var TABBAR = ['dashboard.html', 'tally.html', 'cleaners.html', 'guest-contact.html',
+              'tasks.html', 'front-desk.html', 'spa.html', 'calendar.html',
+              'keys.html', 'publish.html', 'stats.html'];
+/* Five pages, and the menu after them: the owner, 30 Sep, off
+   mock-menu-rise.html, "5 pages plus the menu". */
+var TABBAR_MAX = 5;
+
+
+/* The menu's top-level entries by page, taken as this file loads - as
+   NAV_NEEDS is - and not read from NAV later: Past Menus names its date
+   control NAV, a page global that replaces this list once the page's own
+   script runs, and a bar that asked NAV then found no pages at all. The
+   bar carries no group's pages, so the top level is the whole search.   */
+var NAV_TOP = (function(){
+  var out = {};
+  NAV.forEach(function(e){ if (e.href) out[e.href] = e; });
+  return out;
+})();
+function navEntry(href){
+  return Object.prototype.hasOwnProperty.call(NAV_TOP, href) ? NAV_TOP[href] : null;
+}
+
+/* What the bar offers this login: the first TABBAR_MAX pages of TABBAR it may
+   open, in TABBAR's order - or none, when it may open none. A page
+   missing from NAV is never offered: canOpen calls an unlisted page ungated,
+   which is right for a menu link and wrong for this. */
+function tabsFor(role){
+  var out = [];
+  for (var i = 0; i < TABBAR.length && out.length < TABBAR_MAX; i++){
+    if (navEntry(TABBAR[i]) && canOpen(role, TABBAR[i])) out.push(TABBAR[i]);
+  }
+  return out;
+}
+
+/* Draws the bar, from the menu filter below: it runs once the role and the
+   permissions are known, so a signed-out page, or a login with no staff
+   record, draws none. Only where the menu is, and only on a page wearing
+   ui2, whose sheet (nala-ui2.css) holds the bar's dress and the rules that
+   keep the page's own footer and sheets clear of it. The printed sheets
+   wear the older dress and keep the menu alone until they join.
+   What it offered is kept on the phone, for the next page to draw at once
+   (below).                                                              */
+var TABS_KEPT = 'nala-tabs';
+function buildTabs(role){
+  if (!tabsPage()) return;
+  var tabs = tabsFor(role);
+  try { localStorage.setItem(TABS_KEPT, tabs.join(' ')); } catch (e){}
+  drawTabs(tabs);
+}
+function tabsPage(){
+  var body = document.body;
+  return !!(body && document.getElementById('navDrop') &&
+            /(^|\s)ui2(\s|$)/.test(body.className));
+}
+function drawTabs(tabs){
+  if (!tabsPage()) return;
+  var body = document.body, key = tabs.join(' ');
+  var bar = document.getElementById('tabBar');
+  if (bar && bar.getAttribute('data-tabs') === key) return;   /* drawn already */
+  if (bar) bar.parentNode.removeChild(bar);
+  body.classList.toggle('hastabs', tabs.length > 0);
+  if (!tabs.length) return;
+  var here = location.pathname.split('/').pop() || 'index.html';
+  bar = document.createElement('nav');
+  bar.id = 'tabBar';
+  /* One bar for every login, however few its icons (nala-ui2.css). */
+  bar.className = 'tabbar';
+  bar.setAttribute('aria-label', 'Pages');
+  bar.setAttribute('data-tabs', key);
+  var row = document.createElement('div');
+  row.className = 'tabrow';
+  tabs.forEach(function(href){
+    var a = document.createElement('a');
+    a.id = 'tab-' + pageKey(href);
+    /* Not a link on its own page: pressing it could only reload the page,
+       and a reload throws away whatever was being typed there. */
+    if (href === here) a.setAttribute('aria-current', 'page');
+    else a.href = href;
+    /* Lucide's 24 grid fills the icon's 28pt box, so its largest glyph,
+       20 of the grid, stands 23pt: Apple's size for a square one. */
+    /* The name is in the link but not shown under the icon (nala-ui2.css):
+       a screen reader says it with the count, and a mouse sees it here. */
+    a.title = navEntry(href).label;
+    a.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+                  PAGE_ICONS[href] + '</svg></span>' +
+                  '<span class="tablbl">' + navEntry(href).label + '</span>';
+    row.appendChild(a);
+  });
+  /* The menu, last: the iPhone's More tab (the owner, 30 Sep, off
+     mock-menu-rise.html). It raises the page's own menu from the foot of
+     the screen, beside itself (nala-ui2.css), and the hamburger at the top
+     of the page stands down. The page's own button still does the opening,
+     hidden, so each page's menu code - open, and shut on a tap elsewhere -
+     is untouched. Blue while you are on a page the bar does not carry, as
+     the phone's More tab is: that page is in here. */
+  var m = document.createElement('button');
+  m.type = 'button';
+  m.id = 'tab-menu';
+  m.className = 'tabmenu' + (tabs.indexOf(here) < 0 ? ' here' : '');
+  m.title = 'Menu';
+  m.setAttribute('aria-expanded', 'false');
+  m.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+                MENU_ICONS.menu + '</svg></span><span class="tablbl">Menu</span>';
+  m.addEventListener('click', function(e){
+    e.stopPropagation();          /* the page shuts its menu on any other tap */
+    /* Not while auth.js's cover waits on the login, the bar standing on
+       it: the page is not there yet, nor the menu's filter for the login. */
+    if (document.getElementById('nalaCover')) return;
+    var btn = document.getElementById('navBtn');
+    if (btn) btn.click();
+  });
+  row.appendChild(m);
+  bar.appendChild(row);
+  body.appendChild(bar);
+  /* Behind the open menu, a shade over the page: a tap on it only shuts the
+     menu, where a tap on the page would also press what is under it. */
+  var drop = document.getElementById('navDrop');
+  if (!document.getElementById('menuShade')){
+    var shade = document.createElement('div');
+    shade.id = 'menuShade';
+    shade.className = 'menushade';
+    drop.parentNode.insertBefore(shade, drop.nextSibling);
+  }
+  /* The menu icon says whether the menu is open, and is blue while it is
+     (nala-ui2.css). */
+  if (!drop.getAttribute('data-watched') && window.MutationObserver){
+    drop.setAttribute('data-watched', '1');
+    new MutationObserver(function(){
+      var t = document.getElementById('tab-menu');
+      if (t) t.setAttribute('aria-expanded', drop.classList.contains('open') ? 'true' : 'false');
+    }).observe(drop, { attributes:true, attributeFilter:['class'] });
+  }
+}
+
+/* The bar at once, before the login is known. Every tap on it opens a new
+   page, and the login takes a moment to land on each: a bar drawn only
+   then went with the tap and came back after the page. The owner, 30 Sep:
+   "Why does the menu bar need to disappear every icon press and load with
+   the page. It should stay there". So the icons this phone was last given
+   are drawn as this file loads, and stand on auth.js's cover while it
+   waits (nala-ui2.css). buildTabs puts the login's own in their place
+   when they differ - a phone handed to another login, a page switched off
+   in Settings since - and Logout forgets them. The bar only saves the
+   moment: every page it leads to asks for the login itself.           */
+(function(){
+  var kept = '';
+  try { kept = localStorage.getItem(TABS_KEPT) || ''; } catch (e){}
+  var tabs = kept.split(' ').filter(function(h){
+    return navEntry(h) && Object.prototype.hasOwnProperty.call(PAGE_ICONS, h);
+  });
+  if (tabs.length) drawTabs(tabs);
+})();
+
+/* ── pull to refresh ─────────────────────────────────────────────────────
+   Drag the page down from its top and let go: it reloads. The owner, 30
+   Sep, clearing footers for the tab bar: "the refresh button could be a
+   normal drag down to refresh". A board asks for it with one call,
+   pullToRefresh(), where its Refresh button was: Reservations, Cleans and
+   the Dashboard.
+
+   Only in the Home Screen app, which has no pull of its own and is where
+   the staff work. Safari and Chrome tabs already pull to refresh, and a
+   second pull on top of theirs would reload twice.
+
+   A pull counts only from the very top of the page, and never from inside
+   the menu, a sheet, the tab bar or anything fixed, or from a box that
+   scrolls on its own and is not at its own top: a drag that means
+   something else is never taken for one. Past PTR_PULL the mark turns
+   ink, and letting go there reloads; anywhere short of it, nothing.      */
+var PTR_PULL = 70;          /* how far the mark travels to arm a release */
+var PTR_ON = false;
+var PTR_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></svg>';
+function pullToRefresh(refresh){
+  if (PTR_ON || !inHomeScreenApp()) return;
+  PTR_ON = true;
+  var go = refresh || function(){ location.reload(); };
+  var mark = null, y0 = null, pulled = 0;
+  function blocked(t){
+    var drop = document.getElementById('navDrop');
+    if (drop && drop.classList.contains('open')) return true;
+    for (var e = t; e && e.nodeType === 1 && e !== document.body; e = e.parentElement){
+      var cs = getComputedStyle(e);
+      if (cs.position === 'fixed' || cs.position === 'sticky') return true;
+      if (/(auto|scroll)/.test(cs.overflowY) && e.scrollTop > 0) return true;
+    }
+    return false;
+  }
+  function draw(dy){
+    if (!mark){
+      mark = document.createElement('div');
+      mark.className = 'ptr';
+      mark.id = 'ptrMark';
+      mark.innerHTML = PTR_ICON;
+      document.body.appendChild(mark);
+    }
+    mark.style.opacity = dy ? String(0.35 + 0.65 * Math.min(dy / PTR_PULL, 1)) : '0';
+    mark.style.transform = 'translateY(' + (Math.min(dy, PTR_PULL * 1.2) - 60) + 'px)' +
+                           ' rotate(' + Math.round(dy * 3) + 'deg)';
+    mark.classList.toggle('ready', dy >= PTR_PULL);
+  }
+  document.addEventListener('touchstart', function(e){
+    y0 = null;
+    if (e.touches.length !== 1 || window.scrollY > 0 || blocked(e.target)) return;
+    y0 = e.touches[0].clientY;
+    pulled = 0;
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if (y0 === null) return;
+    /* Half the finger's travel, so the mark lags it, as a phone's own does. */
+    pulled = window.scrollY > 0 ? 0 : Math.max(0, (e.touches[0].clientY - y0) / 2);
+    draw(pulled);
+  }, { passive:true });
+  document.addEventListener('touchend', function(){
+    if (y0 === null) return;
+    y0 = null;
+    if (pulled < PTR_PULL){ draw(0); return; }
+    mark.classList.add('spin');
+    go();
+  });
+  document.addEventListener('touchcancel', function(){
+    if (y0 === null) return;
+    y0 = null;
+    draw(0);
+  });
+}
 
 function navFilterShared(role){
   var drop = document.getElementById('navDrop');
@@ -3145,6 +3520,7 @@ function navFilterShared(role){
     links[i].style.display = canOpen(role, href) ? '' : 'none';
   }
   hideEmptyGroups(drop);
+  buildTabs(role);            /* before the counts, which the icons wear too */
   navActionBadges(role);
 }
 
@@ -3598,6 +3974,19 @@ var NAV_ACTIONS = [
   } }
 ];
 var NAV_BADGED = {};       /* one count per entry per page load */
+var NAV_MENU_N = 0;        /* what the menu holds that the bar does not show */
+function menuCount(n){
+  var t = document.getElementById('tab-menu');
+  if (!t) return;
+  NAV_MENU_N += n;
+  var b = t.querySelector('.navbadge');
+  if (!b){
+    b = document.createElement('span');
+    b.className = 'navbadge';
+    t.querySelector('.tabic').appendChild(b);
+  }
+  b.textContent = NAV_MENU_N > 9 ? '9+' : String(NAV_MENU_N);
+}
 function navActionBadges(role){
   var drop = document.getElementById('navDrop');
   if (!drop) return;
@@ -3609,15 +3998,30 @@ function navActionBadges(role){
         link = links[i]; break;
       }
     }
-    if (!link) return;               /* the entry's own page omits its link */
+    /* The tab bar's icon for the page wears the same count (30 Sep), from
+       the same one fetch - on the page you are on too: the owner, "Don't
+       mute the counters when the icon is selected". The menu leaves out
+       the page you are on, so there the icon alone carries it. */
+    var tab = document.getElementById('tab-' + pageKey(a.href));
+    if (!link && !tab) return;       /* on the page, and not on the bar */
     NAV_BADGED[a.href] = true;
     a.count(role, function(n){
       if (!n) return;
-      if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
-      var b = document.createElement('span');
-      b.className = 'navbadge';
-      b.textContent = n > 9 ? '9+' : String(n);
-      link.appendChild(b);
+      function badge(){
+        var b = document.createElement('span');
+        b.className = 'navbadge';
+        b.textContent = n > 9 ? '9+' : String(n);
+        return b;
+      }
+      if (link){
+        if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
+        link.appendChild(badge());
+      }
+      if (tab) tab.querySelector('.tabic').appendChild(badge());
+      /* A count whose page is in the menu and not on the bar - Spa, for
+         the admin - adds to the menu icon's, so nothing waits behind a
+         closed menu. */
+      else if (link) menuCount(n);
     });
   });
 }
@@ -3682,7 +4086,7 @@ function wireNotify(){
     var word = state === 'blocked'     ? 'Blocked on this phone'
              : state === 'unsupported' ? 'Add to Home Screen first'
              : '';
-    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+    nb.innerHTML = navIcon('navNotify') + '<span class="navlabel">Notifications</span>' +
                    (word ? '<span class="navnote">' + word + '</span>' : mark);
     nb.setAttribute('data-state', state);
   }
@@ -3708,7 +4112,7 @@ function wireNotify(){
             'phone settings, then try again.');
       return;
     }
-    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+    nb.innerHTML = navIcon('navNotify') + '<span class="navlabel">Notifications</span>' +
                    '<span class="navnote">working</span>';
     if (st === 'on') pushOff(u, paint);
     else pushOn(u, window.NALA_ROLE, function(r){

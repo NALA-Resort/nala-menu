@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui2.css?v=17">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
     /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
@@ -256,12 +256,6 @@
   .pop-h.dh { color:var(--red); }
   .pop-t { font-size:var(--t3); line-height:1.45; margin-bottom:16px; }
   .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
-
-  .actions.hidden { visibility:hidden; }
-  .actions { margin-top:34px; gap:10px;
-             padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
-  /* .btn wears nala-ui.css's shared dress; the rows here only lay it out. */
-  .actions .btn { flex:1 1 40%; }
 
   /* sheet */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
@@ -518,9 +512,6 @@ body.paper #listBookings > .grpbox { background:var(--surface); border-radius:va
 body.paper #listBookings > .grpbox::after { display:none; }
 body.paper #listBookings > .grpbox > .row { padding-left:8px; padding-right:8px; }
 body.paper #listBookings > .grpbox > .row.conflict { padding-left:5px; }
-/* the sticky footer covers the cards' full width as they scroll under it,
-   its buttons still on the column */
-body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
 </style>
 </head>
 <body class="tier-app ui2 paper">
@@ -600,7 +591,7 @@ body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
     }
     box.className = 'noaccess' + (on ? ' show' : '');
     ['menuState','statsRow','villaCard','roomsSec','rooms','listSec',
-     'listBookings','footActions'].forEach(function(id){
+     'listBookings'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.display = on ? 'none' : '';
     });
@@ -656,11 +647,9 @@ body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
     </span>
   </div>
   <div id="listBookings"></div>
-
-  <div class="foot actions" id="footActions">
-    <button class="btn" onclick="location.reload()">Refresh</button>
-    <a class="btn" href="stats.html">Stats</a>
-  </div>
+  <!-- The footer went 30 Sep, the owner clearing the foot of the screen for
+       the tab bar: Refresh became a pull from the top (pullToRefresh, at
+       the end of the script) and Stats a page in the menu. -->
 </div>
 
 <div class="selbar" id="selBar">
@@ -683,8 +672,8 @@ body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=96"></script>
+<script src="auth.js?v=13"></script>
+<script src="nala-shared.js?v=105"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -1590,9 +1579,8 @@ document.getElementById('sbDone').onclick  = exitSelect;
 var bd = document.getElementById('backdrop');
 var sheet = document.getElementById('sheet');
 bd.onclick = function(e){ if(e.target===bd) close(); };
-var actionsEl = document.querySelector('.actions');
-function showSheet(){ bd.className='backdrop show'; if(actionsEl) actionsEl.classList.add('hidden'); }
-function close(){ bd.className='backdrop'; if(actionsEl) actionsEl.classList.remove('hidden'); }
+function showSheet(){ bd.className='backdrop show'; }
+function close(){ bd.className='backdrop'; }
 
 // replaces the whole sheet with a single question, so nothing else is on screen
 function confirmSheet(title, question, confirmLabel, onConfirm, onBack){
@@ -2899,6 +2887,9 @@ setInterval(function(){ if (!busy() && !document.hidden) load().catch(function()
 document.addEventListener('visibilitychange', function(){
   if (!document.hidden && !busy()) load(true).catch(function(){});
 });
+
+/* The Refresh button's job since 30 Sep: pull the board down from its top. */
+pullToRefresh();
 </script>
 </body>
 </html>

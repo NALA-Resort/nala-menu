@@ -139,9 +139,15 @@ with sync_playwright() as p:
     # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
     ck("cleans 6 services 2 done 2", hd["c"]=="6" and hd["s"]=="2" and hd["dn"]=="2")
     ck("management login sees menu", hd["nav"]=="block")
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
-    pg.locator(".stats").click(); pg.wait_for_timeout(150)
+    #  The shade over the page while the menu is open from the foot (30 Sep)
+    #  takes the tap that shuts it; the stats where there is no bar.
+    #  At the shade's corner: the menu itself rises over its middle.
+    shade = pg.locator("#menuShade:visible")
+    if shade.count(): shade.click(position={"x": 12, "y": 12})
+    else: pg.locator(".stats").click()
+    pg.wait_for_timeout(150)
     t=pg.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(b=>{
       o[b.querySelector('.rn').textContent]={cls:b.className,txt:b.textContent};});return o;}""")
     ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
@@ -247,25 +253,20 @@ with sync_playwright() as p:
     ck("and every bar is the same size, so none is read by comparison",
        geom["thin"] == geom["svc"])
 
-    # The key is drawn at the size the tiles use. A key smaller than the thing
-    # it explains teaches nothing, which is what it was: five marks wrapped
-    # across two lines at 22 by 3, all looking the same.
-    key = pg.evaluate("""()=>[...document.querySelectorAll('.legend .lgb')].map(i=>{
-      const r=i.getBoundingClientRect(), s=getComputedStyle(i);
-      return {h:Math.round(r.height), w:Math.round(r.width),
-              bg:s.backgroundColor, img:s.backgroundImage!=='none',
-              dash:s.borderStyle==='dashed'};})""")
-    print("   key marks:", key)
-    ck("the key shows every mark the board can draw", len(key) == 5)
-    # Smaller than a tile's bar now, because the key lives inside a tile sized
-    # cell and five entries have to fit it. Still big enough for the fill and
-    # the stripe to read, which is what the size is for.
-    ck("the key's marks are big enough for fill and pattern to show",
-       all(k["h"] >= 5 and k["w"] >= 12 for k in key))
-    ck("and no two of them look alike",
-       len({(k["bg"], k["img"], k["dash"]) for k in key}) == 5)
-    ck("each is told apart by its own colour or pattern, not by its size",
-       len({k["h"] for k in key}) == 1)
+    # The eighteenth cell, 30 Sep: the owner cleared the footer for the tab
+    # bar, Refresh became a pull from the top and Select multiple took the
+    # key's cell - for a login that can set a job, which is every login its
+    # Options sheet serves. The key stays there for everybody else (below).
+    cell = pg.evaluate("""()=>{const g=document.getElementById('grid'), c=g.lastElementChild;
+      return {id:c&&c.id, txt:c&&c.textContent.trim(), n:g.children.length,
+              key:!!document.querySelector('.legend'), foot:!!document.querySelector('.foot'),
+              refresh:[...document.querySelectorAll('button')].some(b=>/^refresh$/i.test(b.textContent.trim()))};}""")
+    print("   eighteenth cell:", cell)
+    ck("a login that can set a job finds Select multiple in the eighteenth cell",
+       cell["id"] == "selToggle" and cell["txt"] == "Select multiple" and cell["n"] == 18)
+    ck("and the key is not on the board", not cell["key"])
+    ck("and the board keeps no footer, Refresh or otherwise",
+       not cell["foot"] and not cell["refresh"])
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("villa2 ready to service, with elapsed since noticed",
        "ready-svc" in t["2"]["cls"] and re.search(r'Available 1[12]m',t["2"]["txt"]))
@@ -632,6 +633,33 @@ with sync_playwright() as p:
        all(w not in hkSheet for w in
            ["to be cleaned","to be serviced","set as pre-arrival",
             "mark as empty","use booking dates","back to unknown"]))
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    # The key keeps the eighteenth cell for a login that cannot set a job:
+    # Select multiple would lead it to an Options sheet holding only Close.
+    hkcell = pg.evaluate("""()=>{const c=document.getElementById('grid').lastElementChild;
+      return {id:c&&c.id, sel:!!(document.getElementById('selToggle')||{}).isConnected};}""")
+    print("   housekeeping's eighteenth cell:", hkcell)
+    ck("housekeeping finds the key in the eighteenth cell, and no Select multiple",
+       hkcell["id"] == "legend" and not hkcell["sel"])
+    # The key is drawn at the size the tiles use. A key smaller than the thing
+    # it explains teaches nothing, which is what it was: five marks wrapped
+    # across two lines at 22 by 3, all looking the same.
+    key = pg.evaluate("""()=>[...document.querySelectorAll('.legend .lgb')].map(i=>{
+      const r=i.getBoundingClientRect(), s=getComputedStyle(i);
+      return {h:Math.round(r.height), w:Math.round(r.width),
+              bg:s.backgroundColor, img:s.backgroundImage!=='none',
+              dash:s.borderStyle==='dashed'};})""")
+    print("   key marks:", key)
+    ck("the key shows every mark the board can draw", len(key) == 5)
+    # Smaller than a tile's bar now, because the key lives inside a tile sized
+    # cell and five entries have to fit it. Still big enough for the fill and
+    # the stripe to read, which is what the size is for.
+    ck("the key's marks are big enough for fill and pattern to show",
+       all(k["h"] >= 5 and k["w"] >= 12 for k in key))
+    ck("and no two of them look alike",
+       len({(k["bg"], k["img"], k["dash"]) for k in key}) == 5)
+    ck("each is told apart by its own colour or pattern, not by its size",
+       len({k["h"] for k in key}) == 1)
     pg.close()
 
     # ---- roles: the helper, straight out of the shipped nala-shared.js ----
@@ -1258,7 +1286,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1288,7 +1316,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1306,7 +1334,7 @@ with sync_playwright() as p:
         content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     # the Clean Sheet lives inside the folded Print submenu now: open it the
     # way a person does, by its header, before the link can be tapped
     pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
@@ -1350,13 +1378,17 @@ with sync_playwright() as p:
         q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(1300)
         m=q.evaluate("""()=>{const g=document.getElementById('grid');
           const t=document.querySelector('.tile').getBoundingClientRect();
-          const f=document.getElementById('footBar').getBoundingClientRect();
+          const f=document.getElementById('grid').lastElementChild.getBoundingClientRect();
+          const bar=document.getElementById('tabBar');
+          const floor=bar&&getComputedStyle(bar).display!=='none'?bar.getBoundingClientRect().top:window.innerHeight;
           return {page:document.body.scrollHeight-window.innerHeight,
                   gs:g.scrollHeight-g.clientHeight, tH:Math.round(t.height),
                   cols:getComputedStyle(g).gridTemplateColumns.split(' ').length,
-                  footIn:Math.round(f.bottom)<=window.innerHeight+1};}""")
+                  footIn:Math.round(f.bottom)<=Math.round(floor)+1,
+                  bar:!!bar&&getComputedStyle(bar).display!=='none'};}""")
         ck("%s: the page itself never scrolls" % label, m["page"]<=1)
-        ck("%s: footer stays on screen" % label, m["footIn"])
+        ck("%s: the eighteenth cell stays on screen, clear of the tab bar" % label, m["footIn"])
+        ck("%s: the tab bar is there" % label, m["bar"])
         ck("%s: %d columns" % (label, wantCols), m["cols"]==wantCols)
         ck("%s: tiles stay tappable (%dpx)" % (label,m["tH"]), m["tH"]>=44)
         if mustFit:
@@ -1449,7 +1481,7 @@ with sync_playwright() as p:
     # signing out must take the subscription with it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     label=pg.evaluate("()=>navNotify.textContent")
     print("   notify toggle in a plain tab:", label)
     ck("the menu offers notifications", pg.evaluate("()=>!!document.getElementById('navNotify')"))
@@ -1668,7 +1700,7 @@ with sync_playwright() as p:
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
     pg.evaluate("()=>{window.__out=0; window.NALA_SIGNOUT=function(){window.__out++;};}")
-    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#tab-menu:visible, #navBtn:visible").first.click(); pg.wait_for_timeout(150)
     pg.locator("#navSignout").click(); pg.wait_for_timeout(200)
     ck("sign out calls NALA_SIGNOUT", pg.evaluate("()=>window.__out")==1)
     ck("and does not navigate away to '#'", "cleaners.html" in pg.url and "#" not in pg.url)

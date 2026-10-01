@@ -331,6 +331,56 @@ link anywhere. Six pages once kept private copies of the role filter and
 hid whatever they did not recognise; `pages_suite` still fails if any page
 keeps one.
 
+**The tab bar** (30 Sep, the owner's ask): icons along the foot of every
+ui2 page with a menu for the pages a login uses most - one icon a page,
+five at most and the menu after them, and only pages the login may
+open. `TABBAR` in `nala-shared.js` is the order of preference and a
+login gets the first five it may open (`tabsFor`, asking `canOpen`, so a
+page switched off in Settings leaves the bar and the menu together). The
+admin's five lead it, as ruled: Dashboard, Reservations, Cleans, Chat,
+Tasks, then the menu ("5 pages plus the menu", `mock-menu-rise.html`).
+The waiter and the manager get the same five once Chat and Tasks are
+opened (until then Front Desk and Spa stand in); the chef, housekeeping
+and the masseuse get what they can open, on the same bar ("They should
+all be the same", 1 Oct), the masseuse's Spa and the menu included. The menu icon raises the menu from the
+foot beside itself, the size it always was, every row with its page's
+icon (`PAGE_ICONS`), and the hamburger at the top stands down where the
+bar is. The page you are on is its icon in blue, and the counts are
+blue and stay on the icon of the page you are on - his rulings of the
+same day, after a red try he found confusing.
+The menu's counts ride on the icons. The page's footer stands on the
+bar; sheets and the select and save bars cover it. It stays put from
+page to page ("It should stay there", the same day): each page draws the
+icons the phone was last given as it opens, standing on auth.js's cover
+while the login lands, and the login's own replace them if they differ;
+Logout forgets them. The counts still arrive with each page, recounted.
+Not on the printed sheets, which wear the older dress.
+`tests/nav_canon.json` ("tabs") and `tabs_suite` hold it.
+
+Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
+("Study apple iPhone best practice including space below and icon line
+size"): a capsule 62pt tall floating 21pt above the foot of the screen
+and in from its sides, icons in a 28pt box, the page you are on in
+blue, the same capsule for every login however few its icons, and the
+compact one held sideways. The icons are Lucide's line icons, the owner's pick of
+four sets the same day (`mock-tab-icons.html`), with `list-todo` for the
+Dashboard and `clock-alert` for Tasks, the "do it now" jobs, drawn
+thinner than Lucide's own and with no name under them, his asks too
+(the name stays in the link for a screen reader). Where it parts from
+the phone, he chose to - line icons, thinner, no names - or a rule of
+this app did: grey selection not blue, solid white not glass, the
+menu's badge not red. STYLEGUIDE.md has the table of Apple's numbers and the
+sources.
+
+The same day the owner cleared the footers it would have sat under:
+Refresh on Reservations, Cleans and the Dashboard became a pull from the
+top (`pullToRefresh`, the Home Screen app only - browser tabs have their
+own), Reservations' Stats button became **Statistics** in the menu, and
+Cleans' Select multiple took the grid's eighteenth cell for the logins
+that can set a job, the key keeping it for everybody else. With its
+footer gone the Cleans board keeps all seventeen villas on one screen at
+every size cl_suite measures with the bar showing, sideways included.
+
 ---
 ## Key cards
 

@@ -122,7 +122,10 @@ sat beside a blue segment on the same sheet.
   to read.
 - **Destructive always asks**, and names the guest and the thing.
 - **Selected is grey, never black and never blue.** A pill saying "you
-  picked me" must not spend a colour that means something.
+  picked me" must not spend a colour that means something. The tab bar is
+  the one exception (the owner, 30 Sep: "no grey pill, just change icon
+  colour to blue"): the page you are on is its icon in the accent blue,
+  as the phone draws it.
 
 A page may set the LAYOUT of the row its buttons sit in. It may not dress
 them again. The roles live in `nala-ui2.css` and the aliases for each
@@ -199,8 +202,9 @@ of the row the buttons sit in - never the dress again.
 **Free-standing buttons are 8px** (ruled 27 Aug), matching the nav and date
 controls. The footer row is the exception and keeps the corner law below:
 it sits hard against the bottom of the screen, so it squares off and only
-the two outer lower corners round. `tally_suite` asserts those four corners
-by computed value.
+the two outer lower corners round. `tabs_suite` asserts those corners by
+computed value, on Pre-arrival SMS's Send since Reservations' footer went
+(30 Sep).
 
 ## What a press says back
 
@@ -285,12 +289,92 @@ sweep of a live system.
 Floating corner menus remain banned: a fixed element pinned over in-flow
 content is guaranteed to collide with something at some width.
 
+**The one pinned element is the tab bar** (the owner's ask, 30 Sep): icons
+along the foot of the screen, one per page a login uses most, five at
+most, and the menu after them. It answers the ban rather than ignoring it, with three rules that
+`tabs_suite` measures:
+
+- **The page ends above it.** Every page gets room at its end for the bar,
+  so the last row scrolls clear.
+- **The page's footer stands on it**, never under it: `.foot`, sticky or
+  fixed, sits on the bar's top edge, and a page's own fixed bar stands on
+  `var(--tabroom)`.
+- **Anything that rises from the foot covers it** - a sheet, the select
+  bar, a save bar - the way a sheet covers the page.
+
+It is drawn as the iPhone's own bar (iOS 26), the owner's ask the same
+day: "Study apple iPhone best practice including space below and icon line
+size". Apple's numbers, each held by `tabs_suite`:
+
+| | Apple | Here |
+|---|---|---|
+| The bar | a capsule floating over the page, 62pt tall | the same, `.tabrow` |
+| Space below | 21pt to the foot of the screen, where the home indicator lives | the same; the page keeps 83pt, `--tabroom` |
+| Space beside | 21pt from each side, more from a notch | the same, capped at the page's width |
+| Inside | 2pt from the capsule to the tabs | the same |
+| Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | Lucide's line icons (below), in a 28pt box; the Dashboard's checklist 23pt |
+| Line weight | the symbol's weight matched to its label's | thinner than Lucide's own 2: 1.5 on its 24 grid (below) |
+| Labels | 10pt semibold, 1pt under the icon | none shown (below), each kept for a screen reader |
+| Selected | a grey capsule as tall as the bar, the tint colour | the tint alone: the icon blue, no capsule (below) |
+| Counts | a red badge on the icon | a blue one, the accent's (below) |
+| More pages than fit | the More tab, last, opening the rest | the menu, fifth, rising from the foot (below) |
+| Two or three tabs | a narrow bar, 98pt a tab | the full bar: every login's is the same (the owner, 1 Oct, "They should all be the same"), and Safari drew the narrow one as one icon in a pill |
+| Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
+
+Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)
+("Prefer filled symbols or icons") and
+[SF Symbols](https://developer.apple.com/design/human-interface-guidelines/sf-symbols)
+(a tab bar takes a symbol's fill variant, a toolbar its outline); the
+system bar's measurements as taken for
+[FabBar](https://github.com/ryanashcraft/FabBar) (`Constants.swift`).
+
+Where it parts from the phone, the owner chose to, 30 Sep. Line icons
+where the phone fills its own: [Lucide](https://lucide.dev)'s, from four
+sets in `mock-tab-icons.html` ("Let's use lucid"), with `list-todo` for
+the Dashboard, which "is actually a daily checklist", and `clock-alert`
+for Tasks, which "are important 'do it now' jobs", `messages-square` for
+Chat, `chart-gantt` for Statistics. Drawn thinner than Lucide's own
+("Make icon line thinner"), and no name under them ("No text below
+icon"): the name stays in the link, out of sight, for a screen reader.
+Each icon is copied unchanged from Lucide's own file, named beside it in
+`PAGE_ICONS` with Lucide's licence, and the menu draws every page with
+its own. And one for a rule of this app: the bar is solid white, not
+glass, as nothing on paper lets the page through.
+
+Where it follows the phone at his word, 30 Sep, off `mock-menu-rise.html`
+("5 pages plus the menu", "no grey pill, just change icon colour to
+blue"): five pages and the menu after them, the phone's More tab, which
+raises the menu from the foot beside itself, the size the dropdown
+always was, within a thumb's reach, over a light shade a tap shuts it
+from - while the hamburger at the top stands down; and the page you are
+on in blue. The counts stay the accent's blue, not the phone's red, which
+he found confusing beside the red that means failure. A page's count
+stays on its icon while you are on it ("Don't mute the counters when the
+icon is selected"). What the menu holds and the bar does not show adds to
+the menu icon's count - Spa's, for the admin - and the menu icon is blue
+while you are on a page from the menu, as the phone's More tab is.
+
+What scrolls under the bar fades into the ground, as content does under
+the phone's bars, so a row is never cut by the capsule. Under a page's
+footer, or its own bar wearing `onbar` (Publish's), the strip is solid
+ground instead, so the footer and the bar read as one band. Beside the capsule a finger reaches
+the page. The page you are on is not a link.
+
+**A footer that only refreshes or lists is not kept for it** (the owner,
+30 Sep, the same day). Reservations and Cleans lost theirs: Refresh became
+a pull from the top, Reservations' Stats a page in the menu (Statistics,
+on the chef's bar), and Select multiple the Cleans grid's eighteenth cell.
+What stays at the foot of a page is its one primary action - Send,
+Publish - standing on the bar.
+
 **One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
 2026), uppercased by CSS. No ordinals, no long months, no year-less dates.
 
 ## Controls - identical on every staff page
 
-- **Nav menu**: three-bar button, fixed top right. Dropdown lists the other
+- **Nav menu**: where the tab bar is drawn, its last icon, raising the
+  menu from the foot with every row's icon (30 Sep); elsewhere a
+  three-bar button, fixed top right. It lists the other
   staff screens by their working names: Reservations (tally.html),
   Reservations Sheet (list.html), Cleans (cleaners.html), Clean sheet
   (housekeeping.html), always in that order - live board then its sheet,
@@ -302,11 +386,25 @@ content is guaranteed to collide with something at some width.
   rule border. Print tier: white. Hidden when printing. The row sits hard
   against the bottom of the screen, so the first button's bottom-left and
   the last button's bottom-right carry an 8px radius (matching the nav
-  button); every other corner in the row stays square.
+  button); every other corner in the row stays square. Where the tab bar
+  is drawn, the footer stands on it instead (see Header above). A
+  footer holds the page's primary action; Refresh is never one (below).
+- **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
+  nala-shared.js from `TABBAR`, never written into a page. The icons are
+  Lucide's, copied unchanged into `PAGE_ICONS` and named there, each
+  link's hidden name is the page's menu name, and a count from
+  `NAV_ACTIONS` rides on its icon; the menu is the fifth. Its dress, to
+  Apple's numbers, is under Header above.
+- **Pull to refresh** (since 30 Sep, in place of every Refresh button): a
+  board asks for it with `pullToRefresh()`. In the Home Screen app a pull
+  down from the very top shows a turning arrow, grey until a release would
+  reload and ink once it would; browser tabs keep their own. Never from
+  under a sheet, the menu or the bar.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 - **The action icon** (`.navbadge`, since 25 Aug): a number beside a menu
-  entry meaning "something in there waits on you". Amber, the colour law's
-  word for attention. It is never stored - `NAV_ACTIONS` in nala-shared.js
+  entry, and on its tab bar icon, meaning "something in there waits on
+  you". The accent's blue: the phone's red was tried on 30 Sep and ruled
+  back ("Counter is blue"). It is never stored - `NAV_ACTIONS` in nala-shared.js
   recomputes it from the queue it counts on every page load, which is how it
   "stays until the action is done" with nothing to remember to clear. First
   carried by Spa, counting suggestions awaiting the desk; add an entry to
@@ -526,9 +624,12 @@ board and on the printed sheet. Only management can set it.
 
 ## Multi-select on the Cleans board
 
-The footer carries Refresh on the left and Select multiple on the right. In
-select mode the button reads **Cancel** while nothing is picked and
-**Options** once something is, so one button covers the whole flow.
+**Select multiple** is the grid's eighteenth cell, bottom right, for the
+logins that can set a job; everyone else finds the key there, since the
+options it leads to are job controls only. It took the cell on 30 Sep,
+when the owner cleared the footer that held it and Refresh for the tab
+bar. In select mode it reads **Cancel** while nothing is picked and
+**Options** once something is, so one control covers the whole flow.
 
 Only villas whose job is **unknown** can be picked: the point is to decide
 several at once, and anything already decided has nothing to decide. Villas

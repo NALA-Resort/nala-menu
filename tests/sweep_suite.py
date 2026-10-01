@@ -374,9 +374,14 @@ def bring_into_view(h):
         h.scroll_into_view_if_needed(timeout=2500)
     except Exception:
         pass
+    # Covered counts as out of view: a control under the sticky footer or the
+    # tab bar (30 Sep) is on the screen and under a finger's reach of neither,
+    # and the forced click lands on whatever covers it - the tab bar's links
+    # navigate, and a dead control passed for having done something.
     try:
         h.evaluate("e=>{const r=e.getBoundingClientRect();"
-                   "if(r.bottom>innerHeight||r.top<0)"
+                   "const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);"
+                   "if(r.bottom>innerHeight||r.top<0||(hit&&hit!==e&&!e.contains(hit)))"
                    "window.scrollBy(0, r.top-innerHeight/2);}")
     except Exception:
         pass

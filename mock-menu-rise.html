@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Menu from the bar</title>
+<!-- Mock, 30 Sep. The owner, of mock-menu-tab.html's B: "Mock it up first
+     ... Counter is blue. Show html UX of pressing the menu icon and it
+     rising from the bottom. It doesn't need to be full width, same as
+     before is ok", and "5 pages plus the menu".
+
+     The admin's bar: Dashboard, Reservations, Cleans, Chat and Tasks, then
+     the menu, six icons. The page you are on is its icon in blue, no pill;
+     the counts are blue. The menu icon raises the menu from the foot, the
+     size the dropdown is today, beside the icon, over a light shade; the
+     icon, the shade or any row shuts it. The five icons move the page.
+
+     No script, on purpose: the owner's viewer runs none, and the first
+     build of this mock, drawn by script, showed him a blank page. The
+     menu's open state is a checkbox, the page a radio, the groups
+     <details>: CSS and the browser's own labels do the rest.
+
+     Labels and order are the menu's own (tests/nav_canon.json, 17b46cc).
+     The icons are Lucide's (lucide.dev), under its licence:
+     ISC License
+
+     Copyright (c) 2026 Lucide Icons and Contributors
+
+     Permission to use, copy, modify, and/or distribute this software for any
+     purpose with or without fee is hereby granted, provided that the above
+     copyright notice and this permission notice appear in all copies.
+
+     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+     WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+     MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+     ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+     WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+     ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+-->
+<style>
+  :root{ --ground:#FBFBF9; --surface:#FFFFFF; --rule:#E1E1DF; --card:#F0EFEC;
+         --ink:#1B1B19; --mid:#5F5F58; --accent:#1A66C2; --pill:999px;
+         --lift:0 1px 2px rgba(28,28,26,.06), 0 2px 10px rgba(28,28,26,.035);
+         --col:390px;
+         --barw:min(calc(var(--col) - 42px), calc(100vw - 42px));
+         --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--ground); color:var(--ink); font-family:var(--ui-font);
+        -webkit-tap-highlight-color:transparent; }
+  .sr{ position:absolute; opacity:0; pointer-events:none; width:1px; height:1px; }
+  .screen{ max-width:var(--col); margin:0 auto; padding:18px 18px 120px; }
+  .note{ font-size:12px; color:var(--mid); line-height:1.45; background:var(--surface);
+         border-radius:8px; box-shadow:var(--lift); padding:8px 10px; margin-bottom:18px; }
+  .head{ display:flex; align-items:baseline; justify-content:space-between; margin:6px 2px 16px; }
+  .head h1{ font-size:22px; font-weight:600; }
+  .head .date{ font-size:14px; color:var(--mid); }
+  .t{ display:none; }
+  .card{ background:var(--surface); border-radius:10px; box-shadow:var(--lift); padding:14px; margin-bottom:10px; }
+  .card .l1{ height:12px; width:62%; background:var(--card); border-radius:6px; }
+  .card .l2{ height:10px; width:38%; background:var(--card); border-radius:5px; margin-top:9px; }
+
+  /* the tab bar, as the app draws it: a capsule 62 tall, 21 off the foot
+     and the sides; six icons */
+  .tabbar{ position:fixed; z-index:30; bottom:21px; left:50%; width:var(--barw);
+           transform:translateX(-50%); height:62px; padding:2px; display:flex;
+           background:var(--surface); border-radius:var(--pill);
+           box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06), 0 6px 20px rgba(28,28,26,.10); }
+  .tab{ flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center;
+        color:var(--mid); cursor:pointer; border-radius:var(--pill); }
+  .tab:active{ opacity:.55; }
+  .ic{ position:relative; width:28px; height:28px; display:flex; }
+  svg{ width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.5;
+       stroke-linecap:round; stroke-linejoin:round; }
+  .badge{ position:absolute; top:-3px; left:calc(50% + 5px); min-width:18px; height:18px; padding:0 5px;
+          border-radius:var(--pill); background:var(--accent); color:#fff; font-size:12px;
+          display:flex; align-items:center; justify-content:center; }
+
+  /* the menu, risen from the foot beside its icon, the dropdown's size */
+  .shade{ position:fixed; inset:0; z-index:20; background:rgba(28,28,26,.16);
+          opacity:0; pointer-events:none; transition:opacity .2s ease; }
+  .menu{ position:fixed; z-index:40; bottom:calc(21px + 62px + 10px);
+         right:calc((100vw - var(--barw)) / 2); width:260px;
+         max-height:calc(100vh - 21px - 62px - 10px - 24px); overflow-y:auto;
+         background:var(--surface); border-radius:16px; padding:6px 0;
+         box-shadow:0 2px 6px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14);
+         transform-origin:calc(100% - 28px) 100%;
+         transform:translateY(18px) scale(.94); opacity:0; pointer-events:none;
+         transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease; }
+  #m:checked ~ .menu{ transform:none; opacity:1; pointer-events:auto; }
+  #m:checked ~ .shade{ opacity:1; pointer-events:auto; }
+  #m:checked ~ .tabbar .tm{ color:var(--accent); }
+  .row{ display:flex; align-items:center; gap:12px; width:100%; padding:11px 16px;
+        font-size:15px; color:var(--ink); cursor:pointer; list-style:none; }
+  .row::-webkit-details-marker{ display:none; }
+  .row:active{ background:var(--card); }
+  .row .ic{ width:22px; height:22px; color:var(--mid); }
+  .row .lbl{ flex:1 1 auto; }
+  .row .count{ min-width:20px; height:20px; padding:0 6px; border-radius:var(--pill);
+               background:var(--accent); color:#fff; font-size:12px;
+               display:flex; align-items:center; justify-content:center; }
+  .grp > summary{ border-top:1px solid var(--rule); }
+  .grp > summary .lbl{ padding-left:34px; }
+  .grp .chev{ width:16px; height:16px; color:var(--mid); transition:transform .15s ease; display:flex; }
+  .grp[open] .chev{ transform:rotate(180deg); }
+  .grp > label.row{ padding-left:28px; }
+  .row.out{ border-top:1px solid var(--rule); color:var(--mid); }
+  #p0:checked ~ .screen .t0{ display:inline; }
+  #p0:checked ~ .tabbar label[for=p0]{ color:var(--accent); }
+  #p0:checked ~ .tabbar .b0, #p0:checked ~ .menu .r-dashboard{ display:none; }
+  #p1:checked ~ .screen .t1{ display:inline; }
+  #p1:checked ~ .tabbar label[for=p1]{ color:var(--accent); }
+  #p1:checked ~ .tabbar .b1, #p1:checked ~ .menu .r-tally{ display:none; }
+  #p2:checked ~ .screen .t2{ display:inline; }
+  #p2:checked ~ .tabbar label[for=p2]{ color:var(--accent); }
+  #p2:checked ~ .tabbar .b2, #p2:checked ~ .menu .r-cleaners{ display:none; }
+  #p3:checked ~ .screen .t3{ display:inline; }
+  #p3:checked ~ .tabbar label[for=p3]{ color:var(--accent); }
+  #p3:checked ~ .tabbar .b3, #p3:checked ~ .menu .r-guestcontact{ display:none; }
+  #p4:checked ~ .screen .t4{ display:inline; }
+  #p4:checked ~ .tabbar label[for=p4]{ color:var(--accent); }
+  #p4:checked ~ .tabbar .b4, #p4:checked ~ .menu .r-tasks{ display:none; }
+  @media (prefers-reduced-motion:reduce){ .menu, .shade{ transition:none; } }
+</style>
+</head>
+<body>
+<input type="checkbox" id="m" class="sr" aria-label="Menu"><input type="radio" name="pg" id="p0" class="sr"><input type="radio" name="pg" id="p1" class="sr" checked><input type="radio" name="pg" id="p2" class="sr"><input type="radio" name="pg" id="p3" class="sr"><input type="radio" name="pg" id="p4" class="sr">
+<div class="screen">
+  <div class="note">Mock. Press the last icon, the menu: it rises from the foot, the size
+    it is today. Press a row, the page or the icon to shut it. The other icons move
+    the page. Nothing here is live.</div>
+  <div class="head"><h1><span class="t t0">Dashboard</span><span class="t t1">Reservations</span><span class="t t2">Cleans</span><span class="t t3">Chat</span><span class="t t4">Tasks</span></h1><div class="date">Sat 26th Sep</div></div>
+  <div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div><div class="card"><div class="l1"></div><div class="l2"></div></div>
+</div>
+<label class="shade" for="m"></label>
+<div class="menu" aria-label="Menu"><label class="row r-dashboard" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span><span class="lbl">Dashboard</span></label><label class="row r-calendar" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span><span class="lbl">Calendar</span></label><label class="row r-frontdesk" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg></span><span class="lbl">Front Desk</span></label><label class="row r-guestcontact" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span><span class="lbl">Chat</span><span class="count">1</span></label><label class="row r-tasks" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg></span><span class="lbl">Tasks</span><span class="count">2</span></label><label class="row r-keys" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><span class="lbl">Keys</span></label><label class="row r-tally" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span><span class="lbl">Reservations</span></label><label class="row r-cleaners" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span><span class="lbl">Cleans</span></label><label class="row r-spa" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg></span><span class="lbl">Spa</span><span class="count">3</span></label><label class="row r-publish" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/></svg></span><span class="lbl">Publish Menu</span></label><label class="row r-stats" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></svg></span><span class="lbl">Statistics</span></label><details class="grp"><summary class="row"><span class="lbl">Print</span><span class="chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></summary><label class="row r-list" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span><span class="lbl">FOH Sheet</span></label><label class="row r-housekeeping" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><span class="lbl">Clean Sheet</span></label><label class="row r-registration" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 22h20"/><path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z"/></svg></span><span class="lbl">Arrivals</span></label><label class="row r-menuprint" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></span><span class="lbl">Menu</span></label><label class="row r-pastmenus" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span><span class="lbl">Past Menus</span></label></details><details class="grp"><summary class="row"><span class="lbl">SMS</span><span class="chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></summary><label class="row r-invitations" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span><span class="lbl">Invitations</span></label><label class="row r-arrivalssms" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M21.34 15.664a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 22H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span><span class="lbl">Pre-arrival</span></label><label class="row r-spareminders" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span><span class="lbl">Spa reminders</span></label></details><details class="grp"><summary class="row"><span class="lbl">Settings</span><span class="chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></summary><label class="row r-staff" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span><span class="lbl">General</span></label><label class="row r-tag" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 22 10-10"/><path d="m16 8-1.17 1.17"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="m8 8-.53.53a3.5 3.5 0 0 0 0 4.94L9 15l1.53-1.53c.55-.55.88-1.25.98-1.97"/><path d="M10.91 5.26c.15-.26.34-.51.56-.73L13 3l1.53 1.53a3.5 3.5 0 0 1 .28 4.62"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="m16 16-.53.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.49 3.49 0 0 1 1.97-.98"/><path d="M18.74 13.09c.26-.15.51-.34.73-.56L21 11l-1.53-1.53a3.5 3.5 0 0 0-4.62-.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg></span><span class="lbl">Dietary</span></label><label class="row r-flags" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg></span><span class="lbl">Flags</span></label><label class="row r-pages" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg></span><span class="lbl">Pages</span></label><label class="row" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M22 8c0-2.3-.8-4.3-2-6"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/></svg></span><span class="lbl">Notifications</span></label></details><label class="row out" for="m"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span><span class="lbl">Logout</span></label></div>
+<nav class="tabbar" aria-label="Pages"><label class="tab" for="p0" aria-label="Dashboard"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></svg></span></label><label class="tab" for="p1" aria-label="Reservations"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span></label><label class="tab" for="p2" aria-label="Cleans"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg></span></label><label class="tab" for="p3" aria-label="Chat"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg><span class="badge b3">1</span></span></label><label class="tab" for="p4" aria-label="Tasks"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg><span class="badge b4">2</span></span></label><label class="tab tm" for="m" aria-label="Menu"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg><span class="badge">3</span></span></label></nav>
+</body>
+</html>
