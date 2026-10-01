@@ -582,6 +582,13 @@ search the branches (`git ls-tree -r --name-only origin/<branch>`) before
 calling anything missing. `worker/nala-push.js` sat on one from 29 Aug to
 1 Oct, while main's docs said the push Worker was not in the repo.
 
+A Worker calls another Worker through a Service binding, never by the
+other's workers.dev address: Cloudflare refuses that between Workers on
+one account (its error 1042), and a call nobody waits on fails without a
+word. Chat's alerts were lost that way until 1 Oct; nala-contact now
+reaches nala-push as `env.PUSH`. `worker/mews-sync.js` still calls
+nala-push by its address, three times.
+
 When he is to paste one, give the file's full link on main, never a path
 in the repo (the owner, 1 Oct: "Why are you only showing part of the
 URLs"): `https://github.com/NALA-Resort/nala-menu/blob/main/worker/<file>`,

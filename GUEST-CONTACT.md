@@ -494,6 +494,14 @@ Only the test phones can be messaged. From them:
    into `nala-contact` and Deploy, in that order:
    the old push Worker would send a guest's message as "Villa 7 -
    guestMessage", opening the Cleans board.
+   And `nala-contact` reaches `nala-push` through a **Service binding**
+   (Settings, Bindings, Add, Service binding: name `PUSH`, Worker
+   `nala-push`). Cloudflare refuses one Worker calling another's
+   workers.dev address on the same account (its error 1042), so without
+   it no guest's message buzzes anyone, though the page's task alerts,
+   sent from the browser, still do. Found 1 Oct, after both pastes; the
+   setup check on Chat says whether the binding reaches the push Worker
+   and what it answered for the last guest's message.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
    *own number* in ClickSend (its code arrives in Chat as a message;
    if ClickSend sends it from a name rather than a number, Chat has

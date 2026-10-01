@@ -782,8 +782,10 @@ None of these can move without him.
     paste, in either order: until both, a text sent again replaces the
     first, as it always has.
     Alerts: `worker/nala-push.js` knows Chat's two events (1 Oct); paste it
-    into nala-push, then `worker/guest-contact.js` into nala-contact. Who
-    is buzzed is Settings, Notifications; there is no BUZZ switch. The last
+    into nala-push, then `worker/guest-contact.js` into nala-contact, and
+    give nala-contact a Service binding PUSH to nala-push (Cloudflare's
+    error 1042 refuses the plain call). Who is buzzed is Settings,
+    Notifications; there is no BUZZ switch. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any
     time and changes nothing until that is set (GUEST-CONTACT.md).

@@ -89,11 +89,23 @@ ck("the signing reproduces Twilio's published example",
 /* ── one world per test ─────────────────────────────────────────── */
 const AUTH = "tok_live_secret";
 const BASE = "https://nala-contact.example.workers.dev";
+/* The push Worker as it answers: an empty call is refused without a read
+   or a send, a real one says how many phones it buzzed. Reached through
+   the Service binding PUSH; its public address, from another Worker on the
+   account, is Cloudflare's error 1042 (stubbed in fetch below). */
+const pushWorker = (u, opt) => {
+  const b = JSON.parse(opt.body || "{}");
+  if (!b.idToken || !b.event)
+    return new Response('{"error":"idToken and event required"}', { status: 400 });
+  BUZZ.push(b);
+  return new Response(JSON.stringify(STATE.pushAnswer || { sent: 1, removed: 0, failed: 0 }));
+};
+const PUSH = { fetch: async (u, opt) => pushWorker(u, opt) };
 const envOf = (over = {}) => Object.assign({
   TWILIO_ACCOUNT_SID: "AC123", TWILIO_AUTH_TOKEN: AUTH, TWILIO_FROM: "+61480000000",
   TWILIO_WA_FROM: "+61480000000", TPL_QUESTION_SID: "HXquestion", TPL_ARRIVAL_SID: "HXarrival",
-  CONTACT_EMAIL: "559210@staff.nala", CONTACT_PASSWORD: "559210", FB_API_KEY: "fb" }, over);
-let STORE, SENT, BUZZ, STATE, WRITES, CDN;
+  CONTACT_EMAIL: "559210@staff.nala", CONTACT_PASSWORD: "559210", FB_API_KEY: "fb", PUSH }, over);
+let STORE, SENT, BUZZ, STATE, WRITES, CDN, PUBLIC;
 /* Chat and Tasks opened to the staff, as Settings does it: the world these
    checks run in. The preview's shut side is checked on its own below. */
 const OPEN = { "guest-contact": true, tasks: true };
@@ -101,7 +113,7 @@ const SARAH = "61412345678", LEA = "33612345678";
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Brisbane",
   year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 function install() {
-  STORE = {}; SENT = []; BUZZ = []; WRITES = []; CDN = [];
+  STORE = {}; SENT = []; BUZZ = []; WRITES = []; CDN = []; PUBLIC = [];
   STATE = { email: "waiter@nala.x", tokenOk: true, loginOk: true, twilioOk: true };
   forgetToken();
   STORE["/permissions"] = { open: Object.assign({}, OPEN) };
@@ -169,7 +181,8 @@ function install() {
       if (auth) return new Response("Only one auth mechanism allowed", { status: 400 });
       return new Response("JPEGBYTES", { status: 200, headers: { "Content-Type": "image/jpeg" } });
     }
-    if (u.includes("nala-push")) { BUZZ.push(JSON.parse(opt.body)); return new Response("{}"); }
+    /* nala-push's public address, from a Worker on the same account */
+    if (u.includes("nala-push")) { PUBLIC.push(u); return new Response("error code: 1042", { status: 404 }); }
     const [path, query] = u.split("firebasedatabase.app")[1].split(".json");
     const token = new URLSearchParams(query.slice(1)).get("auth");
     /* dbRefuse: the rules before their paste, which refuse the Worker */
@@ -686,8 +699,11 @@ const check = async (env = envOf()) => {
 install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
 let c = await check();
 ck("set up as the steps say, every line of the check is working, in the steps' order",
-   c.status === 200 && ["twilio", "number", "webhook", "login", "rules"].every((k) => c.by[k] && c.by[k].ok === true) &&
-   c.list.map((x) => x.key).join() === "twilio,number,webhook,login,rules,test,whatsapp", c.list);
+   c.status === 200 && ["twilio", "number", "webhook", "login", "rules", "alerts"].every((k) => c.by[k] && c.by[k].ok === true) &&
+   c.list.map((x) => x.key).join() === "twilio,number,webhook,login,rules,alerts,test,whatsapp", c.list);
+ck("the push Worker found through its binding, asked with a call that buzzes nobody",
+   /reach the push Worker, through its binding/.test(c.by.alerts.say) && BUZZ.length === 0 && PUBLIC.length === 0,
+   [c.by.alerts, BUZZ, PUBLIC]);
 ck("and what is only for knowing says so: test mode, WhatsApp",
    c.by.test.ok === null && /Test mode is off/.test(c.by.test.say) && c.by.whatsapp.ok === null &&
    /WhatsApp is set up/.test(c.by.whatsapp.say));
@@ -745,6 +761,48 @@ c = await check(envOf({ TWILIO_WA_FROM: "", TEST_NUMBERS: "0412 345 678", TWILIO
 ck("a setting left out is named by its name, and test mode counts its phones",
    c.by.twilio.ok === false && /TWILIO_AUTH_TOKEN is not set/.test(c.by.twilio.say) &&
    /only message 1 phone/.test(c.by.test.say) && /not set up yet/.test(c.by.whatsapp.say), c.list);
+
+/* Phone alerts (1 Oct). The owner: "Both are pasted and deployed ... but
+   notifications are not working". A Worker calling another's workers.dev
+   address on the same account is refused by Cloudflare (error 1042), so
+   every guest's alert was lost; a Service binding reaches it. */
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+await inbound({ From: "+61412345678", Body: "No binding", MessageSid: "SMnb1" }, undefined, envOf({ PUSH: undefined }));
+await settle();
+c = await check(envOf({ PUSH: undefined }));
+ck("without the binding, the alert is lost to Cloudflare's 1042, and the check says how to bind it",
+   BUZZ.length === 0 && PUBLIC.length >= 1 && c.by.alerts.ok === false &&
+   /Service binding named PUSH to the Worker nala-push/.test(c.by.alerts.say), [BUZZ, c.by.alerts]);
+ck("and says the last guest message's alert did not go, in Cloudflare's words, with when",
+   c.by.buzz && c.by.buzz.ok === false && /did not go: the push Worker answered 404: error code: 1042/.test(c.by.buzz.say) &&
+   !!c.by.buzz.at, c.by.buzz);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.pushAnswer = { sent: 2, removed: 0, failed: 0 };
+await inbound({ From: "+61412345678", Body: "Bound", MessageSid: "SMb1" });
+await settle();
+c = await check();
+ck("with it, the alert goes through the binding, and the check tells how many phones it buzzed",
+   BUZZ.length === 1 && PUBLIC.length === 0 && c.by.alerts.ok === true &&
+   c.by.buzz && c.by.buzz.ok === null && /buzzed 2 phones\./.test(c.by.buzz.say), [BUZZ, PUBLIC, c.by.buzz]);
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.pushAnswer = { sent: 0, skipped: "quiet hours" };
+await inbound({ From: "+61412345678", Body: "Late", MessageSid: "SMq9" });
+await settle();
+ck("quiet hours say so, as Settings names them", /buzzed no phone: quiet hours \(Settings, Notifications\)/
+   .test((await check()).by.buzz.say));
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.pushAnswer = { sent: 0, removed: 0, failed: 0 };
+await inbound({ From: "+61412345678", Body: "Nobody", MessageSid: "SMn0" });
+await settle();
+ck("no phone of a ticked role: said, with where to tick and where to turn Notifications on",
+   /none of the roles ticked for Guest message/.test((await check()).by.buzz.say));
+install(); STATE.email = "mgr@nala.x"; STORE["/staff/559210@staff,nala"] = { role: "contact" };
+STATE.pushAnswer = { sent: 1, removed: 0, failed: 1 };
+await inbound({ From: "+61412345678", Body: "Refused", MessageSid: "SMf1" });
+await settle();
+c = await check();
+ck("a phone's push service refusing it is a line to fix",
+   c.by.buzz.ok === false && /buzzed 1 phone, and 1 phone's push service refused it/.test(c.by.buzz.say), c.by.buzz);
 
 /* Twilio's Debugger webhook (Monitor, Settings), which the owner found:
    its error reports join the check. */

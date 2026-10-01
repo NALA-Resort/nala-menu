@@ -699,10 +699,13 @@ with sync_playwright() as p:
         coverBg:c?getComputedStyle(c).backgroundColor:null,
         ground:getComputedStyle(document.body).backgroundColor,
         paints:window.__barPaints, role:!!window.NALA_ROLE,
-        kept:localStorage.getItem('nala-tabs')};}"""
+        kept:localStorage.getItem('nala-tabs'),
+        chat:(document.querySelector('#tab-guest-contact .navbadge')||{}).textContent||'',
+        menuN:(document.querySelector('#tab-menu .navbadge')||{}).textContent||''};}"""
     ctx, pg = open_as(b, EMAIL["admin"], "dashboard.html")
     s = pg.evaluate(STAY)
     ck("a login's icons are kept on the phone", s["kept"] == ADMIN, s["kept"])
+    was = s
     # A tap on Reservations, its login held back as on a slow phone.
     pg.add_init_script("window.__HOLD=1500;")
     miss = press(pg, "#tab-tally")
@@ -712,6 +715,10 @@ with sync_playwright() as p:
     ck("the next page draws them before its login lands",
        not miss and not s["role"] and s["cover"] == "waiting" and s["tabs"] == ADMIN, miss or s)
     ck("in its first frame", s["paints"] == 0, s["paints"])
+    # The owner, 1 Oct: the counts were "still flashing between page loads"
+    ck("with the counts they last wore, Chat's and the menu's, so nothing flashes",
+       was["chat"] != "" and was["menuN"] != "" and
+       s["chat"] == was["chat"] and s["menuN"] == was["menuN"], (was, s))
     ck("with its own icon lit", s["here"] == "tab-tally", s["here"])
     ck("standing on the cover, where a finger reaches it", s["onTop"], s)
     ck("and the cover wears the page's own ground, not auth.js's cream",
@@ -727,7 +734,26 @@ with sync_playwright() as p:
     ck("and the menu's icon raises the menu",
        not miss and pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"), miss)
     miss = press(pg, "#navSignout"); pg.wait_for_timeout(200)
-    ck("Logout forgets the icons", not miss and pg.evaluate("()=>localStorage.getItem('nala-tabs')") is None, miss)
+    ck("Logout forgets the icons, and their counts", not miss and
+       pg.evaluate("()=>[localStorage.getItem('nala-tabs'), localStorage.getItem('nala-counts')]") == [None, None], miss)
+    ctx.close()
+
+    # The menu's icon is a sum - Spa's count, for the admin - so it keeps
+    # what it wore until every page it counts for has answered: Chat's
+    # answer landing first must not wipe it for the moment Spa's takes.
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html")
+    MENU_N = "()=>(document.querySelector('#tab-menu .navbadge')||{}).textContent||''"
+    had = pg.evaluate(MENU_N)
+    HELD = []
+    pg.route("**firebasedatabase.app/spa.json**", lambda r: HELD.append(r))
+    pg.reload(); pg.wait_for_timeout(1500)
+    held = pg.evaluate(MENU_N)
+    chat_in = pg.evaluate("()=>!!window.NALA_ROLE && 'guest-contact.html' in NAV_N")
+    for r in HELD: r.fallback()
+    pg.wait_for_timeout(600)
+    ck("the menu's icon keeps its sum while Spa's answer is still on its way, Chat's already in",
+       had != "" and HELD and chat_in and held == had and pg.evaluate(MENU_N) == had,
+       (had, held, chat_in, len(HELD), pg.evaluate(MENU_N)))
     ctx.close()
 
     # A phone handed to another login: the admin's icons give way to the
