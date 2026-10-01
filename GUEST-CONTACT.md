@@ -488,8 +488,10 @@ Only the test phones can be messaged. From them:
    get set ... from inside the application settings"). The `BUZZ` variable
    that held them back until the push Worker knew the events is gone, and
    one left in Cloudflare is ignored. To switch them on: paste
-   `worker/nala-push.js` into `nala-push` and Deploy, then
-   `worker/guest-contact.js` into `nala-contact` and Deploy, in that order:
+   https://github.com/NALA-Resort/nala-menu/blob/main/worker/nala-push.js
+   into `nala-push` and Deploy, then
+   https://github.com/NALA-Resort/nala-menu/blob/main/worker/guest-contact.js
+   into `nala-contact` and Deploy, in that order:
    the old push Worker would send a guest's message as "Villa 7 -
    guestMessage", opening the Cleans board.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an

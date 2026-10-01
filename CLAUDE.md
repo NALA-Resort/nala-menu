@@ -582,6 +582,12 @@ search the branches (`git ls-tree -r --name-only origin/<branch>`) before
 calling anything missing. `worker/nala-push.js` sat on one from 29 Aug to
 1 Oct, while main's docs said the push Worker was not in the repo.
 
+When he is to paste one, give the file's full link on main, never a path
+in the repo (the owner, 1 Oct: "Why are you only showing part of the
+URLs"): `https://github.com/NALA-Resort/nala-menu/blob/main/worker/<file>`,
+whose Copy raw file button takes the whole file. The link shows the new
+code only once it is published.
+
 ## Secrets
 
 Nothing secret goes in this repo — it is public. Worker credentials live in
