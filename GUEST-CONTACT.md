@@ -153,6 +153,12 @@ and incoming message including dinner invitations and pre-arrival form"):
   reply opens free text again. Or **SMS instead**.
 - *This guest texted STOP* - nothing can be sent until they text START.
 
+The box is the iPhone's (the owner, 1 Oct): it stands on the tab bar at
+the foot of the screen however far back the conversation is read, grows a
+line for every line typed (to half the screen, then scrolls), and Send is
+a round blue arrow in its right end, grey until there are words. A reader
+at the newest message stays there while a photo loads or the box grows.
+
 **Tasks** (`tasks.html`, beside it in the menu). Each login sees the open
 tasks of its teams, in the guest's own words, and presses Done. The desk
 sees every team. The menu entry counts what is open.

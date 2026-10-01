@@ -123,6 +123,20 @@ with sync_playwright() as p:
     last = pg.evaluate("()=>[...document.querySelectorAll('.msg.out .meta')].map(e=>e.textContent).pop()")
     ck("and its receipts come, as the handset's would", "Read" in last or "Delivered" in last, last)
 
+    # the box and Send, the phone's (the owner, 1 Oct): on the bar, and the
+    # newest message in sight above them once Sarah's photo has come
+    go("guest-contact.html?c=61412345678")
+    g = pg.evaluate("""()=>{const c=document.getElementById('compose').getBoundingClientRect(),
+        t=document.getElementById('tabBar'), ph=document.querySelector('#msgs img.photo'),
+        m=[...document.querySelectorAll('#msgs .msg')].pop().getBoundingClientRect();
+      return {ct:c.top, cb:c.bottom, bar:t?t.getBoundingClientRect().top:null, last:m.bottom,
+              photo:ph?ph.naturalHeight:0}}""")
+    ck("Sarah's conversation opens on her newest message, above the box on the bar, her photo in",
+       g["photo"] > 0 and g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and g["last"] <= g["ct"] + 1, g)
+    pg.fill("#msgBox", "One\nTwo\nThree"); pg.wait_for_timeout(150)
+    h = pg.evaluate("()=>document.getElementById('msgBox').getBoundingClientRect().height")
+    ck("and the box grows with the words", h >= 40 + 2 * 22, h)
+
     # past the 24 hours: James
     go("guest-contact.html?c=61438220761&t=up")
     ck("James wrote six days ago, so the box offers only the approved words, or SMS",

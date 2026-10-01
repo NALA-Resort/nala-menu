@@ -635,6 +635,47 @@ with sync_playwright() as p:
     ck("a team the message already has a task with is not offered again", "Maintenance" not in teams and "Bar" in teams, teams)
     pg.click("#cx-in-SMumbrella"); pg.wait_for_timeout(150)
     ck("and Cancel puts the message back as it was", tri("in-SMumbrella").startswith("Maintenance · open Done"))
+    # ── the box and Send, the phone's (the owner, 1 Oct) ──────────────
+    # "sticky above the footer menu", a box that grows "so the whole
+    # message can be seen", and Send "on side of text Box"
+    GEO = """()=>{const r=q=>document.querySelector(q).getBoundingClientRect();
+      const c=r('#compose'), t=document.getElementById('tabBar'), x=r('#msgBox'), s=r('#sendBtn');
+      const box=document.getElementById('msgBox'), el=document.scrollingElement;
+      const m=[...document.querySelectorAll('#msgs .msg')].pop();
+      return {ct:c.top, cb:c.bottom, bar:t?t.getBoundingClientRect().top:null,
+              strip:t?getComputedStyle(t).backgroundImage:null,
+              x:[x.left,x.top,x.right,x.bottom], h:x.height, s:[s.left,s.top,s.right,s.bottom],
+              dis:document.getElementById('sendBtn').disabled, sh:box.scrollHeight, ch:box.clientHeight,
+              oy:getComputedStyle(box).overflowY, last:m?m.getBoundingClientRect().bottom:null,
+              top:el.scrollTop, end:el.scrollTop+innerHeight>=el.scrollHeight-1,
+              long:el.scrollHeight>innerHeight*1.5, half:innerHeight/2}}"""
+    g = pg.evaluate(GEO)
+    ck("the box and Send stand on the tab bar, the newest message above them",
+       g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and g["end"] and g["last"] <= g["ct"] + 1, g)
+    ck("and the strip under the bar is solid there, as under any page's footer", g["strip"] == "none", g)
+    ck("the box starts one line tall, with Send, round, in its right end and grey until there are words",
+       g["h"] == 40 and g["s"][2] - g["s"][0] == 32 and g["s"][3] - g["s"][1] == 32 and
+       g["x"][2] - 8 <= g["s"][2] <= g["x"][2] and g["x"][1] <= g["s"][1] and g["s"][3] <= g["x"][3] and
+       g["dis"], g)
+    pg.evaluate("()=>window.scrollTo(0,0)"); pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("read from the top of the conversation, they stay on the bar",
+       g["long"] and g["top"] == 0 and abs(g["cb"] - g["bar"]) <= 1, g)
+    pg.evaluate("()=>window.scrollTo(0,document.scrollingElement.scrollHeight)"); pg.wait_for_timeout(150)
+    pg.fill("#msgBox", "Happy birthday to Tom!\nThe kitchen will bring a candle with dessert.\n"
+                       "Is there a time that suits?\nWe can also chill a bottle of something.\nJust say.")
+    pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("five lines typed: the box grows to show them all, Send at its foot and blue",
+       g["h"] >= 40 + 4 * 22 and g["sh"] <= g["ch"] + 1 and g["oy"] == "hidden" and
+       abs((g["x"][3] - 4) - g["s"][3]) <= 1 and not g["dis"], g)
+    ck("still on the bar, and the page followed, so the newest message is not under the box",
+       abs(g["cb"] - g["bar"]) <= 1 and g["end"] and g["last"] <= g["ct"] + 1, g)
+    pg.fill("#msgBox", "\n".join("Line %d of a very long message" % i for i in range(40)))
+    pg.wait_for_timeout(150)
+    g = pg.evaluate(GEO)
+    ck("a very long one stops at half the screen and scrolls inside the box",
+       g["h"] <= g["half"] + 1 and g["oy"] == "auto" and g["sh"] > g["ch"], g)
     del SENT[:]
     pg.fill("#msgBox", "Happy birthday to Tom!")
     pg.click("#sendBtn"); pg.wait_for_timeout(700)
@@ -643,6 +684,9 @@ with sync_playwright() as p:
        len(sends) == 1 and sends[0]["text"] == "Happy birthday to Tom!" and sends[0]["ck"] == SARAH and
        sends[0]["booking"] == "b-sarah" and "via" not in sends[0] and "template" not in sends[0], sends)
     ck("and the box empties once it has gone", pg.input_value("#msgBox") == "")
+    g = pg.evaluate(GEO)
+    ck("back to one line, Send grey again, its arrow back", g["h"] == 40 and g["dis"] and
+       pg.evaluate("()=>!!document.querySelector('#sendBtn svg')"), g)
     done(pg)
 
     STATE["send"] = (403, {"test": True, "error": "Test mode: only the test phones can be messaged."})
@@ -667,6 +711,15 @@ with sync_playwright() as p:
     ck("and offers the approved messages, Your arrival to a guest still to arrive",
        chips == [["A quick question", True], ["Your arrival", False]], chips)
     ck("with no box to type free text into", not pg.is_visible("#msgBox"))
+    g = pg.evaluate("""()=>{const c=document.getElementById('compose').getBoundingClientRect(),
+        t=document.getElementById('tabBar'), el=document.scrollingElement,
+        s=document.getElementById('sendBtn').getBoundingClientRect(),
+        p=document.querySelector('#tplPrev .bub').getBoundingClientRect();
+      return {cb:c.bottom, bar:t?t.getBoundingClientRect().top:null, short:el.scrollHeight<=innerHeight+1,
+              s:[s.left,s.top,s.right,s.bottom], p:[p.left,p.top,p.right,p.bottom], dis:document.getElementById('sendBtn').disabled}}""")
+    ck("a short conversation's words stand on the bar too, Send beside them, never over them",
+       g["short"] and g["bar"] is not None and abs(g["cb"] - g["bar"]) <= 1 and
+       g["s"][0] >= g["p"][2] and g["s"][3] <= g["p"][3] + 1 and not g["dis"], g)
     ck("the preview is the approved words with the guest's name",
        pg.text_content("#tplPrev") == "Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?")
     pg.click("#tpl-arrival"); pg.wait_for_timeout(100)

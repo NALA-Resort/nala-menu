@@ -154,19 +154,41 @@
   .sbtn.saving { background:var(--law-wait); color:var(--mid); }
   .trifail { flex-basis:100%; font-size:var(--t2); color:var(--law-red); }
 
-  .compose { margin-top:18px; }
   .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
   /* Templates sits on the line that says which way a message goes (the
      owner, 30 Sep: "we should have access to all the templates from the
-     send area"). A button, so bordered as one. */
-  .winrow { display:flex; align-items:flex-start; gap:10px; margin:0 2px 8px; }
-  .winrow .win { flex:1; margin:0; }
+     send area"). A button, so bordered as one; and the way back to typing
+     beside it, so the box keeps its row to itself (1 Oct). Where the words
+     leave no room for them, the buttons drop under them together. */
+  .winrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin:0 2px 8px; }
+  .winrow .win { flex:1 1 150px; margin:0; }
+  .wbtns { display:flex; gap:8px; margin-left:auto; }
   .winrow .sbtn { flex:0 0 auto; }
   .sheet .tg { font-size:var(--t2); font-weight:600; margin:16px 0 6px; }
   .sheet .tw { font-size:var(--t2); color:var(--mid); line-height:1.45; margin:0 0 6px; }
   .sheet .tbtns { display:flex; flex-wrap:wrap; gap:8px; }
   .win b { font-weight:600; color:var(--ink); }
-  .compose textarea { min-height:96px; line-height:1.45; resize:vertical; display:block; }
+  /* The box grows with the message, as the phone's does (the owner, 1 Oct:
+     "so the whole message can be seen"): one line to start, a line more
+     for every line typed, to half the screen and then it scrolls
+     (fitBox). Send is the phone's too: a round blue arrow in the box's
+     right end, held at its foot as the box grows, so it takes no row of
+     its own ("on side of text Box"). Grey until there are words to send.
+     The arrow is Lucide's arrow-up, its path unchanged and its line a
+     touch heavier than Lucide's 2, as the phone's arrow is bold. */
+  .inrow { position:relative; }
+  body.ui2 .compose textarea { display:block; min-height:40px; height:40px; padding:8px 48px 8px 14px;
+                              border-radius:20px; line-height:22px; resize:none; overflow-y:hidden; }
+  #tplPrev:not(:empty) { padding-right:44px; max-height:45vh; overflow-y:auto; }
+  .sendgo { position:absolute; right:4px; bottom:4px; width:32px; height:32px; padding:0;
+            border:0; border-radius:50%; background:#0A84FF; color:#fff; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            font-family:var(--ui-font); font-size:var(--t3); line-height:1; }
+  .sendgo svg { width:20px; height:20px; display:block; fill:none; stroke:currentColor;
+                stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .sendgo:disabled { background:#C9C9C4; cursor:default; }
+  .sendgo.saving { background:#C9C9C4; }
+  .sendgo.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
   .tpls { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
   .chip { display:inline-flex; align-items:center; min-height:36px; padding:0 14px;
           border:1px solid var(--rule); border-radius:var(--pill);
@@ -217,11 +239,22 @@
   .sheet .btn { margin-top:8px; }
   .sheet .err { font-size:var(--t2); color:var(--law-red); line-height:1.45; margin-top:10px; }
   #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
-  /* A conversation's box and its Send sit at the END of the conversation,
-     where the newest message is, not pinned to the screen: a pinned Send
-     floated over the messages while the box it sends stayed out of sight.
-     The page opens scrolled to the bottom instead. */
-  #threadView .foot { position:static; margin-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  /* The box and its Send stand on the tab bar, as the phone's stand on
+     its keyboard (the owner, 1 Oct: "the text area and send button should
+     be sticky above the footer menu ... Same as iPhone"): at the foot of
+     the screen however far back the conversation is read, and at the foot
+     of a short one too, with the messages fading under them. Until then
+     they sat at the end of the conversation, because a pinned Send once
+     floated over the messages while the box it sent stayed out of sight;
+     box and Send are one bar now, so neither is seen without the other.
+     The strip under the bar is solid here, as under any page's footer. */
+  #threadView { display:flex; flex-direction:column; flex:1 0 auto; }
+  #threadView .compose { position:sticky; bottom:var(--tabroom); z-index:4; margin-top:auto;
+                         padding:14px 0 10px;
+                         background:linear-gradient(to bottom, transparent, var(--ground) 14px); }
+  body.ui2:not(.hastabs) #threadView .compose { padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+  body.ui2.hastabs.inthread .tabbar { background:var(--ground); }
+  body.inthread #errBar:empty { margin:0; }
   #sendErr { margin:8px 2px 0; }
 
 /* ── paper ───────────────────────────────────────────────────────────
@@ -273,16 +306,17 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
   <div id="msgs"></div>
   <div class="compose" id="compose">
     <div class="winrow"><div class="win" id="win"></div>
-      <button class="sbtn" id="tmplBtn" type="button" style="display:none">Templates</button></div>
+      <div class="wbtns">
+        <button class="sbtn" id="writeBtn" type="button" style="display:none">Write instead</button>
+        <button class="sbtn" id="viaBtn" type="button" style="display:none">SMS instead</button>
+        <button class="sbtn" id="tmplBtn" type="button" style="display:none">Templates</button></div></div>
     <div class="tpls" id="tpls"></div>
-    <div id="tplPrev"></div>
-    <textarea id="msgBox" aria-label="Message"></textarea>
-  </div>
-  <div class="savefail" id="sendErr"></div>
-  <div class="foot" id="foot">
-    <button class="btn" id="writeBtn" style="display:none">Write instead</button>
-    <button class="btn" id="viaBtn" style="display:none">SMS instead</button>
-    <button class="btn solid" id="sendBtn">Send</button>
+    <div class="inrow" id="inRow">
+      <div id="tplPrev"></div>
+      <textarea id="msgBox" rows="1" aria-label="Message"></textarea>
+      <button class="sendgo" id="sendBtn" type="button" aria-label="Send" title="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+    </div>
+    <div class="savefail" id="sendErr"></div>
   </div>
 </div>
 
@@ -934,7 +968,7 @@ function drawThread(){
   loadPhotos();
   drawCompose();
   DRAWN = true;
-  if (atEnd) window.scrollTo(0, el.scrollHeight);
+  if (atEnd) toEnd();
 }
 
 /* The box, which says which way the words will go before they go. */
@@ -948,15 +982,15 @@ function untilWords(ms){
   var d = new Date(ms);
   return timeOf(d.toISOString()) + (dkey(d) === dkey(new Date()) ? ' today' : ' tomorrow');
 }
-function drawCompose(){
+function drawCompose(){ composeState(); fitBox(); armSend(); }
+function composeState(){
   var c = channelNow(), t = TH.t || {};
   var win = document.getElementById('win'), box = document.getElementById('msgBox');
   var tpls = document.getElementById('tpls'), prev = document.getElementById('tplPrev');
-  var via = document.getElementById('viaBtn'), send = document.getElementById('sendBtn');
-  var foot = document.getElementById('foot');
+  var via = document.getElementById('viaBtn'), row = document.getElementById('inRow');
   var tb = document.getElementById('tmplBtn'), back = document.getElementById('writeBtn');
   tpls.innerHTML = ''; prev.innerHTML = '';
-  box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
+  box.style.display = ''; row.style.display = ''; via.style.display = 'none';
   tb.style.display = 'none'; back.style.display = 'none';
   var name = TH.b ? TH.b.first : '';
   /* Reply to guests, a switch per role in Settings (30 Sep): switched off,
@@ -964,17 +998,16 @@ function drawCompose(){
   if (!can(window.NALA_ROLE, 'guestReply')){
     win.innerHTML = 'Replying to guests is switched off for this login. An admin can switch it ' +
       'on in Settings, General, Roles.';
-    box.style.display = 'none'; foot.style.display = 'none';
+    row.style.display = 'none';
     return;
   }
   if (c.ch === 'none'){
     win.innerHTML = 'This guest texted <b>' + esc(t.optout.word || 'STOP') + '</b> ' +
       esc(stampOf(t.optout.at)) + '. Nothing can be sent until they text START.';
-    box.style.display = 'none'; foot.style.display = 'none';
+    row.style.display = 'none';
     return;
   }
   tb.style.display = '';
-  send.disabled = !window.__idToken;
   /* A template of an SMS page's, chosen from the sheet: its words as the
      guest will read them, then Send, or back to typing. */
   if (PICKT){
@@ -1010,8 +1043,55 @@ function drawCompose(){
       (HELLO && !HELLO.wa && waAgreed(t) ? ' · WhatsApp is not set up yet' : '');
   if (c.chosen){ via.style.display = ''; via.textContent = 'Approved message'; }
   box.placeholder = 'Message ' + (name || 'the guest');
-  send.disabled = !window.__idToken;
 }
+/* Send waits for words, as the phone's does: grey while the box is empty,
+   and never mid-send. A template's words, when shown, are the words. */
+function armSend(){
+  var s = document.getElementById('sendBtn'), box = document.getElementById('msgBox');
+  if (s.__saving || s.classList.contains('saved')) return;
+  s.disabled = !window.__idToken || (box.style.display !== 'none' && !box.value.trim());
+}
+/* The box as tall as what is in it, to half the screen; past that it
+   scrolls. The row holds its height while the box is measured, so the
+   page never shortens under the reader for that instant. */
+function fitBox(){
+  var box = document.getElementById('msgBox');
+  if (!box.offsetParent) return;
+  var row = box.parentNode, cs = getComputedStyle(box);
+  row.style.minHeight = row.offsetHeight + 'px';
+  box.style.height = 'auto';
+  var want = box.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  var max = Math.max(84, Math.round((window.visualViewport ? visualViewport.height : window.innerHeight) / 2));
+  box.style.height = Math.min(want, max) + 'px';
+  box.style.overflowY = want > max ? 'auto' : 'hidden';
+  row.style.minHeight = '';
+}
+document.getElementById('msgBox').addEventListener('input', function(){ fitBox(); armSend(); });
+window.addEventListener('resize', fitBox);
+/* The newest message stays in sight, as the phone keeps it: a reader at
+   the end of the conversation stays at the end while anything grows
+   under them - a guest's photo arriving after the page opened, the box
+   growing a line, a template's words taking its place. Until 1 Oct a
+   photo pushed the newest lines out of sight on opening. A reader
+   further back is left where they are.
+   Only the reader's own scrolling says where they are: the page's jump to
+   the end is told apart by where it left the page, since its scroll
+   event can arrive after the photo has already grown. */
+var STICK = true, OWN_TOP = -1;
+function toEnd(){
+  var el = document.scrollingElement || document.documentElement;
+  window.scrollTo(0, el.scrollHeight);
+  OWN_TOP = el.scrollTop; STICK = true;
+}
+window.addEventListener('scroll', function(){
+  var el = document.scrollingElement || document.documentElement;
+  if (el.scrollTop === OWN_TOP) return;
+  OWN_TOP = -1;
+  STICK = el.scrollTop + window.innerHeight >= el.scrollHeight - 80;
+}, { passive:true });
+if (window.ResizeObserver) new ResizeObserver(function(){
+  if (CK && DRAWN && STICK) toEnd();
+}).observe(document.getElementById('threadView'));
 
 /* Photos come through the Worker, which fetches them from Twilio with the
    account's credentials; the page never holds those. */
@@ -1338,9 +1418,8 @@ function sendTemplate(btn){
           e = new Error(one.error || 'it did not send'); e.said = true; throw e;
         }
       });
-  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
-       then: function(){ PICKT = null; SENT_AT = 0; var s = document.getElementById('sendBtn');
-                         armSave(s); s.textContent = 'Send';
+  }, { busy:'\u2026', done:'\u2713', hold:400, fail: err,
+       then: function(){ PICKT = null; SENT_AT = 0; armSave(document.getElementById('sendBtn'));
                          /* back to typing now: the refresh redraws only a
                             conversation that has moved */
                          drawCompose();
@@ -1371,9 +1450,9 @@ document.getElementById('sendBtn').onclick = function(){
           e.said = true; throw e;
         }
       });
-  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
-       then: function(){ box.value = ''; VIA = ''; var s = document.getElementById('sendBtn');
-                         armSave(s); s.textContent = 'Send'; refresh(); } });
+  }, { busy:'\u2026', done:'\u2713', hold:400, fail: err,
+       then: function(){ box.value = ''; VIA = ''; armSave(document.getElementById('sendBtn'));
+                         fitBox(); armSend(); refresh(); } });
 };
 
 /* ── the whole page ──────────────────────────────────────────── */
@@ -1483,6 +1562,7 @@ function showAccess(allowed, e){
   box.className = 'noaccess' + (on ? ' show' : '');
   document.getElementById('listView').style.display = on || CK ? 'none' : '';
   document.getElementById('threadView').style.display = on || !CK ? 'none' : '';
+  document.body.classList.toggle('inthread', !on && !!CK);
   if (on) return;
   if (CK){
     var back = document.getElementById('backBtn');
