@@ -354,6 +354,9 @@ page to page ("It should stay there", the same day): each page draws the
 icons the phone was last given as it opens, standing on auth.js's cover
 while the login lands, and the login's own replace them if they differ;
 Logout forgets them. The counts still arrive with each page, recounted.
+On a phone it stands down while a field is typed in and is put back at
+the foot when the keyboard goes: Safari had lifted it with Settings'
+number pad and left it mid-screen (1 Oct).
 Not on the printed sheets, which wear the older dress.
 `tests/nav_canon.json` ("tabs") and `tabs_suite` hold it.
 

@@ -36,9 +36,9 @@ answer to each other, and whichever side a change misses fails by name.
      ("Don't mute the counters when the icon is selected"); the menu's icon
      carries what the bar does not show; and a count is blue ("Counter is
      blue", after a red try).
-  6. It fits, as Safari sizes it too, for every role: no sideways scroll at 320, and held sideways it is the
-     phone's compact bar, while the Cleans board keeps its villas on a
-     screen.
+  6. It fits, as Safari sizes it too, for every role: no sideways scroll
+     at 320, and held sideways it is the phone's compact bar, while the
+     Cleans board keeps its villas on a screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
      screen or on paper.
   9. The menu from the foot: where the bar is, the hamburger at the top
@@ -60,6 +60,11 @@ answer to each other, and whichever side a change misses fails by name.
      icon waits for the page; the login's own replace them if they differ,
      and the same leave the bar as it stood; a kept page gone from the menu
      is left out; the passcode's cover covers the bar; Logout forgets them.
+ 11. The keyboard (the owner, 1 Oct: "Not sticky on settings page"): on a
+     phone the bar stands down while a field is typed in, its room with it
+     so what stands on it comes down onto the keyboard, and is back at
+     the foot when it is left, the page not moved; a switch leaves it be;
+     with a mouse there is no keyboard and it stays.
 
 The night is tests/paper_night.json, read through tests/night_harness.py,
 with a login for each role added here.
@@ -783,6 +788,50 @@ with sync_playwright() as p:
     s = pg.evaluate(STAY)
     ck("signed out, the passcode's cover covers the bar as it covers everything",
        s["cover"] == "" and s["tabs"] == ADMIN and s["underCover"] and not s["onTop"], s)
+    ctx.close()
+
+    # ── 11. the keyboard ──────────────────────────────────────────────
+    # The owner, 1 Oct, "Not sticky on settings page": Safari lifted the bar
+    # with the number pad of Settings' 07:30 and 18:00, 294pt, and left it
+    # there. On a phone the bar stands down while a field is typed in, and
+    # when the keyboard goes the page scrolls a point and back, so Safari
+    # lays it out again. A headless browser has no keyboard to lift it; what
+    # it can hold is the standing down, the coming back, and the page not
+    # moving for it.
+    KB = """()=>{const t=document.getElementById('tabBar'), c=t&&t.querySelector('.tabrow');
+      return {shown:!!t&&getComputedStyle(t).display!=='none',
+              gap:c?Math.round(innerHeight-c.getBoundingClientRect().bottom):null,
+              coarse:matchMedia('(pointer:coarse)').matches, y:Math.round(scrollY),
+              room:getComputedStyle(document.body).getPropertyValue('--tabroom').trim()};}"""
+    ctx, pg = open_as(b, EMAIL["admin"], "staff.html", app=True)
+    miss = press(pg, 'button.tab[data-t="tNotify"]'); pg.wait_for_timeout(300)
+    pg.evaluate("()=>window.scrollTo(0, 200)")
+    pg.focus("#hFrom"); pg.wait_for_timeout(100)
+    k1 = pg.evaluate(KB)
+    ck("on a phone, typing a time on Settings, the bar stands down",
+       not miss and k1["coarse"] and not k1["shown"], miss or k1)
+    # Its room goes with it, so what stands on it - Chat's box and Send, a
+    # page's footer, each standing on var(--tabroom) - comes down onto the
+    # keyboard, as the phone's own box does.
+    ck("and the room kept for it goes too, so what stands on it comes down",
+       k1["room"] == "0px", k1)
+    pg.evaluate("()=>document.activeElement.blur()"); pg.wait_for_timeout(600)
+    k2 = pg.evaluate(KB)
+    ck("and the field left, it is back at the foot with its room, the page where it was",
+       k2["shown"] and k2["gap"] == 21 and k2["room"] == "83px" and k2["y"] == k1["y"], (k1, k2))
+    pg.focus("#masterTick"); pg.wait_for_timeout(100)
+    ck("a switch with focus leaves it be: it is pressed, not typed in", pg.evaluate(KB)["shown"])
+    ys = pg.evaluate("""()=>[0, 200, document.documentElement.scrollHeight].map(y=>{
+        window.scrollTo(0, y); const b=Math.round(scrollY); repinTabs(); return [b, Math.round(scrollY)];})""")
+    ck("putting it back moves the page not at all, at the top, part-way or the foot",
+       all(a == c for a, c in ys), ys)
+    ctx.close()
+    ctx, pg = open_as(b, EMAIL["admin"], "staff.html")
+    miss = press(pg, 'button.tab[data-t="tNotify"]'); pg.wait_for_timeout(300)
+    pg.focus("#hFrom"); pg.wait_for_timeout(100)
+    k = pg.evaluate(KB)
+    ck("with a mouse there is no keyboard, and the bar stays",
+       not miss and not k["coarse"] and k["shown"], miss or k)
     ctx.close()
 
     b.close()

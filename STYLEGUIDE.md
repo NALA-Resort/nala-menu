@@ -320,6 +320,7 @@ size". Apple's numbers, each held by `tabs_suite`:
 | More pages than fit | the More tab, last, opening the rest | the menu, fifth, rising from the foot (below) |
 | Two or three tabs | a narrow bar, 98pt a tab | the full bar: every login's is the same (the owner, 1 Oct, "They should all be the same"), and Safari drew the narrow one as one icon in a pill |
 | Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
+| Typing | the keyboard covers the bar | the bar stands down while a field is typed in on a phone, and is put back at the foot when the keyboard goes: Safari otherwise lifted it with the keyboard and left it there (Settings, 1 Oct) |
 
 Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)
 ("Prefer filled symbols or icons") and
