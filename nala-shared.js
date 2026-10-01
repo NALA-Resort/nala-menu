@@ -2476,19 +2476,25 @@ function pushOff(user, cb){
    called it: a notification that fails must never cost someone their mark,
    which is already saved by the time this runs.                          */
 function notifyPush(event, villa, user, extra){
-  if (!PUSH_URL || !window.__idToken) return;
+  if (!PUSH_URL || !window.__idToken) return Promise.resolve(null);
   var msg = { idToken: window.__idToken, event: event,
               villa: villa, actor: emailKey(user && user.email) };
   /* A guest task names its team (29 Sep): the push Worker buzzes that
      team's members rather than a role. */
   if (extra) Object.keys(extra).forEach(function(k){ msg[k] = extra[k]; });
+  /* Answers with what the push Worker said, or null when it could not be
+     asked: a page that says how the alert went reads it (Chat's tasks,
+     1 Oct); every other caller lets it go, as before. */
   try {
-    fetch(PUSH_URL, {
+    return fetch(PUSH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msg)
-    }).catch(function(){});
-  } catch (e){}
+    }).then(function(r){
+      return r.json().catch(function(){ return null; })
+        .then(function(j){ return r.ok && j ? j : null; });
+    }).catch(function(){ return null; });
+  } catch (e){ return Promise.resolve(null); }
 }
 
 /* ── announcing a published menu ───────────────────────────────
@@ -2630,7 +2636,13 @@ var NOTIFY_DEFAULTS = {
     spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     /* A guest wrote to Chat (29 Sep): the desk, who answer and
        sort it. Fired by the Worker as the message lands. */
-    guestMessage: { spa:false, admin:true, manager:true, housekeeping:false, waiter:true, chef:false }
+    guestMessage: { spa:false, admin:true, manager:true, housekeeping:false, waiter:true, chef:false },
+    /* A task made from a guest's message (1 Oct, the owner: "It also
+       doesn't have the option to allow task notifications in settings").
+       It goes to the people in the task's team; this row says which of
+       their roles are told. On for every role to start, the masseuse's
+       included, since a team is chosen person by person. */
+    guestTask:    { spa:true,  admin:true, manager:true, housekeeping:true,  waiter:true, chef:true }
   }
 };
 

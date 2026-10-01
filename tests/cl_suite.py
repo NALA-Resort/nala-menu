@@ -1522,12 +1522,13 @@ with sync_playwright() as p:
     ck("finishing a clean announces it as cleaned", "cleaned:11" in fired)
     ck("a departure announces itself", "departed:8" in fired)
     # guestMessage, 29 Sep: a guest wrote to Chat, fired by its
-    # Worker to the roles ticked here. guestTask is NOT a default: it goes to
-    # the members of one team (/contactsettings), not to a role, so it has
-    # no row in this role-by-role table.
+    # Worker to the roles ticked here. guestTask, 1 Oct: a task made from
+    # one, to the members of its team (/contactsettings), of the roles
+    # ticked here - the owner: "It also doesn't have the option to allow
+    # task notifications in settings". Until then it had no row.
     ck("the defaults name every event the app can fire",
        sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
-         == ["available","cleaned","departed","guestMessage","menu","serviced",
+         == ["available","cleaned","departed","guestMessage","guestTask","menu","serviced",
              "spaBooked","spaCancelled","spaRequest","spaStay","spaSuggested"])
     # A menu going up is the manager's business, not the cleaners'. The chef
     # published it, so telling the chef is telling them what they just did.

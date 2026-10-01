@@ -787,7 +787,8 @@ None of these can move without him.
     Alerts: `worker/nala-push.js` knows Chat's two events (1 Oct); paste it
     into nala-push, then `worker/guest-contact.js` into nala-contact, and
     give nala-contact a Service binding PUSH to nala-push (Cloudflare's
-    error 1042 refuses the plain call). Who is buzzed is Settings,
+    error 1042 refuses the plain call). Done and confirmed 1 Oct: a test
+    text buzzed the owner's phone. Who is buzzed is Settings,
     Notifications; there is no BUZZ switch. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any

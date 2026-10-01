@@ -328,7 +328,10 @@ def wk(route, request):
 
 def push(route, request):
     BUZZ.append(json.loads(request.post_data or "{}"))
-    route.fulfill(status=200, content_type="application/json", body="{}")
+    # the push Worker as it answers: how many phones it buzzed, and those it
+    # passed over as the sender's own or shut out of a page (1 Oct)
+    st, rep = STATE.get("push") or (200, {"sent": 1, "removed": 0, "failed": 0, "self": 0, "shut": 0})
+    route.fulfill(status=st, content_type="application/json", body=js(rep))
 
 P = F = 0
 def ck(name, cond, detail=""):
@@ -605,6 +608,26 @@ with sync_playwright() as p:
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "kitchen" and
        BUZZ[0].get("label") == "Kitchen" and BUZZ[0].get("villa") == "7" and
        BUZZ[0].get("url") == "/tasks.html", BUZZ)
+    # how it went, under the task (the owner, 1 Oct: "It didn't work for tasks")
+    for _ in range(30):
+        if pg.query_selector("#bz-in-SMcandle-kitchen"): break
+        pg.wait_for_timeout(100)
+    bz = pg.evaluate("""()=>{const e=document.getElementById('bz-in-SMcandle-kitchen');
+      return e ? [e.textContent, getComputedStyle(e).color] : null;}""")
+    ck("and the page says how it went, under the task, in grey: Buzzed 1 phone in Kitchen.",
+       bz == ["Buzzed 1 phone in Kitchen.", "rgb(95, 95, 88)"], bz)
+    said = pg.evaluate("""()=>[{sent:0,self:1,shut:0},{sent:0,self:1,shut:1},{sent:0,skipped:'quiet hours'},
+        {sent:0,self:0,shut:0},{sent:2,failed:1},{sent:0,failed:1},null].map(r=>{const w=buzzWords(r,'Bar');
+        return (w.bad?'RED ':'')+w.say;})""")
+    ck("and says why when no phone buzzed: your own tap, Tasks not open yet, quiet hours, nobody",
+       said[0] == "No phone buzzed: yours is the only one in Bar with Notifications on, and your own tap never buzzes you." and
+       said[1].startswith("No phone buzzed: Tasks is still yours alone.") and
+       said[2] == "No phone buzzed: quiet hours (Settings, Notifications)." and
+       said[3].startswith("No phone buzzed: nobody in Bar has Notifications on, or Guest task is off for their role"), said)
+    ck("in failure's red only when it could not go or a phone refused it",
+       said[4] == "RED Buzzed 2 phones in Bar, and 1 refused it." and
+       said[5] == "RED No phone buzzed: 1 phone in Bar refused it." and
+       said[6] == "RED The team\u2019s phones could not be told just now.", said)
     del WRITES[:]
     pg.click("#nb-in-SMumbrella-maintenance"); pg.wait_for_timeout(150)
     pg.fill("#te-in-SMumbrella-maintenance", "Bring the long ladder")
@@ -617,6 +640,7 @@ with sync_playwright() as p:
 
     pg = page("?c=%s&b=b-sarah" % SARAH)
     del BUZZ[:]
+    STATE["push"] = (200, {"sent": 0, "removed": 0, "failed": 0, "self": 1, "shut": 0})
     pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150); pg.click("#tm-in-SMcandle-bar")
     # the buzz follows the write and the button's 300ms Saved hold: waited
     # for, not guessed at, which a fixed 500ms was under a loaded machine
@@ -626,6 +650,13 @@ with sync_playwright() as p:
     ck("another team's task buzzes that team, by its own name",
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "bar" and
        BUZZ[0].get("label") == "Bar" and BUZZ[0].get("villa") == "7", BUZZ)
+    for _ in range(30):
+        if pg.query_selector("#bz-in-SMcandle-bar"): break
+        pg.wait_for_timeout(100)
+    bar = pg.evaluate("()=>(document.getElementById('bz-in-SMcandle-bar')||{}).textContent||''")
+    ck("the push Worker's own answer is what the line says: here, the sender's own phone passed over",
+       bar.startswith("No phone buzzed: yours is the only one in Bar"), bar)
+    STATE["push"] = None
     del WRITES[:]
     pg.click("#dn-in-SMumbrella-maintenance"); pg.wait_for_timeout(500)
     w = WRITES[-1] if WRITES else {"b": {}}
@@ -1074,6 +1105,16 @@ with sync_playwright() as p:
     pg.click('#permPick [data-r="1"]'); pg.wait_for_timeout(100)
     ck("and the waiter, at the desk, ships with it on",
        pg.get_attribute("#may-guestReply", "aria-checked") == "true")
+    # Settings, Notifications: Guest task, a row per role (the owner, 1 Oct:
+    # "It also doesn't have the option to allow task notifications")
+    pg.click('[data-t="tNotify"]'); pg.wait_for_timeout(200)
+    rows = []
+    for i in range(pg.locator("#notifPick [data-r]").count()):
+        pg.click('#notifPick [data-r="%d"]' % i); pg.wait_for_timeout(60)
+        rows.append(pg.get_attribute("#tell-guestTask", "aria-checked") if pg.query_selector("#tell-guestTask") else None)
+    ck("Settings, Notifications: a Guest task row, on for every role as it ships",
+       len(rows) >= 4 and all(r == "true" for r in rows) and "Guest task" in pg.text_content("#notifList") and
+       "A guest task goes only to the people in its team" in pg.text_content("#tNotify"), rows)
     done(pg)
     PERMS["guestReply"] = {"housekeeping": True}
     RB, RS, RF = "#rb-maintenance-t1umbrella", "#rs-maintenance-t1umbrella", "#rf-maintenance-t1umbrella"

@@ -119,6 +119,10 @@ with sync_playwright() as p:
     pg.click("#tm-%s-maintenance" % mid); pg.wait_for_timeout(1200)
     tri = pg.evaluate("(m)=>document.querySelector('.msg[data-m=\"'+m+'\"] .tri').innerText", mid)
     ck("Task, Maintenance: the message is now Maintenance's, open", "Maintenance" in tri and "open" in tri, tri)
+    pg.wait_for_timeout(300)
+    bz = pg.evaluate("(m)=>(document.getElementById('bz-'+m+'-maintenance')||{}).textContent||''", mid)
+    ck("and says how its alert went, as the push Worker answers: Buzzed 1 phone in Maintenance.",
+       bz == "Buzzed 1 phone in Maintenance.", bz)
 
     # a reply, and its receipts
     pg.fill("#msgBox", "On our way to have a look.")

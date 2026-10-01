@@ -243,8 +243,11 @@ export default {
     if (cfg.on === false) return reply(200, { sent: 0, skipped: 'notifications off' });
     if (inQuietHours(cfg.hours, new Date())) return reply(200, { sent: 0, skipped: 'quiet hours' });
 
-    /* Who: the roles ticked for the event, or a task's team, by login. */
-    const wanted = (cfg.events && cfg.events[event]) || {};
+    /* Who: the roles ticked for the event; for a task, the people in its
+       team, of the roles ticked for Guest task in Settings (1 Oct) - every
+       role, until Settings has drawn that row. */
+    const row = cfg.events && cfg.events[event];
+    const wanted = row || {};
     const members = team ? (teamRec.members || {}) : null;
     const teamName = team ? (nameOf(teamRec.label) || nameOf(body.label) || team) : '';
     const v = villa == null ? '' : String(villa).trim();
@@ -265,15 +268,19 @@ export default {
     });
 
     const jobs = [];
+    /* Phones passed over that would otherwise have been buzzed, so the
+       page can say why none was: the sender's own, and those whose login
+       cannot open the page yet. */
+    let self = 0, shut = 0;
     for (const emailKey in subs) {
       const devices = subs[emailKey] || {};
       for (const id in devices) {
         const s = devices[id];
         if (!s || !s.endpoint || !s.keys) continue;
-        if (members ? members[emailKey] !== true : !wanted[s.role]) continue;
-        if (known.page && previewShut(known.page, s.role, perms)) continue;
+        if (members ? members[emailKey] !== true || (row && !row[s.role]) : !wanted[s.role]) continue;
+        if (known.page && previewShut(known.page, s.role, perms)) { shut++; continue; }
         /* Never tell someone about their own tap. */
-        if (actor && emailKey === actor) continue;
+        if (actor && emailKey === actor) { self++; continue; }
         jobs.push(send(s, payload, env).then(
           ok => ({ emailKey, id, ok }),
           () => ({ emailKey, id, ok: false })));
@@ -291,7 +298,8 @@ export default {
     return reply(200, {
       sent: results.filter(r => r.ok === true).length,
       removed: gone.length,
-      failed: results.filter(r => r.ok === false).length
+      failed: results.filter(r => r.ok === false).length,
+      self, shut
     });
   }
 };
