@@ -3429,6 +3429,37 @@ function drawTabs(tabs){
   if (tabs.length) drawTabs(tabs);
 })();
 
+/* The bar back at the foot when the keyboard goes. It stands down while a
+   field is typed in (nala-ui2.css), but Safari can leave a fixed bar where
+   the keyboard lifted it until the page next scrolls - Settings, 1 Oct,
+   294pt up - so the page scrolls one point and back, which has Safari lay
+   it out again. Asked when the visible screen grows back by more than a
+   keyboard's worth, which is the keyboard going, and on leaving a field. */
+function repinTabs(){
+  if (!document.getElementById('tabBar')) return;
+  var x = window.scrollX, y = window.scrollY;
+  window.scrollTo(x, y > 0 ? y - 1 : y + 1);
+  window.scrollTo(x, y);
+}
+(function(){
+  var vv = window.visualViewport;
+  if (vv){
+    var h0 = vv.height;
+    vv.addEventListener('resize', function(){
+      if (vv.height > h0 + 150) setTimeout(repinTabs, 50);
+      h0 = vv.height;
+    });
+  }
+  document.addEventListener('focusout', function(e){
+    var t = e.target;
+    if (!t || !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    setTimeout(function(){
+      var a = document.activeElement;
+      if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) repinTabs();
+    }, 350);
+  });
+})();
+
 /* ── pull to refresh ─────────────────────────────────────────────────────
    Drag the page down from its top and let go: it reloads. The owner, 30
    Sep, clearing footers for the tab bar: "the refresh button could be a
