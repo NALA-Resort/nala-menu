@@ -501,7 +501,8 @@ Only the test phones can be messaged. From them:
    it no guest's message buzzes anyone, though the page's task alerts,
    sent from the browser, still do. Found 1 Oct, after both pastes; the
    setup check on Chat says whether the binding reaches the push Worker
-   and what it answered for the last guest's message.
+   and what it answered for the last guest's message. Bound and confirmed
+   the same evening: a text from a test phone buzzed the owner's phone.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
    *own number* in ClickSend (its code arrives in Chat as a message;
    if ClickSend sends it from a name rather than a number, Chat has
