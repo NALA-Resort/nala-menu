@@ -785,7 +785,10 @@ None of these can move without him.
     into nala-push, then `worker/guest-contact.js` into nala-contact, and
     give nala-contact a Service binding PUSH to nala-push (Cloudflare's
     error 1042 refuses the plain call). Done and confirmed 1 Oct: a test
-    text buzzed the owner's phone. Who is buzzed is Settings,
+    text buzzed the owner's phone. The Mews sync Worker's three alerts -
+    a guest due soon with nobody on the clean, a form's massage ask, a
+    Mews change under a massage - were lost the same way; from 1 Oct it
+    binds PUSH in `worker/wrangler.jsonc` and deploys itself on publish. Who is buzzed is Settings,
     Notifications; there is no BUZZ switch. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any

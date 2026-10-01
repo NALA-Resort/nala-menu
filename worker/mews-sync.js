@@ -127,10 +127,23 @@ function nights(arrive, depart) {
 
 /* ── the arriving-soon sweep, run from the cron trigger ──────────────────
  *
- * nala-push, the notification Worker. Not in this repo: it holds the VAPID
- * keys and routes an event to the roles that switched it on. This is the
- * same URL every page posts to from notifyPush() in nala-shared.js. */
+ * nala-push, the notification Worker (worker/nala-push.js): it holds the
+ * VAPID keys and routes an event to the roles that switched it on. Pages
+ * post to its address from notifyPush() in nala-shared.js; this Worker
+ * calls it through the Service binding PUSH (wrangler.jsonc), because
+ * Cloudflare refuses one Worker calling another's workers.dev address on
+ * the same account (its error 1042). The arriving, spaRequest and spaStay
+ * alerts were lost that way, without a word, until 1 Oct. Without the
+ * binding the address is still tried, and a refusal is logged. */
 const PUSH_URL = "https://nala-push.ben-681.workers.dev";
+async function pushCall(env, body) {
+  const init = { method: "POST", headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify(body) };
+  const r = await (env.PUSH && typeof env.PUSH.fetch === "function"
+    ? env.PUSH.fetch(PUSH_URL, init) : fetch(PUSH_URL, init));
+  if (!r.ok) console.log("nala-push answered " + r.status + " for " + body.event + " " + body.villa);
+  return r;
+}
 
 const HOUR_AT_RESORT = new Intl.DateTimeFormat("en-GB", {
   timeZone: RESORT_TZ, hour: "2-digit", hourCycle: "h23" });
@@ -197,11 +210,7 @@ async function alertArrivals(env) {
     /* Fire and tolerate: a lost notification costs a buzz, not data, and
        the marker already says this villa had its one chance. */
     try {
-      await fetch(PUSH_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: await idToken(env),
-                               event: "arriving", villa: v }) });
+      await pushCall(env, { idToken: await idToken(env), event: "arriving", villa: v });
     } catch (e) {}
     sent.push(v);
   }
@@ -275,11 +284,7 @@ async function announceSpaAsks(env) {
     if (!pre || pre.wellness !== true) continue;
     await db(env, "/spaalerts/" + id2, "PUT", { at: new Date().toISOString() });
     try {
-      await fetch(PUSH_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: await idToken(env),
-                               event: "spaRequest", villa: byId[id2] }) });
+      await pushCall(env, { idToken: await idToken(env), event: "spaRequest", villa: byId[id2] });
     } catch (e) {}
     sent.push(id2);
   }
@@ -934,12 +939,8 @@ export default {
       } catch (e) {}
       if (spaTouched) {
         try {
-          await fetch(PUSH_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken: await idToken(env),
-                                   event: "spaStay",
-                                   villa: String(r.villa || "") }) });
+          await pushCall(env, { idToken: await idToken(env), event: "spaStay",
+                                villa: String(r.villa || "") });
         } catch (e) {}
       }
 

@@ -585,9 +585,11 @@ calling anything missing. `worker/nala-push.js` sat on one from 29 Aug to
 A Worker calls another Worker through a Service binding, never by the
 other's workers.dev address: Cloudflare refuses that between Workers on
 one account (its error 1042), and a call nobody waits on fails without a
-word. Chat's alerts were lost that way until 1 Oct; nala-contact now
-reaches nala-push as `env.PUSH`. `worker/mews-sync.js` still calls
-nala-push by its address, three times.
+word. Chat's alerts were lost that way until 1 Oct, and so were the Mews
+sync Worker's three (arriving, spaRequest, spaStay); both now reach
+nala-push as `env.PUSH`. nala-contact's binding is set in its dashboard;
+nala-mews-sync's is declared in `worker/wrangler.jsonc`, since Workers
+Builds deploys it from main, and `worker/test.mjs` fails if it goes.
 
 When he is to paste one, give the file's full link on main, never a path
 in the repo (the owner, 1 Oct: "Why are you only showing part of the

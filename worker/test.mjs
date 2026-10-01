@@ -5,12 +5,23 @@
  * in HANDOVER.md applies: green here is not proof it works against Mews.
  */
 import worker from "./mews-sync.js";
+import { readFileSync } from "node:fs";
 
 let P = 0, F = 0;
 const ck = (name, ok) => { ok ? P++ : F++; console.log((ok ? "PASS " : "FAIL ") + name); };
 
+/* PUSH: the Service binding to nala-push (wrangler.jsonc, 1 Oct), as the
+   deployed Worker has it; its plain address answers Cloudflare's 1042. */
 const env = { SYNC_EMAIL: "x@staff.nala", SYNC_PASSWORD: "000000",
-              ZAP_SECRET: "shh", FB_API_KEY: "k" };
+              ZAP_SECRET: "shh", FB_API_KEY: "k",
+              PUSH: { fetch: async (url, opt) => pushWorker(url, opt) } };
+let PUBLIC = [];
+function pushWorker(url, opt) {
+  const b = JSON.parse(opt.body);
+  PUSHES.push(b);
+  CALLS.push("PUSH " + b.villa);
+  return new Response('{"sent":1}', { status: 200 });
+}
 
 /* A tiny in-memory database, plus a log of every call, so a test can assert
    on what was written AND on what was not. */
@@ -743,12 +754,12 @@ function installSweep(stays, hk, pre) {
   install();
   PUSHES = [];
   const inner = globalThis.fetch;
+  PUBLIC = [];
   globalThis.fetch = async (url, opt = {}) => {
+    /* nala-push's address, from another Worker on the account */
     if (String(url).includes("nala-push")) {
-      const b = JSON.parse(opt.body);
-      PUSHES.push(b);
-      CALLS.push("PUSH " + b.villa);
-      return new Response("ok", { status: 200 });
+      PUBLIC.push(JSON.parse(opt.body).event);
+      return new Response("error code: 1042", { status: 404 });
     }
     return inner(url, opt);
   };
@@ -756,9 +767,9 @@ function installSweep(stays, hk, pre) {
   STORE["/hk/" + TODAY] = hk;
   for (const id in (pre || {})) STORE["/bookings/" + id + "/prearrival"] = pre[id];
 }
-async function wake() {
+async function wake(e = env) {
   const jobs = [];
-  await worker.scheduled({}, env, { waitUntil: (p) => jobs.push(p) });
+  await worker.scheduled({}, e, { waitUntil: (p) => jobs.push(p) });
   await Promise.all(jobs);
 }
 
@@ -806,11 +817,30 @@ ck("and written BEFORE the send, so a crash cannot buzz forever",
    ["1", "3", "9"].every((v) =>
      CALLS.indexOf("PUT /alerts/" + TODAY + "/" + v) > -1 &&
      CALLS.indexOf("PUT /alerts/" + TODAY + "/" + v) < CALLS.indexOf("PUSH " + v)));
+ck("each through the Service binding, never the push Worker's address, which Cloudflare refuses",
+   PUSHES.length === 3 && PUBLIC.length === 0);
+
+/* The binding is declared where Workers Builds reads it: taken out of
+   wrangler.jsonc, every one of these alerts is lost again, silently. */
+{
+  const cfg = JSON.parse(readFileSync(new URL("./wrangler.jsonc", import.meta.url), "utf8")
+                         .replace(/^\s*\/\/.*$/mg, ""));
+  ck("wrangler.jsonc binds PUSH to the Worker nala-push",
+     (cfg.services || []).some((x) => x.binding === "PUSH" && x.service === "nala-push"));
+}
 
 /* The next wake finds the markers and sends nothing. */
 PUSHES.length = 0;
 await wake();
 ck("a second wake announces nobody twice", PUSHES.length === 0);
+
+/* As it ran until 1 Oct, with no binding: the send goes to the address,
+   Cloudflare refuses it, the marker is already down, and nobody hears. */
+installSweep({ "1": { id: "p1", arrive: TODAY, depart: "2026-09-12" } }, {},
+             { "p1": { arriveApproved: 14 } });
+await wake(Object.assign({}, env, { PUSH: undefined }));
+ck("without the binding, the alert is tried at the address and lost to Cloudflare's 1042",
+   PUBLIC.join() === "arriving" && PUSHES.length === 0 && !!STORE["/alerts/" + TODAY + "/1"]);
 
 /* A villa that becomes red later is picked up by a later wake, once. */
 STORE["/stays/" + TODAY]["2"] = { id: "p2", arrive: TODAY, depart: "2026-09-12" };
