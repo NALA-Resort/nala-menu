@@ -46,11 +46,10 @@
  *                       set, nothing is sent to any other number: the
  *                       module runs on the live app without reaching a
  *                       guest. Delete it to go live.
- *   BUZZ                set to 1 once the push Worker (nala-push) knows
+ *   BUZZ                set to 1 once the push Worker (nala-push) runs
+ *                       worker/nala-push.js of 1 Oct or later, which knows
  *                       the events guestMessage and guestTask. Until then
- *                       nothing is sent to it: it is not in this repo, and
- *                       what it does with an event it does not know is
- *                       unknown. GUEST-CONTACT.md has the change it needs.
+ *                       nothing is sent to it. GUEST-CONTACT.md, Alerts.
  *
  * The sandbox this was written in reaches neither Twilio nor Cloudflare.
  * worker/contact-test.mjs checks the logic against stubs; nothing here has

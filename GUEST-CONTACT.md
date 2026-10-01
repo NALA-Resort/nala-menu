@@ -470,20 +470,22 @@ Only the test phones can be messaged. From them:
 
 1. **Remove `TEST_NUMBERS`** in Cloudflare. Chat can now message
    guests; the everyday texts are still ClickSend's.
-2. **Alerts.** Staff phones buzz once the push Worker (`nala-push`) knows two
-   events, and `BUZZ` is set to `1` on `nala-contact`. The push Worker lives
-   only in Cloudflare, so its code has to come into this repo first. The
-   change it needs:
+2. **Alerts.** The push Worker's source is `worker/nala-push.js`: it came
+   into the repo on 29 Aug on a branch that never reached main, and joined
+   main on 1 Oct with Chat's two events (worker/push-test.mjs):
    - `guestMessage` - to the roles ticked for it in Settings, Notifications
-     (admin, manager and waiter by default); text *Villa 7 - new message*;
-     opens `url` from the payload.
-   - `guestTask` - to the logins in `/contactsettings/teams/<team>/members`,
-     `team` from the payload; text *Villa 7 - Maintenance task*; opens
-     `/tasks.html`.
-   - `guestMessage` is sent by `nala-contact` itself, signed in as the
-     `contact` login, with no `actor`: the push Worker has to accept that
-     login as a sender.
-   Until `BUZZ` is set nothing is sent to it, and the menu counts still work.
+     (admin, manager and waiter by default); *Villa 7 - new message*, or
+     *New guest message* for a guest not staying tonight; the tap opens
+     that guest's conversation.
+   - `guestTask` - to the logins in the task's team (Settings, General,
+     Teams), whatever their role; *Villa 7 - Maintenance task*; opens Tasks.
+   - Neither buzzes a login for a page it cannot open yet: while Chat and
+     Tasks are the admin's alone, only the admin. Both follow Settings'
+     on/off and quiet hours, as every alert does, and buzz again for each
+     new one.
+   To switch them on: paste `worker/nala-push.js` into `nala-push` and
+   Deploy, then set `BUZZ` to `1` on `nala-contact`. Until `BUZZ` is set
+   nothing is sent, and the menu counts still work.
 3. **ClickSend sends from the Twilio number.** Verify the Twilio number as an
    *own number* in ClickSend (its code arrives in Chat as a message;
    if ClickSend sends it from a name rather than a number, Chat has

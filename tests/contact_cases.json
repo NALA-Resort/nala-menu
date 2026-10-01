@@ -965,7 +965,7 @@
     ]
   },
   "preview": {
-    "_note": "[page, role, /permissions, shut]. Chat and Tasks are the admin's alone until Settings opens them (/permissions/open/<page> true): previewShut on the page (PREVIEW_PAGES, nala-shared.js) and its twin in worker/guest-contact.js, which since 30 Sep shuts the Worker's door as well as the menu (the owner's review: \"ensure we have a solid system\"). Only true opens; a page not in preview is never shut; the admin never is.",
+    "_note": "[page, role, /permissions, shut]. Chat and Tasks are the admin's alone until Settings opens them (/permissions/open/<page> true): previewShut on the page (PREVIEW_PAGES, nala-shared.js) and its twin in worker/guest-contact.js, which since 30 Sep shuts the Worker's door as well as the menu (the owner's review: \"ensure we have a solid system\"), and since 1 Oct its third copy in worker/nala-push.js, which buzzes no phone for a page its login cannot open. Only true opens; a page not in preview is never shut; the admin never is.",
     "cases": [
       [
         "guest-contact",

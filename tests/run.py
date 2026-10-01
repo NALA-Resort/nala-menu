@@ -78,6 +78,9 @@ SUITES = [
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
     # Chat's Worker, 29 Sep: Twilio, the 24 hours, the test list.
     ("contactworker", ["node", "worker/contact-test.mjs"], 120),
+    # The push Worker, nala-push (its source in main from 1 Oct): each
+    # event's words, who is buzzed, and Chat's two events.
+    ("pushworker", ["node", "worker/push-test.mjs"],    120),
     ("cardworker", ["node", "worker/cards-test.mjs"],     120),
     ("cards",      ["python3", "tests/cards_suite.py"],   300),
     ("keys",       ["python3", "tests/keys_suite.py"],    400),
@@ -156,9 +159,11 @@ COVERS = {
     "guest-contact.html": ["contact", "contactdemo", "sweep:guest-contact", "paper", "colour"],
     "tasks.html":        ["contact", "contactdemo", "sweep:tasks", "paper", "colour"],
     "contact-demo.js":   ["contactdemo", "contact"],
-    "tests/contact_cases.json": ["contact", "contactworker"],
+    "tests/contact_cases.json": ["contact", "contactworker", "pushworker"],
     "worker/guest-contact.js": ["contactworker"],
     "worker/contact-test.mjs": ["contactworker"],
+    "worker/nala-push.js": ["pushworker"],
+    "worker/push-test.mjs": ["pushworker"],
     "templates.html":    ["invites", "sweep:templates", "spar"],
     "worker/send-invites.js": ["invworker", "spar"],
     "worker/mews-sync.js": ["worker"],

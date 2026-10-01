@@ -110,10 +110,15 @@ async function vapidHeader(endpoint, publicKeyB64, privateKeyB64, subject) {
 
 
 /* ── the worker ────────────────────────────────────────────────
-   Called by the phone that made the mark. It does not hold any database
-   credential: it passes the caller's own Firebase ID token to the database,
-   so the rules decide what may be read. An invalid or expired token gets a
-   401 from Firebase and nothing is sent, which is the authentication.
+   Called by the phone that made the mark, and by Chat's own Worker
+   (nala-contact, worker/guest-contact.js) as its login, role contact, when
+   a guest's message lands. It does not hold any database credential: it
+   passes the caller's own Firebase ID token to the database, so the rules
+   decide what may be read. An invalid or expired token gets a 401 from
+   Firebase and nothing is sent, which is the authentication.
+
+   This file is the source: it is what gets pasted into nala-push in the
+   Cloudflare dashboard, and worker/push-test.mjs checks it.
 
    Secrets, set in the Cloudflare dashboard, never in the repo:
      VAPID_PRIVATE   the private half of the key pair
@@ -174,8 +179,39 @@ const EVENTS = {
   spaCancelled: { text: 'Villa {v} - massage declined or cancelled',
                   url: '/spa.html' },
   spaStay:      { text: 'Villa {v} - stay cancelled or moved under a massage',
-                  url: '/spa.html' }
+                  url: '/spa.html' },
+  /* Chat (29 Sep; buzzing from 1 Oct). A guest's message goes to the
+     roles ticked for it in Settings, Notifications, as every event above,
+     and opens that guest's conversation (CHAT_URL). A task goes to its
+     team's own logins, whatever their role, and opens Tasks. Both buzz
+     again for the next one, as the phone's Messages does: a guest is
+     waiting. A guest not staying tonight has no villa, and the sentence
+     says so rather than "Villa ?". */
+  guestMessage: { text: 'Villa {v} - new message', bare: 'New guest message',
+                  url: '/guest-contact.html', page: 'guest-contact', again: true },
+  guestTask:    { text: 'Villa {v} - {team} task', bare: '{team} task',
+                  url: '/tasks.html', page: 'tasks', again: true }
 };
+
+/* Chat and Tasks are the admin's alone until Settings opens them
+   (/permissions/open/<page>): a phone is not buzzed for a page its login
+   cannot open yet. The third copy of previewShut, beside nala-shared.js
+   and worker/guest-contact.js, and held with them to the preview cases of
+   tests/contact_cases.json. */
+const PREVIEW_PAGES = { 'guest-contact': true, 'tasks': true };
+export function previewShut(page, role, permissions) {
+  if (!PREVIEW_PAGES[page] || (role === 'staff' ? 'admin' : role) === 'admin') return false;
+  const open = permissions && permissions.open;
+  return !(open && open[page] === true);
+}
+
+/* Where a guest's message opens: that guest's conversation, when the
+   sender names one, and only ever a path into Chat. */
+const CHAT_URL = /^\/guest-contact\.html\?c=[1-9][0-9]{7,14}$/;
+/* A team's name as staff read it, from Settings, else as the page sent
+   it: the six first teams are named in nala-shared.js, not stored. */
+const nameOf = (x) => typeof x === 'string'
+  ? x.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40) : '';
 
 export default {
   async fetch(request, env) {
@@ -186,33 +222,46 @@ export default {
     try { body = await request.json(); } catch { return reply(400, { error: 'bad json' }); }
     const { idToken, event, villa, actor } = body || {};
     if (!idToken || !event) return reply(400, { error: 'idToken and event required' });
+    const known = EVENTS[event] || { text: 'Villa {v} - ' + event, url: '/cleaners.html' };
+    /* A task names its team, the key the database stores. */
+    const team = event === 'guestTask' ? String(body.team || '') : '';
+    if (event === 'guestTask' && !/^[a-z]{2,20}$/.test(team))
+      return reply(400, { error: 'team required' });
 
     const db = env.DB.replace(/\/$/, '');
     const auth = '?auth=' + encodeURIComponent(idToken);
 
-    const [subsRes, notifyRes] = await Promise.all([
-      fetch(db + '/pushsubs.json' + auth),
-      fetch(db + '/notify.json' + auth)
-    ]);
+    const reads = [fetch(db + '/pushsubs.json' + auth), fetch(db + '/notify.json' + auth)];
+    if (known.page) reads.push(fetch(db + '/permissions.json' + auth));
+    if (team) reads.push(fetch(db + '/contactsettings/teams/' + team + '.json' + auth));
+    const got = await Promise.all(reads);
     /* The database rejecting the token IS the authentication. There is no
        second check here that could disagree with the rules.            */
-    if (!subsRes.ok || !notifyRes.ok) return reply(401, { error: 'not authorised' });
-
-    const subs = (await subsRes.json()) || {};
-    const cfg  = (await notifyRes.json()) || {};
+    if (got.some(r => !r.ok)) return reply(401, { error: 'not authorised' });
+    const [subs, cfg, perms, teamRec] = await Promise.all(got.map(r => r.json().then(j => j || {})));
 
     if (cfg.on === false) return reply(200, { sent: 0, skipped: 'notifications off' });
     if (inQuietHours(cfg.hours, new Date())) return reply(200, { sent: 0, skipped: 'quiet hours' });
 
+    /* Who: the roles ticked for the event, or a task's team, by login. */
     const wanted = (cfg.events && cfg.events[event]) || {};
-    const known = EVENTS[event] || { text: 'Villa {v} - ' + event, url: '/cleaners.html' };
-    const text = known.text.replace('{v}', villa == null ? '?' : villa);
+    const members = team ? (teamRec.members || {}) : null;
+    const teamName = team ? (nameOf(teamRec.label) || nameOf(body.label) || team) : '';
+    const v = villa == null ? '' : String(villa).trim();
+    const text = (known.bare && !v ? known.bare : known.text)
+      .replace('{v}', villa == null ? '?' : villa).replace('{team}', teamName);
+    const url = event === 'guestMessage' && CHAT_URL.test(String(body.url || ''))
+      ? body.url : known.url;
     const payload = JSON.stringify({
       title: 'Nala Villas', body: text,
       /* Per villa, so ten marks on one villa replace rather than stack; the
-         menu has no villa and gets the event's own name.                 */
-      tag: villa == null ? event : 'villa-' + villa,
-      url: known.url
+         menu has no villa and gets the event's own name. Chat's are per
+         conversation and per team, and buzz again (again, above). */
+      tag: event === 'guestMessage' ? 'chat-' + (url.split('c=')[1] || v || 'guest')
+         : event === 'guestTask' ? 'task-' + team + '-' + (v || 'guest')
+         : villa == null ? event : 'villa-' + villa,
+      url,
+      ...(known.again ? { renotify: true } : {})
     });
 
     const jobs = [];
@@ -221,7 +270,8 @@ export default {
       for (const id in devices) {
         const s = devices[id];
         if (!s || !s.endpoint || !s.keys) continue;
-        if (!wanted[s.role]) continue;
+        if (members ? members[emailKey] !== true : !wanted[s.role]) continue;
+        if (known.page && previewShut(known.page, s.role, perms)) continue;
         /* Never tell someone about their own tap. */
         if (actor && emailKey === actor) continue;
         jobs.push(send(s, payload, env).then(

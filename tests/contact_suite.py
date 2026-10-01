@@ -596,7 +596,7 @@ with sync_playwright() as p:
     ck("with the desk's note for the team, in the desk's name",
        rec.get("note") == "Candle on the dessert, table by the window" and rec.get("noteBy") == "ben@x" and
        bool(rec.get("noteAt")), rec)
-    ck("and no buzz goes to a push Worker that does not know the event yet", BUZZ == [])
+    ck("and no buzz goes out until BUZZ is set on the Chat Worker", BUZZ == [])
     del WRITES[:]
     pg.click("#nb-in-SMumbrella-maintenance"); pg.wait_for_timeout(150)
     pg.fill("#te-in-SMumbrella-maintenance", "Bring the long ladder")
@@ -616,9 +616,9 @@ with sync_playwright() as p:
     for _ in range(30):
         if BUZZ: break
         pg.wait_for_timeout(100)
-    ck("once it does, the team's phones are buzzed, the team named",
+    ck("once it does, the team's phones are buzzed, the team named, as staff read its name",
        len(BUZZ) == 1 and BUZZ[0].get("event") == "guestTask" and BUZZ[0].get("team") == "bar" and
-       BUZZ[0].get("villa") == "7", BUZZ)
+       BUZZ[0].get("label") == "Bar" and BUZZ[0].get("villa") == "7", BUZZ)
     STATE["hello"]["buzz"] = False
     del WRITES[:]
     pg.click("#dn-in-SMumbrella-maintenance"); pg.wait_for_timeout(500)

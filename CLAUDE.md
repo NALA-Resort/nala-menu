@@ -108,7 +108,9 @@ Already done this way — follow these:
   And who may use the desk or reply to a guest (`can`, the Worker's
   `mayDo`), 30 Sep with the Reply to guests switch; and whom the preview
   shuts out (`previewShut`, twinned in the Worker the same day, after the
-  owner's review found the door open where the menu was shut).
+  owner's review found the door open where the menu was shut, and in the
+  push Worker, `worker/nala-push.js`, 1 Oct, so no phone is buzzed for a
+  page its login cannot open).
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -569,6 +571,16 @@ after it was):
 
 "Firebase rules change: yes" means rules.json moved and needs its paste into
 the console - say whether the feature limps or fails without it.
+
+## Workers
+
+The Cloudflare Workers' source is in `worker/`, and the repo is where the
+owner pastes them from (the owner, 1 Oct: "The push code is in the repo
+that's where we copy it from"). Never ask him to copy a Worker out of the
+dashboard. A file missing from main may sit on a branch that never merged:
+search the branches (`git ls-tree -r --name-only origin/<branch>`) before
+calling anything missing. `worker/nala-push.js` sat on one from 29 Aug to
+1 Oct, while main's docs said the push Worker was not in the repo.
 
 ## Secrets
 
