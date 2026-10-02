@@ -92,13 +92,13 @@
   <select class="pages" id="pages" aria-label="Screen"></select>
   <details class="about">
     <summary>About this mock</summary>
-    <p>Invented readings for a cool, humid Friday morning: units set to 23 in
-       Cool have stopped running, so they have stopped drying. Green: humidity
-       at or under the rule's target. Amber: over it. Red words: the unit is
-       offline.</p>
-    <p>Tap a villa for its controls and what the humidity rule would do there.
-       Humidity rule opens its settings; change one and see what it would do
-       in every villa.</p>
+    <p>Invented readings for a cool, humid Friday: the morning, when units set
+       to 23 in Cool have stopped running and stopped drying, and the warm
+       afternoon. Each tile's colour is its verdict: green, guests in and all
+       fine; amber, something to chase, named on the tile; dashed, empty with
+       nothing to do; red words, offline.</p>
+    <p>Press a count to fade the villas it does not count. Tap a villa for its
+       controls and the humidity rule; Humidity rule opens its settings.</p>
   </details>
 </div>
 <div class="stage" id="stage"></div>
@@ -774,22 +774,32 @@ body.acboard{ padding:14px var(--appgut) 0; }
 body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(--s3);
                              font-size:var(--t2); }
 
-/* Three counts, plain type. Amber says chase this and red says a unit has
-   failed, the colour law's own, and only while the count is not nought. */
-.acpage .stats{ flex-wrap:wrap; gap:var(--s2) var(--s5); margin:var(--s3) 0 0; }
-.acpage .stat-n.amb{ color:var(--law-amber-ink); }
-.acpage .stat-n.red{ color:var(--law-red); }
+/* A count for each state the board shows, and each a filter: press one
+   and the villas it does not count fade, keeping their places. Amber and
+   red on a count are the colour law's, chase this and failed. */
+.fchips{ display:flex; flex-wrap:wrap; gap:6px; margin:var(--s3) 0 0; }
+.fchips button{ min-height:36px; padding:0 12px; border:1px solid var(--rule); border-radius:var(--pill);
+                background:var(--surface); color:var(--ink); font-family:var(--ui-font);
+                font-size:var(--t2); cursor:pointer; }
+.fchips button.on{ background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface);
+                   border-color:var(--sel-bdr); }
+.fchips b{ margin-left:5px; font-weight:600; }
+.fchips b.amb{ color:var(--law-amber-ink); }
+.fchips b.red{ color:var(--law-red); }
 
 /* The villas are one card, grown 8 into the margin as the Reservations
    board's is, so nothing inside it moves. */
 .accard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
-         margin:var(--s4) -8px 0; padding:7px; box-shadow:var(--lift); }
+         margin:var(--s3) -8px 0; padding:7px; box-shadow:var(--lift); }
 /* Three across at 390 and 360, two at 320: the grid's own fit, no width
    query, as the app is fluid rather than breakpointed. */
 .acgrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:6px; }
 /* A tile is a control: the grid is the board's control surface, as the
-   Reservations tiles are. Its colour is the humidity against the target,
-   drawn over the white as every paper tint is. */
+   Reservations tiles are. Its colour is the villa's verdict, in the colour
+   law's own meanings, drawn over the white as every paper tint is: green,
+   guests in and nothing to chase; amber, something to chase, named on the
+   tile; dashed and sunk, empty with nothing to do, the law's vacant villa;
+   red words on white, offline, a failure and never a red tile. */
 .actile{ display:flex; flex-direction:column; gap:1px; min-width:0; text-align:left;
          padding:6px 8px 5px; border:1px solid var(--rule); border-radius:var(--r);
          background:var(--surface); color:var(--ink); font-family:var(--ui-font);
@@ -798,29 +808,29 @@ body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding
               border-color:var(--law-green-b); }
 .actile.over{ background:linear-gradient(var(--law-amber), var(--law-amber)), var(--surface);
               border-color:var(--law-amber-b); }
+.actile.empty{ border-style:dashed; opacity:.62; }
+.actile.dim{ opacity:.16; }
 .actile:active{ filter:brightness(.96); }
-.atop{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+/* Who is in: wraps under the number rather than trimming, as a time never
+   trims ("Arrives 2pm"). */
+.atop{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:0 6px; }
 .vn{ font-size:var(--t3); font-weight:600; }
 .gs{ font-size:var(--t1); color:var(--mid); white-space:nowrap; }
-.hum{ font-size:var(--t4); font-weight:600; line-height:1.15; }
-.ok .hum{ color:var(--law-green); }
-.over .hum{ color:var(--law-amber-ink); }
-/* The room's temperature and the unit's setting share a line; at 320 the
-   setting wraps under it rather than bleeding out of the tile. */
-.amid{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
-       gap:0 6px; font-size:var(--t1); color:var(--mid); }
-.tmp{ font-size:var(--t2); color:var(--ink); }
+/* The room: temperature and humidity side by side, each amber when it is
+   out of range. Temperature counts only while guests are in. */
+.vals{ display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; padding-top:2px; }
+.tv2{ font-size:var(--t3); font-weight:600; line-height:1.25; }
+.tv2.bad{ color:var(--law-amber-ink); }
+/* Power and the setting, the unit's own words; Off in ink, so it is seen. */
+.pwr{ display:flex; align-items:center; gap:4px; font-size:var(--t1); color:var(--mid); }
+.pwr svg{ width:12px; height:12px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2;
+          stroke-linecap:round; stroke-linejoin:round; }
+.pwr.off{ color:var(--ink); font-weight:600; }
 .nrtext{ font-size:var(--t2); font-weight:600; line-height:1.25; color:var(--law-red);
          padding-top:2px; }
-/* The last 24 hours of humidity: one scale for every villa, 40 to 100%,
-   and the target as a faint rule across it. */
-.spark{ display:block; width:100%; height:18px; margin-top:auto; padding-top:3px; overflow:visible;
-        color:var(--mid); }
-.spark polyline{ fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
-                 stroke-linecap:round; }
-.spark line{ stroke:currentColor; stroke-width:1; opacity:.3; }
-.ok .spark{ color:var(--law-green); }
-.over .spark{ color:var(--law-amber-ink); }
+/* Why a tile is amber, in words, so the colour is never the only sign. */
+.why{ min-height:16px; margin-top:auto; padding-top:2px; font-size:var(--t1); font-weight:600;
+      color:var(--law-amber-ink); }
 .aclegend{ display:flex; flex-wrap:wrap; gap:4px 12px; padding:9px 3px 2px;
            font-size:var(--t1); color:var(--mid); }
 .aclegend > span{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
@@ -828,10 +838,8 @@ body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding
 .aclegend i.ok{ background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface);
                 border-color:var(--law-green-b); }
 .aclegend i.over{ background:var(--law-amber); border-color:var(--law-amber-b); }
+.aclegend i.empty{ background:var(--surface); border:1px dashed var(--mid); opacity:.62; }
 .aclegend .nr{ color:var(--law-red); font-weight:600; }
-.aclegend svg{ width:18px; height:10px; overflow:visible; }
-.aclegend svg polyline{ fill:none; stroke:var(--mid); stroke-width:1.5; stroke-linejoin:round;
-                        stroke-linecap:round; }
 
 /* A sheet: paper like the page, rising from the foot over the bar, as a
    sheet covers the page. */
@@ -894,6 +902,10 @@ body.ui2 .crow .btn, body.ui2 .cbtns .btn{ width:auto; flex:0 0 auto; min-height
 .confirm{ padding:12px 0 4px; }
 .confirm .cq{ font-size:var(--t3); font-weight:600; }
 .cbtns{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--s2); margin-top:var(--s3); }
+
+.fstat{ display:flex; align-items:center; gap:var(--s3); font-size:var(--t2); }
+.fstat .fdue{ color:var(--law-amber-ink); font-weight:600; }
+body.ui2 .fstat .btn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(--s3); font-size:var(--t2); }
 
 /* The house switch, as Settings draws it: blue when on, its colour the
    value (STYLEGUIDE.md, the switch). */
@@ -977,6 +989,8 @@ details.hist > summary{ cursor:pointer; padding:var(--s2) 0; font-size:var(--t2)
    menu while it is the admin's alone, so the menu icon is the blue one. */
 var TABS = [{"name": "Dashboard", "svg": "<path d=\"M13 5h8\"/><path d=\"M13 12h8\"/><path d=\"M13 19h8\"/><path d=\"m3 17 2 2 4-4\"/><rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\"/>"}, {"name": "Reservations", "svg": "<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\"/><path d=\"M7 2v20\"/><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\"/>"}, {"name": "Cleans", "svg": "<path d=\"m16 22-1-4\"/><path d=\"M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1\"/><path d=\"M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z\"/><path d=\"m8 22 1-4\"/>"}, {"name": "Chat", "svg": "<path d=\"M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/><path d=\"M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1\"/>"}, {"name": "Tasks", "svg": "<path d=\"M12 6v6l4 2\"/><path d=\"M20 12v5\"/><path d=\"M20 21h.01\"/><path d=\"M21.25 8.2A10 10 0 1 0 16 21.16\"/>"}];
 var MENU_SVG = "<path d=\"M4 5h16\"/><path d=\"M4 12h16\"/><path d=\"M4 19h16\"/>";
+/* Lucide's power (ISC), for the power state on each tile. */
+var POWER_SVG = '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>';
 
 /* ── the invented readings ─────────────────────────────────────────────
    Thursday and Friday, 2 Oct, every ten minutes, from a small model of a
@@ -1034,6 +1048,9 @@ function makeData(){
   }
   var seed = 7;
   function rnd(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  /* Each unit's filter as the app shows it ("Filters 74%", villa 13 in his
+     screenshot); 0 is due for a clean. */
+  var FILTER = [74, 88, 52, 91, 66, 0, 79, 85, 47, 93, 70, 58, 74, 0, 81, 62, 90];
   var END = H(1,15,10), DOWN = H(1,6,50), villas = [];
   for (var n = 1; n <= 17; n++){
     var sunGain = .3 + rnd() * .6, occGain = .8 + rnd() * .5, hold = .15 + rnd() * .35;
@@ -1060,15 +1077,26 @@ function makeData(){
       pts.push({ m:m, h:Math.round(rh + (rnd() - .5) * 1.2), c:+(T + (rnd() - .5) * .12).toFixed(1),
                  s:s.s, md:s.md, on:s.on, fan:s.fan, o:occ });
     }
-    villas.push({ n:n, guest:GUEST[n-1], pts:pts, changed:CHANGED[n] || null,
+    villas.push({ n:n, guest:GUEST[n-1], pts:pts, changed:CHANGED[n] || null, filter:FILTER[n-1],
                   arrives:(GUEST[n-1] === 'Arrives' || GUEST[n-1] === 'Turnover') ? H(1,14) : null });
   }
   return { villas:villas, H:H };
 }
 
 var DATA = makeData();
-var LONG = { 'In house':'In house', 'Vacant':'Vacant', 'Arrives':'Arrives today',
-             'Departs':'Departs today', 'Turnover':'Departs and arrives today' };
+/* Who is in a villa at a moment: in the words a tile has room for, and in
+   full for the villa's sheet. */
+function labelAt(g, m){
+  var H = DATA.H;
+  if (g === 'Vacant') return 'Vacant';
+  if (g === 'Arrives') return m < H(1,14) ? 'In 2pm' : 'In house';
+  if (g === 'Departs') return m < H(1,10) ? 'Out 10am' : 'Departed';
+  if (g === 'Turnover') return m < H(1,10) ? 'Out 10am' : m < H(1,14) ? 'Turnover' : 'In house';
+  return 'In house';
+}
+var LONG = { 'In house':'In house', 'Vacant':'Vacant', 'In 2pm':'Arrives today at 2pm',
+             'Out 10am':'Leaves today at 10am', 'Departed':'Departed this morning',
+             'Turnover':'Between guests: the next arrive at 2pm' };
 
 function clock(m){
   m = ((m % 1440) + 1440) % 1440;
@@ -1084,15 +1112,16 @@ function scenario(end, open){
   for (var n = 1; n <= 17; n++) rule.villas[n] = true;
   return {
     date:'Fri 2nd Oct', now:clock(end), end:end, start:start, span:144, rule:rule,
-    tabs:TABS, menuSvg:MENU_SVG, open:open || 0,
+    tabs:TABS, menuSvg:MENU_SVG, powerSvg:POWER_SVG, open:open || 0,
     villas:DATA.villas.map(function(v){
       var series = v.pts.filter(function(p){ return p.m >= start && p.m <= end; })
                         .map(function(p){ return { i:(p.m - start) / 10, h:p.h, c:p.c, s:p.s, md:p.md, on:p.on }; });
       var lastP = v.pts.filter(function(p){ return p.m <= end; }).pop();
       var last = series[series.length - 1], lastM = start + last.i * 10, off = lastM < end;
-      return { n:v.n, guest:v.guest, guestLong:LONG[v.guest], hum:last.h, tmp:last.c,
+      var label = labelAt(v.guest, end);
+      return { n:v.n, label:label, guestLong:LONG[label], occ:!!lastP.o, hum:last.h, tmp:last.c,
                on:last.on, mode:last.md, set:last.s, fan:lastP.fan, swing:'Fixed', offline:off,
-               since:off ? clock(lastM) : '', empty:!lastP.o,
+               since:off ? clock(lastM) : '', empty:!lastP.o, filter:v.filter, filterDue:v.filter === 0,
                arrives:v.arrives != null && v.arrives > end ? v.arrives : null,
                changedAt:v.changed && v.changed[0] <= end ? v.changed[0] : null,
                changedWhat:v.changed ? v.changed[1] : '', series:series };
@@ -1131,7 +1160,20 @@ function frameMain(P){
   function when(m){ return (P.end - m >= 1440 ? dayOf(m) + ' ' : '') + clock(m); }
   function deg(c){ return (+c).toFixed(1) + '°'; }
   function one(x){ return String(+(+x).toFixed(1)); }
-  function stateOf(v){ return v.offline ? 'nr' : (v.hum > R.target ? 'over' : 'ok'); }
+  /* The board's verdict on a villa, in the colour law's meanings: offline
+     is a failure; anything to chase is amber, and named; guests in with
+     nothing to chase is green; an empty villa with nothing to chase sinks. */
+  function verdict(v){
+    if (v.offline) return { k:'nr', why:[] };
+    var why = [];
+    if (v.hum > R.target) why.push('Humid');
+    if (v.occ && v.tmp < R.lo) why.push('Cold');
+    if (v.occ && v.tmp > R.hi) why.push('Warm');
+    if (v.filterDue) why.push('Filter');
+    return { k:why.length ? 'over' : v.occ ? 'ok' : 'empty', why:why };
+  }
+  /* The tile's words for the unit: mode and set temperature, or Off. The
+     fan is the sheet's, where there is room for it. */
   function setShort(v){ return v.on ? v.mode + ' ' + v.set : 'Off'; }
   var byN = {};
   P.villas.forEach(function(v){ byN[v.n] = v; });
@@ -1142,6 +1184,8 @@ function frameMain(P){
     function say(would, does){ return S.act ? does : would; }
     if (!S.villas[v.n]) return { k:'off', why:'rule off', t:'The rule is off for this villa.' };
     if (v.offline) return { k:'skip', why:'offline', t:'It cannot act: the unit is offline.' };
+    if (!v.on && v.staffOff)
+      return { k:'skip', why:'turned off here', t:'It leaves it alone: it was turned off here.' };
     if (!v.on && v.changedAt != null)
       return { k:'skip', why:'a guest turned it off',
                t:'It leaves it alone: a guest turned it off at ' + when(v.changedAt) + '.' };
@@ -1169,36 +1213,49 @@ function frameMain(P){
   /* ── the board ── */
   var main = el('main', 'acpage');
   d.body.appendChild(main);
-  function spark(v){
-    var s = sv('svg', { 'class':'spark', viewBox:'0 0 100 20', preserveAspectRatio:'none',
-                        'aria-hidden':'true' });
-    function y(h){ return (20 - (Math.max(40, Math.min(100, h)) - 40) / 60 * 20).toFixed(2); }
-    s.appendChild(sv('line', { x1:0, x2:100, y1:y(R.target), y2:y(R.target),
-                               'vector-effect':'non-scaling-stroke' }));
-    s.appendChild(sv('polyline', { 'vector-effect':'non-scaling-stroke',
-      points:v.series.map(function(p){ return (p.i / P.span * 100).toFixed(2) + ',' + y(p.h); }).join(' ') }));
-    return s;
+  /* What the counts count, each a filter. A state no villa is in is not
+     offered, unless it is the one pressed; Show all comes only while one
+     is, and pressing the pressed one again does the same. */
+  var lens = 'all';
+  var LENSES = [
+    ['all', 'Show all', function(){ return true; }, ''],
+    ['att', 'Attention', function(v){ return verdict(v).k === 'over'; }, 'amb'],
+    ['in', 'In house', function(v){ return v.occ && !v.offline; }, ''],
+    ['empty', 'Empty', function(v){ return !v.occ && !v.offline; }, ''],
+    ['off', 'Off', function(v){ return !v.offline && !v.on; }, ''],
+    ['filter', 'Filter', function(v){ return v.filterDue; }, 'amb'],
+    ['nr', 'Offline', function(v){ return v.offline; }, 'red']
+  ];
+  function power(v){
+    var p = el('span', 'pwr' + (v.on ? '' : ' off'));
+    var s = sv('svg', { viewBox:'0 0 24 24', 'aria-hidden':'true' });
+    s.innerHTML = P.powerSvg;               /* Lucide's power, constant */
+    p.appendChild(s);
+    p.appendChild(d.createTextNode(setShort(v)));
+    return p;
   }
-  function tile(v){
-    var b = button('actile ' + stateOf(v), null, function(){ openVilla(v.n); });
+  function tile(v, shown){
+    var vd = verdict(v);
+    var b = button('actile ' + vd.k + (shown ? '' : ' dim'), null, function(){ openVilla(v.n); });
     var top = el('span', 'atop');
     top.appendChild(el('span', 'vn', String(v.n)));
-    top.appendChild(el('span', 'gs', v.guest));
+    top.appendChild(el('span', 'gs', v.label));
     b.appendChild(top);
     if (v.offline){
       b.appendChild(el('span', 'nrtext', 'Offline'));
-      b.appendChild(el('span', 'amid', 'since ' + v.since));
+      b.appendChild(el('span', 'pwr', 'since ' + v.since));
     } else {
-      b.appendChild(el('span', 'hum', v.hum + '%'));
-      var mid = el('span', 'amid');
-      mid.appendChild(el('span', 'tmp', deg(v.tmp)));
-      mid.appendChild(el('span', 'set', setShort(v)));
-      b.appendChild(mid);
+      var vals = el('span', 'vals');
+      vals.appendChild(el('span', 'tv2' + (v.occ && (v.tmp < R.lo || v.tmp > R.hi) ? ' bad' : ''), deg(v.tmp)));
+      vals.appendChild(el('span', 'tv2' + (v.hum > R.target ? ' bad' : ''), v.hum + '%'));
+      b.appendChild(vals);
+      b.appendChild(power(v));
     }
-    b.appendChild(spark(v));
+    b.appendChild(el('span', 'why', vd.why.join(' · ')));
     b.setAttribute('aria-label', 'Villa ' + v.n + ', ' + v.guestLong + ', ' +
       (v.offline ? 'offline since ' + v.since
-                 : 'humidity ' + v.hum + '%, ' + v.tmp.toFixed(1) + ' degrees, ' + setShort(v)));
+                 : v.tmp.toFixed(1) + ' degrees, humidity ' + v.hum + '%, ' + setShort(v) +
+                   (vd.why.length ? ', needs attention: ' + vd.why.join(', ') : '')));
     return b;
   }
   function drawBoard(){
@@ -1207,32 +1264,33 @@ function frameMain(P){
     row.appendChild(el('div', 'date', P.date));
     row.appendChild(button('btn is-secondary rulesbtn', 'Humidity rule', openRule));
     main.appendChild(row);
-    var count = { over:0, ok:0, nr:0 };
-    P.villas.forEach(function(v){ count[stateOf(v)]++; });
-    var stats = el('div', 'stats');
-    [[count.over, 'over ' + R.target + '%', count.over ? 'amb' : ''],
-     [count.ok, R.target + '% or under', ''],
-     [count.nr, 'offline', count.nr ? 'red' : '']].forEach(function(s){
-      var st = el('div', 'stat');
-      st.appendChild(el('span', 'stat-n' + (s[2] ? ' ' + s[2] : ''), String(s[0])));
-      st.appendChild(el('span', 'stat-l', s[1]));
-      stats.appendChild(st);
+    var test = LENSES.filter(function(l){ return l[0] === lens; })[0][2];
+    var chips = el('div', 'fchips');
+    chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Show');
+    LENSES.forEach(function(l){
+      var n = P.villas.filter(l[2]).length;
+      if (l[0] === 'all' ? lens === 'all' : !n && l[0] !== lens) return;
+      var c = button(l[0] === lens ? 'on' : '', null, function(){
+        lens = l[0] === lens ? 'all' : l[0]; drawBoard();
+      });
+      c.id = 'show-' + l[0];
+      c.setAttribute('aria-pressed', l[0] === lens ? 'true' : 'false');
+      c.appendChild(d.createTextNode(l[1]));
+      if (l[0] !== 'all') c.appendChild(el('b', n && l[3] ? l[3] : null, String(n)));
+      chips.appendChild(c);
     });
-    main.appendChild(stats);
+    main.appendChild(chips);
     var card = el('section', 'accard');
     card.setAttribute('aria-label', 'Villas');
     var grid = el('div', 'acgrid');
-    P.villas.forEach(function(v){ grid.appendChild(tile(v)); });
+    P.villas.forEach(function(v){ grid.appendChild(tile(v, test(v))); });
     card.appendChild(grid);
     var lg = el('div', 'aclegend');
-    [['ok', R.target + '% or under'], ['over', 'Over ' + R.target + '%']].forEach(function(k){
+    [['ok', 'In house, all fine'], ['over', 'Needs attention: the tile says why'],
+     ['empty', 'Empty, nothing to do']].forEach(function(k){
       var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
     });
     lg.appendChild(el('span', 'nr', 'Offline'));
-    var ls = el('span'), lsv = sv('svg', { viewBox:'0 0 18 10', 'aria-hidden':'true' });
-    lsv.appendChild(sv('polyline', { points:'1,8 6,6 10,7 17,2' }));
-    ls.appendChild(lsv); ls.appendChild(d.createTextNode('Humidity, last 24 hours'));
-    lg.appendChild(ls);
     lg.appendChild(el('span', null, 'Updated ' + P.now));
     card.appendChild(lg);
     main.appendChild(card);
@@ -1293,7 +1351,7 @@ function frameMain(P){
       now.appendChild(fig(deg(v.tmp), 'room then', ''));
     } else {
       now.appendChild(fig(v.hum + '%', 'humidity', 'big ' + (v.hum > R.target ? 'amb' : 'grn')));
-      now.appendChild(fig(deg(v.tmp), 'room', ''));
+      now.appendChild(fig(deg(v.tmp), 'room', v.occ && (v.tmp < R.lo || v.tmp > R.hi) ? 'amb' : ''));
     }
     sh.appendChild(now);
     sh.appendChild(controls(v));
@@ -1309,7 +1367,11 @@ function frameMain(P){
     card.setAttribute('aria-label', 'Controls');
     status.setAttribute('aria-live', 'polite');
     if (v.offline) status.textContent = 'The unit is offline: a change cannot reach it.';
+    /* A change goes to the unit, and the board shows it at once. */
     function send(){
+      v.on = st.on; v.mode = st.mode; v.set = st.set; v.fan = st.fan; v.swing = st.swing;
+      v.staffOff = !st.on;
+      drawBoard();
       status.className = 'ctlstatus'; status.textContent = 'Sending to the unit';
       clearTimeout(timer);
       timer = setTimeout(function(){
@@ -1362,6 +1424,17 @@ function frameMain(P){
                             function(o){ st.fan = o; }));
       card.appendChild(segs('Swing', ['Fixed', 'Swing'], st.swing,
                             function(o){ st.swing = o; }));
+      /* The filter, as the app shows it, and the desk's way to say it is
+         clean: Sensibo's cleanFiltersNotification. */
+      var fr = el('div', 'crow');
+      fr.appendChild(el('div', 'clabel', 'Filter'));
+      var fs = el('div', 'fstat');
+      fs.appendChild(el('span', v.filterDue ? 'fdue' : null, v.filterDue ? 'Due for a clean' : v.filter + '%'));
+      if (v.filterDue) fs.appendChild(button('btn is-secondary', 'Mark cleaned', function(){
+        v.filter = 100; v.filterDue = false; send();
+      }));
+      fr.appendChild(fs);
+      card.appendChild(fr);
       card.appendChild(status);
     }
     /* Turning a guest's unit off is destructive: it asks first, in the
@@ -1710,9 +1783,10 @@ function frameMain(P){
 /* ── the frames ────────────────────────────────────────────────────────*/
 var H = DATA.H;
 var FRAMES = [
-  { key:'board', title:'The board, a cool humid morning', P:function(){ return scenario(H(1,7,40)); } },
-  { key:'villa', title:'Villa 13 tapped: its controls',  P:function(){ return scenario(H(1,7,40), 13); } },
-  { key:'rule',  title:'Humidity rule: its settings',    P:function(){ return scenario(H(1,7,40), 'rule'); } }
+  { key:'morning',   title:'The board, a cool humid morning', P:function(){ return scenario(H(1,7,40)); } },
+  { key:'afternoon', title:'The board, a warm afternoon',     P:function(){ return scenario(H(1,15,10)); } },
+  { key:'villa',     title:'Villa 13 tapped: its controls',   P:function(){ return scenario(H(1,7,40), 13); } },
+  { key:'rule',      title:'Humidity rule: its settings',     P:function(){ return scenario(H(1,7,40), 'rule'); } }
 ];
 var UI2 = document.getElementById('ui2css').textContent;
 var PAGE = document.getElementById('pagecss').textContent;
@@ -1724,7 +1798,7 @@ function doc(f){
     JSON.stringify(f.P()).replace(/</g, '\\u003c') + ');</scr' + 'ipt></body></html>';
 }
 
-var page = 'board';
+var page = 'morning';
 try { var q = new URLSearchParams(location.search); if (q.get('page')) page = q.get('page'); } catch (e) {}
 var stage = document.getElementById('stage'), pages = document.getElementById('pages');
 var WIDE = window.matchMedia('(min-width:900px)').matches;
