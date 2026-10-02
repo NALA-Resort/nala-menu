@@ -522,6 +522,33 @@ function editPhoneNumber(booking, cb){
   });
 }
 
+/* The reservations a night can need: every booking that departs on or
+   after it. A guest asleep on a night leaves after it, so the night's
+   villas are all in here, and the read stops growing with every booking
+   ever made - /bookings keeps them all and nothing prunes it (2 Oct).
+   Asked from the day before, so a departure stored a day early, as a UTC
+   date can be, still falls inside.
+
+   The query needs ".indexOn": ["pms/depart"] on /bookings (rules.json).
+   Until the rules carry it the database refuses the query, and this reads
+   the whole node as it always did. A refused query must never read as no
+   bookings: the boards would lose an arriving guest's form, their dinner
+   answer and their allergy with it, and nothing would look wrong. */
+function fetchBookingsFrom(dateKey){
+  function whole(){
+    return fetch(DB + '/bookings.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }
+  var d = parseDepDate(dateKey);
+  if (!d) return whole();
+  d.setDate(d.getDate() - 1);
+  return fetch(DB + '/bookings.json?orderBy=' + encodeURIComponent('"pms/depart"') +
+               '&startAt=' + encodeURIComponent('"' + dkey(d) + '"') + '&v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : whole(); })
+    .catch(function(){ return whole(); });
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -542,17 +569,16 @@ function fetchStays(dateKey){
       .catch(function(){ return null; }),
     /* The reservation's own answers, for every occupied villa: one dietary
        list per person, living on the reservation not the night, so the boards
-       see it even when the viewed night holds no dinner cell. Read WHOLE now
-       and plucked per villa, in place of a fetch per villa: the RTDB REST
+       see it even when the viewed night holds no dinner cell. One read,
+       plucked per villa, in place of a fetch per villa: the RTDB REST
        endpoint is HTTP/1.1, so those per-villa reads ran six at a time, and
        this reader is shared by the Dashboard, Reservations, the Front Desk's
        neighbours, the Guest profile and more - so one read here speeds all of
-       them. /bookings is the node the Spa badge and spa.html already read
-       whole. A failed read leaves the villas unset and the merge falls back to
-       the night, exactly as a failed per-villa read did - not a blank board. */
-    fetch(DB + '/bookings.json?v=' + Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+       them. Since 2 Oct only the bookings departing from this night on
+       (fetchBookingsFrom, above). A failed read leaves the villas unset and
+       the merge falls back to the night, exactly as a failed per-villa read
+       did - not a blank board. */
+    fetchBookingsFrom(dateKey)
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
     OPENED_MARKS = res[2] || {};
