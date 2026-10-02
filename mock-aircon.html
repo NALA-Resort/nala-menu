@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Air con board</title>
+<!-- Mock, 2 Oct. Step 1 of the air con controller: a board that only reads.
+     The owner wants every villa's air con under "all the usual controls as
+     seen in the public application", and rules smarter than Climate React,
+     because on a cool humid day ("95%rh at 21deg C") a unit left at
+     23 / Cool / Auto stops drying the room. Step 1 reads the units and
+     nothing more, so this is what Sensibo will tell us, every two minutes.
+
+     The readings are invented, from a small simulation of one cool, humid
+     Friday in Far North Queensland: 21 degrees and 95% outside before dawn,
+     sun from ten. In Cool a unit whose room is below its set temperature
+     stops (GENERAL's operating manuals), so it stops drying. That is the
+     morning here: every reporting villa amber but one. Villa 5's guest set
+     Cool 20 and is the dry one; villa 17's switched to Heat 24 at 1:30am,
+     warmer and still 73%. By the warm afternoon the units are running and
+     have dried all but two.
+
+     What it decides, each open to his word:
+     - Colour is humidity against the target, 65% until the settings screen
+       (step 3) holds it: green at or under it, nothing to do ("If it's not
+       green it looks like there is work to do"); amber over it, chase this;
+       red words when a unit goes offline, a failure, never a red tile.
+       Temperature and the setting are words.
+     - Vacant villas are not sunk grey as on the other boards. An empty
+       villa's air still needs watching, and it is where the drying rule
+       will work hardest.
+     - The villas keep their order, 1 to 17: three across at 390 and 360,
+       two at 320, by the grid's own fit rather than a width query.
+     - The line under each number is that villa's last 24 hours of humidity,
+       every villa on one scale (40 to 100%), so two lines compare at a
+       glance.
+     - Tap a villa: its 24 hours as two charts on one time axis, never one
+       chart with two scales, a readout that follows a finger across both,
+       and the same readings as a table.
+     Not in step 1: the controls (step 2), the rules and their settings
+     (step 3).
+
+     What a build adds: a Worker, nala-aircon, holding the Sensibo key as a
+     dashboard secret, reading every unit in one call every two minutes and
+     writing the readings and their history to Firebase; aircon.html, which
+     reads only that (rule 7), the admin's alone at first through
+     PREVIEW_PAGES; its NAV entry, the canon's line and an icon in PAGE_ICONS
+     (Lucide's air-vent); rules.json for the new nodes. colour_law.json does
+     not move: every colour here is already in it.
+
+     Frozen like the others: the shared sheet and the tab bar's icons are
+     copied in once (nala-ui2.css and PAGE_ICONS at 813bce6), so this file
+     carries no ?v= and nothing in it reaches the live app. -->
+<style>
+  /* One look in either theme, a neutral grey surround, as mock-paper.html. */
+  :root{ --surround:#E4E4E0; --ink:#1B1B19; --mid:#5F5F58; --field:#FFFFFF;
+         --edge:rgba(28,28,26,.2); color-scheme:light; }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; height:100%; }
+  body{ background:var(--surround); color:var(--ink); display:flex; flex-direction:column;
+        font:14px/1.4 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  .bar{ flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center;
+        gap:8px 16px; padding:10px 16px; }
+  .bar h1{ font-size:16px; font-weight:600; margin:0; }
+  select.pages{ font:inherit; font-size:14px; color:var(--ink); background:var(--field);
+                border:1px solid var(--edge); border-radius:999px; padding:6px 12px; }
+  :focus-visible{ outline:2px solid #1A66C2; outline-offset:2px; }
+  details.about{ width:100%; font-size:13px; color:var(--mid); }
+  details.about summary{ cursor:pointer; }
+  details.about p{ margin:6px 0; max-width:72ch; }
+  /* Each screen is a real 390pt page. Where there is room it shows at that
+     size; on a phone it is scaled down to sit inside the 16pt margin, so
+     the page inside still lays out at 390 rather than reflowing narrower. */
+  .stage{ flex:1 1 auto; min-height:0; display:flex; justify-content:center; gap:24px;
+          padding:0 16px 16px; }
+  .ph{ flex:0 0 auto; display:none; flex-direction:column; }
+  .ph.on{ display:flex; }
+  .ph .cap{ font-size:13px; color:var(--mid); margin:0 0 6px 2px; display:none; }
+  .ph .scr{ overflow:hidden; border-radius:14px; background:#FFFFFF;
+            box-shadow:0 0 0 1px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.08); }
+  .ph iframe{ display:block; border:0; width:390px; transform-origin:0 0; }
+  /* Wide enough for two screens side by side: all three, each 390 by 844. */
+  @media (min-width:900px){
+    .stage{ flex-wrap:wrap; align-content:flex-start; overflow-y:auto; padding-top:4px; }
+    .ph{ display:flex; } .ph .cap{ display:block; } .pages{ display:none; }
+  }
+  @media (max-width:430px){ .bar h1{ display:none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Air con board</h1>
+  <select class="pages" id="pages" aria-label="Screen"></select>
+  <details class="about">
+    <summary>About this mock</summary>
+    <p>Step 1 only reads the units. Invented readings for a cool, humid Friday:
+       before dawn it is 21&deg; and 95% outside, and units set to 23 in Cool have
+       stopped running, so they have stopped drying.</p>
+    <p>Green: humidity 65% or under. Amber: over 65%. Red words: the unit has
+       gone offline. The line under each number is the last 24 hours of
+       humidity. Tap a villa for its charts; touch a chart to read any moment.</p>
+  </details>
+</div>
+<div class="stage" id="stage"></div>
+
+<!-- The shared sheet, inlined once. media="not all": read into each screen,
+     never applied out here. -->
+<style id="ui2css" media="not all">
+/* NALA staff UI, second dress. See STYLEGUIDE.md and mock-style.html.
+
+   WHY THIS IS A SECOND FILE AND NOT AN EDIT TO nala-ui.css
+   --------------------------------------------------------
+   The dress changes shared tokens, and nala-ui.css is linked by thirteen
+   pages. Editing it restyles all of them in one publish, on a live system,
+   with no way to move one page at a time. So the new dress is opt in: a
+   page joins it by adding `ui2` to its body class and linking this file,
+   and every page that has not joined is untouched, byte for byte.
+
+   This file is a MIGRATION SEAM, not a permanent second stylesheet. When
+   the last page carries `ui2`, its contents move into nala-ui.css, the
+   class goes, and this file is deleted. Until then, two dresses is the
+   price of moving five pages instead of twenty two at once.
+
+   It is also SELF SUFFICIENT on purpose. nala-ui.css turned out to be a
+   layout system as well as a control sheet: it sets body to a flex column
+   and takes its colours from --ctl-* tokens that only exist on a body
+   carrying tier-app or tier-print, so a page that linked it for the
+   hamburger alone got a reflow, and a page without a tier class drew a
+   menu button nobody could see. That is why tag.html, flags.html and
+   publish.html each hand copied the nav instead. Nothing here needs a tier
+   class, so those copies can go.                                      */
+
+/* The reset every page already carries, identical in all twenty of them. */
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* ── the colour law · values unchanged from nala-ui.css and the boards ──
+   A dress may say what a control looks like. It may not say what a colour
+   means. Every value below is the one the live boards use today.      */
+:root{
+  --law-green:#5E7D67;  --law-green-t:rgba(122,160,130,.26);
+  --law-green-b:rgba(122,160,130,.65);
+  --law-terra:#9E6455;  --law-terra-t:rgba(184,106,90,.16);
+  --law-terra-b:rgba(184,106,90,.45);
+  --law-amber:#F6EAD5;  --law-amber-b:#C29A55;  --law-amber-ink:#8A6A2F;
+  --law-red:#A8321E;
+  --law-wait:rgba(28,28,26,.045);
+  --law-save-bg:#E4EDE2; --law-save-bdr:#7E937A; --law-save-ink:#5E7D67;
+}
+
+body.ui2{
+  /* ── ground and ink ────────────────────────────────────────────────
+     White rather than cream: these are tools, and every tool the owner
+     pointed at (Drive, Earth, Zoom) sits on white with one accent.   */
+  --ground:#FFFFFF;
+  --card:#F5F6F8;          /* a quiet fill for secondary buttons and cards */
+  --ink:#1B1B19;
+  /* #999990 measured 2.69:1 on cream. WCAG AA wants 4.5:1 for text this
+     size, and this token carries most of the app's secondary text at
+     11px. #5F5F58 is 4.9:1 on white and keeps the warm grey.         */
+  --mid:#5F5F58;
+  --rule:#E6E6E1;
+
+  /* ── one accent, and it means one thing ────────────────────────────
+     "You can act here, or this is selected." Blue because it is the
+     only hue not already spoken for: sage is done, terracotta is
+     declined, amber is chase this, red is failed. An accent that
+     borrowed one of those would put interaction and state in the same
+     channel, which is what the boards already suffer from.          */
+  --accent:#1A66C2;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E8F0FE;
+
+  /* ── what a SELECTED pill looks like ───────────────────────────────
+     Ruled by the owner, 29 Aug: a selected pill gives grey feedback,
+     not black and not blue. Before this it was blue on six pages, ink
+     on five and green on two, and a black circle sat beside a blue
+     segment on the same sheet.
+
+     Grey, and deliberately not the colour law's waiting grey, which is
+     a fifth of this and carries no border: this is a control saying
+     "you picked me", not a record saying "sent, waiting". The ink
+     border is what does the work - a dark edge reads as chosen at a
+     glance without spending a colour that means something.          */
+  --sel-bg:rgba(28,28,26,.10);
+  --sel-bdr:var(--ink);
+
+  /* ── scales · pick from these, never by eye ────────────────────────
+     Spacing is a 4px grid, which is what Material, Bootstrap and Apple
+     all land on. The type scale is the styleguide's own 8/11/15/20/27
+     with the bottom two steps raised: 8px and 9px text is not density,
+     it is unreadable, and it is most of why the boards look busy.   */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  --r:8px;            /* every control and card */
+  --pill:999px;       /* chips and status pills only */
+  --tap:44px;         /* Apple HIG minimum; Material says 48 */
+  /* The one page width, owned here (rule 1, CLAUDE.md). The app is phone-
+     first and does not grow to fill a desktop screen: every ui2 page sits
+     in a single centred column of this width, so a PC shows the same column
+     a phone does instead of a different width per page. It was fanned out as
+     `max-width:520px` in ten pages and drifted - 430 on the guest profile,
+     absent (full-bleed) on spa, invitations, the SMS pages and the boards -
+     which is the inconsistency this closes. Change it here, once.
+     --appw is the CONTENT width, matching the old `.wrap { max-width:520 }`
+     which carried no padding. --appgut is the side gutter the pages put on
+     body; the frame cap below adds it back so the padding sits OUTSIDE the
+     column and the content stays 520, not 520-minus-two-gutters. Getting
+     that wrong shrank every page by a gutter and cost the Cleans board a
+     pixel on its landscape badge. */
+  --appw:520px;
+  --appgut:18px;
+
+  --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
+            Helvetica,Arial,sans-serif;
+
+  /* ── aliases, transitional ─────────────────────────────────────────
+     A converted page keeps its own component rules, and those rules ask
+     for the token names the old sheet used. Rather than find-and-replace
+     hundreds of them and risk a typo per page, the old names are kept
+     here pointing at the new values. An undefined custom property does
+     not fall back, it computes to nothing: var(--cream) with no --cream
+     is a transparent background and var(--ink) is inherited text, which
+     is exactly how the hamburger came to be invisible. These go with the
+     seam, when the last page has joined and the names can be swept.   */
+  --cream:var(--ground);
+  --paper:var(--ground);
+  /* --green and --greent are deliberately NOT aliased. --green is #E4EDE2,
+     a pale fill, on five pages and #5E7D67, a dark ink, on two. Claiming
+     one of those meanings in the shared sheet would repeat exactly the
+     fault this work exists to fix, and would turn the Cleans board's ready
+     tint into a dark green. The pages keep their own until the name is
+     split properly, which is the de-aliasing job still outstanding.    */
+  --green-t:var(--law-green-t);  --green-b:var(--law-green-b);
+  --greenb:var(--law-save-bdr);
+  --resgreen:var(--law-green);   --resgreen-t:var(--law-green-t);
+  --resgreen-b:var(--law-green-b);
+  --terra:var(--law-terra);      --terra-t:var(--law-terra-t);
+  --terra-b:var(--law-terra-b);
+  --resterra:var(--law-terra);   --resterra-t:var(--law-terra-t);
+  --resterra-b:var(--law-terra-b);
+  --amber:var(--law-amber);      --amberb:var(--law-amber-b);
+  --ambert:var(--law-amber-ink); --amberink:var(--law-amber-ink);
+  --red:var(--law-red);
+  --save-bg:var(--law-save-bg);  --save-bdr:var(--law-save-bdr);
+  --save-ink:var(--law-save-ink);
+  --num-font:var(--ui-font);
+  /* nala-ui.css's tier tokens, so a page that links both sheets and still
+     has rules reaching for --ctl-* keeps drawing while it is converted. */
+  --ctl-bg:var(--ground); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+  --ctl-soft:#454540;
+
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--ui-font);
+  -webkit-tap-highlight-color:transparent;
+  /* Double tap to zoom is a hazard on a board of tap targets. This turns
+     that gesture off while LEAVING pinch zoom alone, which is why the
+     user-scalable=no meta comes off these pages: it took pinch zoom
+     from anyone who needs it and did not do this job.               */
+  touch-action:manipulation;
+}
+
+/* ── paper ───────────────────────────────────────────────────────────
+   Ruled by the owner, 27 Sep, off mock-paper.html: "Use the same as this
+   app", holding up the Claude app. Its ground, sampled from his
+   screenshot, is #F9F9F7; its quiet pills #F0EFEC; its hairline
+   #E1E1DF. Seen built, on his phone, the same day: "The paper colour is
+   probably a little bit too dark." His phone drew #F9F9F7 exactly, so
+   the value moved, not the sampling: two steps lighter, the same warmth,
+   #FBFBF9. Shown three lighter beside it (#FCFCFA, #FDFDFB, #FEFEFC),
+   he kept this one. A page joins with one class, `paper`, beside `ui2`, and
+   leaves by dropping it: eleven pages wear it, the rest stay white.
+
+   His first objection is the rule that matters: "Cards and box
+   backgrounds are transparent so there is no contrast." On paper every
+   card, row and tile is an opaque --surface, lifted by --lift, and a
+   colour-law tint is drawn OVER that white as a gradient layer:
+     background: linear-gradient(<tint>, <tint>), var(--surface);
+   so each state is the same colour it always was and the law's own
+   rgba values stay the ones in the stylesheet. A box that keeps a
+   transparent fill shows the paper through it; paper_suite fails the
+   page by name when one does, in its sheets and menus as well.        */
+body.ui2.paper{
+  --ground:#FBFBF9;
+  --card:#F0EFEC;
+  --rule:#E1E1DF;
+  --surface:#FFFFFF;
+  --lift:0 1px 2px rgba(28,28,26,.06), 0 2px 10px rgba(28,28,26,.035);
+}
+/* Outlined buttons sit on the paper as white, like the app's own, and so
+   does the menu, which floats over the page. */
+body.ui2.paper .btn.ghost, body.ui2.paper .navdrop{ background:var(--surface); }
+
+/* ── sentence case, everywhere ───────────────────────────────────────
+   The loudest single difference between this dress and the last. Not
+   one label in Drive, Earth or Zoom is uppercase or letterspaced; the
+   look dates to Material 1 and Bootstrap 3. Where a page still asks for
+   caps, this overrides it rather than requiring every rule be found. */
+body.ui2 .seclabel, body.ui2 .stat-l, body.ui2 .legend,
+body.ui2 .btn, body.ui2 .sec > span, body.ui2 .sec a,
+body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
+  text-transform:none; letter-spacing:0;
+}
+
+/* ── page frame ──────────────────────────────────────────────────────
+   Deliberately NOT a flex column. nala-ui.css makes body one, which is
+   the rule that reflowed pages that only wanted a button.           */
+/* Page padding is the PAGE's business and is not set here. It was, and at
+   body.ui2, which outranks every `body { padding-top: ... }` a page has
+   inside a media query: the Cleans board's landscape rule asks for 6px at
+   the top so seventeen tiles fit a 320px-tall screen, and a sheet-level
+   shorthand quietly held it at 24 and pushed the grid off the screen.  */
+/* The width IS set here, and only here (--appw above). The column is centred
+   so a wide screen gets margins, not a stretched page. The cap is the content
+   width PLUS the two side gutters, because box-sizing is border-box and the
+   pages' side padding lives on body: cap the content width alone and that
+   padding eats into it, leaving 520-minus-two-gutters of content and a page a
+   gutter narrower than the old `.wrap`. Adding the gutters back keeps the
+   content at --appw exactly, gutters outside it, matching the wrap pages.
+   Full-bleed chrome is exempt on purpose: .bar/.selbar/.savebar and the
+   .backdrop/.cardov overlays are position:fixed to the viewport, so this cap
+   never reaches them - only their inner column follows --appw. A page that
+   wants its own frame (guest, the boards) reads --appw too; none restates the
+   number. */
+body.ui2{ max-width:calc(var(--appw) + 2*var(--appgut)); margin-inline:auto; }
+body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
+body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
+                margin-bottom:var(--s2); max-width:58ch; }
+body.ui2 .seclabel{ font-size:var(--t2); font-weight:500; color:var(--mid);
+                    margin:var(--s5) 0 var(--s2); }
+body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
+                   margin-bottom:var(--s3); max-width:58ch; }
+
+/* ── header row ──────────────────────────────────────────────────────
+   Same shape as today: one row, in flow, controls at 40px, menu right.
+   Floating corner menus stay banned.                                 */
+body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
+                   margin-bottom:var(--s4); }
+/* --t3, not --t4. At 20px "Sat 29th Aug" is 151px wide, and on a 320pt
+   screen that leaves too little for Today, the two arrows and the menu:
+   the hamburger was pushed 6px off the right edge. A date can never trim
+   - the trim rule says so - so it has to fit instead. 16px is still a
+   clear step up from the 13px it was before the dress.               */
+body.ui2 .date{ flex:1; font-size:var(--t3); font-weight:600; }
+/* 36px, not the 44px tap floor: the header law in STYLEGUIDE.md rules that
+   every control in this row is 36 and tally_suite measures it. The project's
+   own rule outranks the general one.                                      */
+body.ui2 .dnav{ width:36px; height:36px; display:inline-flex; align-items:center;
+                justify-content:center; border:0; background:var(--card);
+                border-radius:var(--pill); color:var(--ink); cursor:pointer;
+                font-family:var(--ui-font); font-size:var(--t3); }
+body.ui2 .dnav.today{ width:auto; padding:0 var(--s3); font-size:var(--t2); }
+/* The corner law: the footer row sits hard against the bottom of the screen,
+   so it squares off, and only the outer lower corners round. body.ui2 .btn
+   outranks .foot .btn in nala-ui.css, so the law has to be restated here or
+   the row grows four rounded corners and floats.                          */
+body.ui2 .foot .btn{ border-radius:0; }
+body.ui2 .foot .btn:first-child{ border-bottom-left-radius:var(--r); }
+body.ui2 .foot .btn:last-child { border-bottom-right-radius:var(--r); }
+body.ui2 .dnav:disabled{ opacity:.35; cursor:default; }
+body.ui2 .dnav:active{ background:var(--accent-soft); }
+
+/* ── the hamburger and its menu ──────────────────────────────────────
+   Written against real colours, not --ctl-*, so a page with no tier
+   class still draws it. That was the whole reason for the copies.   */
+body.ui2 .navwrap{ position:relative; margin-left:auto; z-index:500; }
+body.ui2 .navbtn{ width:42px; height:36px; border:0; background:transparent;
+                  border-radius:var(--pill); display:flex; flex-direction:column;
+                  align-items:center; justify-content:center; gap:4px;
+                  cursor:pointer; -webkit-tap-highlight-color:transparent; }
+body.ui2 .navbtn:active{ background:var(--card); }
+body.ui2 .navbtn span{ display:block; width:17px; height:1.7px;
+                       background:var(--ink); border-radius:2px; }
+body.ui2 .navdrop{ display:none; position:absolute; right:0; top:42px;
+                   background:var(--ground); border:1px solid var(--rule);
+                   border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
+                   box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
+body.ui2 .navdrop.open{ display:block; }
+body.ui2 .navdrop a{ display:flex; align-items:center; gap:var(--s3);
+                     padding:var(--s3) var(--s4);
+                     font-size:var(--t2); line-height:1.3; color:var(--ink);
+                     text-decoration:none; }
+/* Each row's icon, the page's own (PAGE_ICONS, nala-shared.js), drawn as
+   the tab bar draws it; a group's name stands where its rows' names do. */
+body.ui2 .navic{ flex:0 0 auto; display:flex; width:24px; height:24px; color:var(--mid); }
+body.ui2 .navic svg{ width:100%; height:100%; fill:none; stroke:currentColor;
+                     stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+body.ui2 .navlabel{ flex:1 1 auto; min-width:0; }
+body.ui2 .navgrp > span{ padding-left:calc(24px + var(--s3)); }
+body.ui2 .navdrop a:active{ background:var(--accent-soft); }
+body.ui2 .navgrp{ display:flex; align-items:center; justify-content:space-between;
+                  gap:var(--s4); width:100%; padding:var(--s3) var(--s4);
+                  font-size:var(--t2); line-height:1.3; font-family:inherit;
+                  text-align:left; color:var(--ink); background:none; border:0;
+                  border-top:1px solid var(--rule); cursor:pointer; }
+body.ui2 .navchev{ flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+body.ui2 .navgroup.open .navchev{ transform:rotate(180deg); }
+body.ui2 .navsub{ display:none; }
+body.ui2 .navgroup.open .navsub{ display:block; }
+body.ui2 .navsub a{ padding-left:var(--s6); }
+body.ui2 .navdrop a.navaction,
+body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
+                            justify-content:space-between; gap:var(--s3); }
+body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
+body.ui2 .navmark.on{ color:var(--law-green); }  /* the law's green ink (was a green of its own until 27 Sep) */
+body.ui2 .navmark.off{ color:#9A9A92; }
+body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
+body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
+                             margin-top:var(--s1); padding-top:var(--s3);
+                             color:var(--mid); }
+/* A count of what waits on you is the accent's blue, on the bar and in
+   the menu alike: the owner, 30 Sep, "Counter is blue", having tried the
+   phone's red and found it confusing beside the red that means failure. */
+body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+                    border-radius:var(--pill); background:var(--accent);
+                    color:var(--accent-ink); font-size:var(--t1);
+                    display:inline-flex; align-items:center; justify-content:center; }
+
+/* ── the tab bar ─────────────────────────────────────────────────────
+   The icons along the foot of the screen, drawn by buildTabs in
+   nala-shared.js: the pages a login uses most, five at most, the owner's
+   ask of 30 Sep. It is the one fixed element pinned over the page, so the
+   header law's ban on floating menus is answered here rather than
+   ignored: nothing may sit under it.
+
+   Drawn to the iPhone's own bar (iOS 26), the owner's ask the same day:
+   "Study apple iPhone best practice including space below and icon line
+   size". So the staff meet the bar they already know:
+   - a capsule 62pt tall, floating 21pt above the foot of the screen and
+     21pt in from its sides (further in from a notch), with 2pt inside
+     it to the tabs. The home indicator lives in the 21pt below it.
+   - icons in a 28pt box, the largest 23pt.
+   - the page you are on in the phone's blue, and no pill: the owner, 30
+     Sep, "no grey pill, just change icon colour to blue", which is also
+     what the phone does. The one place selection wears blue, the accent's
+     other meaning ("you can act here, or this is selected").
+   - five pages and the menu after them, the iPhone's More tab, which
+     raises the menu from the foot beside itself.
+   - every login's bar the same capsule, however few its icons: the
+     owner, 1 Oct, "This bar is not consistent across employees". It
+     parts from iOS 26 here, which narrows a bar of under four, and that
+     narrow bar is why: sized from its contents, Safari drew the waiter's
+     two pages and the menu as one icon in a pill, the next beside it and
+     the menu off the screen, where Chromium, the suites', drew it whole.
+     Its width comes from its sides, as the admin's always has.
+   - held sideways, the compact bar: 44pt, smaller icons, and nearer the
+     foot, so the Cleans board keeps its villas on a screen.
+   Apple's numbers: the HIG (tab bars, SF Symbols) and the system bar as
+   measured for FabBar. STYLEGUIDE.md has the sources.
+
+   Where it parts from the phone, the owner chose to, 30 Sep: line icons
+   where the phone fills its own, Lucide's (nala-shared.js), drawn
+   thinner than Lucide's own ("Make icon line thinner"), and no name under
+   them ("No text below icon"). And one for a rule of this app: the bar is
+   solid white, not glass, as nothing on paper lets the page through.
+
+   - The page ends above it. body.hastabs::after is room for the bar at
+     the end of every page, so the last row always scrolls clear.
+   - The page's own footer stands ON it, never under it: .foot, sticky or
+     fixed, is lifted by the bar's room.
+   - A sheet, a select bar or a save bar rising from the foot covers it,
+     as a sheet covers the page: z-index 5 sits under all of theirs.
+   - #tabBar is the whole strip the bar floats in, and what scrolls under
+     it fades into the ground, as the phone's content does under its
+     bars, so a row is never cut by the capsule. The strip passes a
+     finger through to the page; only the capsule takes it.
+
+   --tabroom is the height of that strip, and 0px where there is no bar,
+   for a page's own fixed bar to stand on. */
+body.ui2{ --tabroom:0px; }
+body.ui2.hastabs{ --tabroom:83px; }          /* 62 of bar and 21 under it */
+body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:5;
+                  height:var(--tabroom); pointer-events:none;
+                  background:linear-gradient(to bottom, transparent, var(--ground) 50%); }
+/* Under a page's own footer, or its own bar wearing onbar (Publish's),
+   the strip is solid ground instead: the two read as one band, and no row
+   shows between them. */
+body.ui2.hastabs:has(> .foot, > .onbar) .tabbar{ background:var(--ground); }
+/* It stays put from page to page (the owner, 30 Sep: "It should stay
+   there"). Every tap opens a new page, which auth.js covers until the
+   login lands; drawn at once (nala-shared.js), the bar stands on that
+   cover while it only waits, and the cover wears the page's own ground
+   rather than its cream, so a tap reads as the page changing under a bar
+   that did not move. A cover with a passcode or a word on it covers the
+   bar as it covers everything. */
+body.ui2.hastabs:has(> #nalaCover.waiting) .tabbar{ z-index:10000; }
+body.ui2 > #nalaCover.waiting{ background:var(--ground) !important; }
+/* While a field is being typed in on a phone, the bar stands down, as the
+   phone's own apps' bars do under the keyboard. Safari lifts a fixed bar
+   above the keyboard and can leave it there once the keyboard has gone:
+   the owner, 1 Oct, "Not sticky on settings page", the bar 294pt up on
+   Settings - the number pad its 07:30 and 18:00 call up, 216, with its
+   44 of Done bar and 34 of home strip. nala-shared.js puts it back at
+   the foot when the keyboard goes. What stands on the bar comes down
+   with it, onto the keyboard, as the phone's own box does: Chat's box
+   and Send, a page's footer. A mouse brings no keyboard: there it stays.
+   The two rules ask the same question, one for the room, one for the
+   bar. */
+@media (pointer:coarse){
+  body.ui2.hastabs:has(:is(textarea, select, [contenteditable="true"],
+      input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"],
+                 [type="reset"], [type="range"], [type="color"], [type="file"],
+                 [type="image"], [type="hidden"])):focus){ --tabroom:0px; }
+  body.ui2.hastabs:has(:is(textarea, select, [contenteditable="true"],
+      input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"],
+                 [type="reset"], [type="range"], [type="color"], [type="file"],
+                 [type="image"], [type="hidden"])):focus) .tabbar{ display:none; }
+}
+body.ui2 .tabrow{ position:absolute; bottom:21px; left:max(21px, env(safe-area-inset-left));
+                  right:max(21px, env(safe-area-inset-right)); max-width:var(--appw);
+                  margin:0 auto; height:62px; padding:2px; display:flex;
+                  border-radius:var(--pill); background:var(--surface, #fff);
+                  box-shadow:0 0 0 .5px rgba(28,28,26,.10), 0 1px 3px rgba(28,28,26,.06),
+                             0 6px 20px rgba(28,28,26,.10);
+                  pointer-events:auto; }
+body.ui2 .tabbar a, body.ui2 .tabbar .tabmenu{ flex:1 1 0; min-width:0; display:flex;
+                    flex-direction:column; align-items:center; justify-content:center;
+                    padding:0; border:0; background:none; font:inherit; cursor:pointer;
+                    border-radius:var(--pill); color:var(--mid); text-decoration:none;
+                    -webkit-tap-highlight-color:transparent; }
+body.ui2 .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
+/* Lucide's line drawn thinner than its own 2, at the owner's ask: 1.5 on
+   its 24 grid, 1.75pt on the bar. Round ends, as Lucide's. */
+body.ui2 .tabbar svg{ width:100%; height:100%; display:block; fill:none;
+                      stroke:currentColor; stroke-width:1.5;
+                      stroke-linecap:round; stroke-linejoin:round; }
+/* No name under the icon: the owner, 30 Sep, "No text below icon". The
+   name stays in the link, out of sight, so a screen reader still says
+   "Chat, 1" (and a mouse has the link's title). */
+body.ui2 .tabbar .tablbl{ position:absolute; width:1px; height:1px; overflow:hidden;
+                          clip-path:inset(50%); white-space:nowrap; }
+body.ui2 .tabbar a[aria-current],
+body.ui2 .tabbar .tabmenu.here,
+body.ui2 .tabbar .tabmenu[aria-expanded="true"]{ color:var(--accent); }
+body.ui2 .tabbar a[aria-current]{ cursor:default; }
+body.ui2 .tabbar a[href]:active, body.ui2 .tabbar .tabmenu:active{ opacity:.55; }
+body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
+                            min-width:18px; height:18px; padding:0 5px; }
+@media (orientation:landscape) and (max-height:500px){
+  body.ui2.hastabs{ --tabroom:calc(44px + max(8px, env(safe-area-inset-bottom))); }
+  body.ui2 .tabrow{ height:44px; bottom:max(8px, env(safe-area-inset-bottom)); }
+  body.ui2 .tabbar .tabic{ width:22px; height:22px; }
+  body.ui2 .tabbar .navbadge{ top:-7px; left:auto; right:-7px; min-width:16px;
+                              height:16px; padding:0 4px; font-size:11px; }
+}
+/* The menu from the foot. Where the bar is drawn its last icon raises the
+   menu (the owner, 30 Sep, off mock-menu-rise.html): the size the dropdown
+   always was ("It doesn't need to be full width, same as before is ok"),
+   rising from above the bar beside its icon, over a light shade that a tap
+   shuts it from; the bar stays above the shade, so its icon shuts it too.
+   The hamburger at the top stands down. A page without the bar keeps the
+   hamburger, and its menu drops from it. */
+body.ui2.hastabs .navbtn{ display:none; }
+body.ui2.hastabs .navdrop{ display:block; position:fixed; z-index:1; top:auto; left:auto;
+                           bottom:calc(var(--tabroom) + 10px);
+                           right:max(21px, env(safe-area-inset-right), calc((100vw - var(--appw)) / 2));
+                           width:260px; min-width:0; max-height:calc(100dvh - var(--tabroom) - 34px);
+                           overflow-y:auto; overscroll-behavior:contain; border:0;
+                           border-radius:16px; background:var(--surface, #fff); padding:6px 0;
+                           box-shadow:0 2px 6px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14);
+                           transform-origin:calc(100% - 28px) 100%;
+                           transform:translateY(18px) scale(.94); opacity:0; visibility:hidden;
+                           transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease,
+                                      visibility 0s linear .24s; }
+body.ui2.hastabs .navdrop.open{ transform:none; opacity:1; visibility:visible;
+                                transition:transform .24s cubic-bezier(.2,.9,.25,1), opacity .18s ease; }
+body.ui2.hastabs .navdrop a, body.ui2.hastabs .navgrp{ font-size:var(--t3); padding:11px 16px; }
+body.ui2.hastabs .navsub a{ padding-left:28px; }
+body.ui2 .menushade{ display:none; }
+body.ui2.hastabs .navdrop.open + .menushade{ display:block; position:fixed; inset:0; z-index:0;
+                                            background:rgba(28,28,26,.16); }
+body.ui2.hastabs:has(.navdrop.open) .tabbar{ z-index:600; }
+body.ui2.hastabs::after{ content:''; display:block; flex:0 0 auto; height:var(--tabroom); }
+body.ui2.hastabs .foot{ bottom:var(--tabroom); padding-bottom:10px; }
+/* Pull to refresh's mark (pullToRefresh, nala-shared.js): a white disc
+   with a turning arrow that follows the finger down from the top, grey
+   while a release would do nothing and ink once it would reload. */
+body.ui2 .ptr{ position:fixed; top:calc(8px + env(safe-area-inset-top)); left:50%;
+               z-index:6; width:36px; height:36px; margin-left:-18px;
+               border-radius:50%; background:var(--surface, #fff);
+               box-shadow:0 1px 2px rgba(28,28,26,.10), 0 2px 10px rgba(28,28,26,.08);
+               display:flex; align-items:center; justify-content:center;
+               color:var(--mid); opacity:0; pointer-events:none;
+               transform:translateY(-60px); }
+body.ui2 .ptr svg{ width:20px; height:20px; fill:none; stroke:currentColor;
+                   stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+body.ui2 .ptr.ready{ color:var(--ink); }
+body.ui2 .ptr.spin svg{ animation:ptrspin .8s linear infinite; }
+@keyframes ptrspin{ to{ transform:rotate(360deg); } }
+
+
+/* ── buttons · the button law, redressed but not rewritten ───────────
+   One solid primary per surface; quiet is secondary; destructive wears
+   terracotta outline and always asks first. Only the dress changed:
+   the solid is the accent rather than ink, and quiet is a fill rather
+   than an outline, so a screen of secondary actions stops reading as a
+   screen of identical bordered rectangles.                          */
+body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
+               width:100%; padding:var(--s3) var(--s4); min-height:var(--tap);
+               border:0; border-radius:var(--r); background:var(--card);
+               color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
+               font-weight:500; cursor:pointer; text-decoration:none; }
+/* ── the four roles, and there are only four ───────────────────────────
+   Ruled 29 Aug, after three screenshots in which the primary action was
+   green on Reservations, black on Spa and absent on Front Desk, where
+   Save, Close and Confirm were the same button three times.
+
+   PRIMARY      the one thing a surface is for. Solid accent. One per
+                surface. Never confirms: if it feels like it needs a
+                warning the label is wrong, not the dialog missing.
+   SECONDARY    everything else that writes nothing. Quiet grey fill.
+   DESTRUCTIVE  destroys or walks back something a guest holds.
+                Terracotta outline, and it always asks first.
+   SELECTED     a pill you picked. Grey fill, ink border. Not an action.
+
+   A page may set the LAYOUT of the row its buttons sit in. It may not
+   dress them again.                                                   */
+body.ui2 .btn.solid,
+body.ui2 .is-primary    { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+body.ui2 .is-secondary,
+body.ui2 .opt.quiet,
+body.ui2 .cbtn.quiet,
+body.ui2 .pbtn.ghost    { background:var(--card); color:var(--ink); border:0; }
+body.ui2 .is-destructive{ background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra-b); }
+/* Each page's own name for "the primary action on this surface". They are
+   aliases, not new dresses: one fill, defined once above.              */
+body.ui2 .pubbtn, body.ui2 .savebtn, body.ui2 .addbtn,
+body.ui2 .cbtn.solid, body.ui2 .pbtn.solid, body.ui2 .opt.solid,
+body.ui2 .sum-btns button.go, body.ui2 .selbtn.comb
+                        { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+/* Armed to delete. It was solid red on two pages, and red is failure's
+   alone: a delete waiting for a second press is not a failure, it is a
+   destructive action mid-confirmation.                                */
+body.ui2 .btn.arm, body.ui2 .mtog.mdel, body.ui2 .rmbtn.arm,
+body.ui2 .del.arm       { background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra); font-weight:500; }
+/* Selected, everywhere: chips, segments, pickers, toggles, day pills. */
+body.ui2 .is-selected,
+body.ui2 .chip.on, body.ui2 .pax.on, body.ui2 .seg button.on,
+body.ui2 .rmp.on, body.ui2 .grp button.on, body.ui2 .sfbtn.on,
+body.ui2 .knob button.on, body.ui2 .sec a.active,
+body.ui2 .opt.on, body.ui2 .allbtn.on
+                        { background:var(--sel-bg); color:var(--ink);
+                          border-color:var(--sel-bdr); font-weight:500; }
+/* Reservations' state setters and its select bar show what the record
+   will BECOME, in the colour law's own dining green, declined terracotta
+   and vacant slate. Grey would throw the meaning away to win an argument
+   about consistency.
+
+   .opt.din is every button carrying id oIn, whatever its label. It writes
+   status:'in' on the Add reservation sheet exactly as it does on a villa
+   tile, so "Add" is green because adding a reservation IS marking them
+   dining. Ruled by the owner, 29 Aug, after a first split that went by
+   label and made the same write look like two different actions.     */
+body.ui2 .opt.din, body.ui2 .opt.out, body.ui2 .opt.vac,
+body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
+                        { color:#fff; border:0; font-weight:500; }
+body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
+                     color:var(--ink); }
+body.ui2 .btn.terra{ background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn.warn { background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn:disabled{ opacity:.35; cursor:default; }
+body.ui2 .btn:active{ filter:brightness(.94); }
+
+/* What a press says back. Grey while writing is the colour law's "sent,
+   waiting on the other side"; green is "done", and is worn only after
+   the write. Saved rests until there is more to save.               */
+body.ui2 .btn.saving, body.ui2 .btn.saved{ opacity:1; cursor:default; }
+body.ui2 .btn.saving{ background:var(--law-wait); color:var(--mid); }
+body.ui2 .btn.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
+/* Failure is words, in red, under the button that failed. Never a red
+   fill: a red tile reads as a state the record is in, and the record is
+   simply unsaved.                                                    */
+body.ui2 .savefail{ display:none; font-size:var(--t2); line-height:1.45;
+                    color:var(--law-red); margin-top:var(--s2); }
+body.ui2 .savefail.show{ display:block; }
+
+/* ── the trim rule: which field gives way when a row will not fit ─────
+   Ruled by the owner, 29 Aug, off a Pre-arrival SMS board where a long
+   name pushed the phone number, the confidence tick and the edit pencil
+   off the right edge. "Chloe Roveglia +61448925599 ." and "Amanda
+   Sinclair +614004519..." - the two things reception needed were the
+   ones that went.
+
+   THE NAME IS THE ONLY FIELD THAT TRIMS. It is the one that survives
+   being half shown: "Amanda Sincl..." on villa 14 is still Amanda on
+   villa 14. Nothing else in a row is like that.
+
+   A NUMBER NEVER TRIMS. Half a phone number is not a phone number, and
+   worse, it looks like one - somebody will read it out. Same for a time
+   or a date: they are right or they are useless.
+
+   A CONTROL NEVER TRIMS. A pencil clipped to a couple of pixels is not
+   a control, it is a thing that cannot be pressed and does not look
+   like it was meant to be.
+
+   The fault was structural rather than a width: the ellipsis sat on the
+   LINE, which held the name and everything after it, so it ate whichever
+   field happened to be last. The name needs to be its own box for the
+   ellipsis to have anything to bite.                                  */
+body.ui2 .trimrow      { display:flex; align-items:baseline; min-width:0; }
+body.ui2 .trimrow > .trim {
+  flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Everything else in the line keeps its full width and is never squeezed. */
+body.ui2 .trimrow > :not(.trim) { flex:0 0 auto; }
+
+/* ── rows and lists ──────────────────────────────────────────────────
+   Separated by an inset hairline rather than boxed. A tinted row keeps
+   its own corner, because a tint that runs to the screen edge stops
+   reading as one record.                                             */
+body.ui2 .rowlist > * + *{ border-top:1px solid var(--rule); }
+
+/* ── the access message ──────────────────────────────────────────────
+   Plain typography, never a bordered or filled box: that dress belongs
+   to buttons, and a message wearing it reads as something to tap.   */
+body.ui2 .noaccess{ display:none; font-size:var(--t3); line-height:1.5;
+                    color:var(--ink); max-width:52ch; margin:var(--s5) 0; }
+body.ui2 .noaccess.show{ display:block; }
+body.ui2 .noaccess .na-retry{ margin-top:var(--s4); display:block;
+                              width:max-content; }
+
+/* ── stats · plain type, never boxed ─────────────────────────────── */
+body.ui2 .stats{ display:flex; justify-content:center; gap:var(--s6);
+                 margin:var(--s4) 0 var(--s2); }
+body.ui2 .stat{ text-align:center; }
+body.ui2 .stat-n{ display:block; font-size:var(--t5); line-height:1;
+                  color:var(--ink); font-variant-numeric:tabular-nums; }
+body.ui2 .stat-l{ display:block; font-size:var(--t2); color:var(--mid);
+                  margin-top:var(--s1); }
+
+/* ── inputs ──────────────────────────────────────────────────────────
+   16px minimum, always: anything smaller and iOS zooms the page on
+   focus and does not zoom back.                                      */
+body.ui2 input, body.ui2 select, body.ui2 textarea{
+  font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+  background:#fff; border:1px solid var(--rule); border-radius:var(--r);
+  padding:var(--s3); width:100%; min-height:var(--tap); }
+body.ui2 input:focus, body.ui2 textarea:focus, body.ui2 select:focus{
+  outline:none; border-color:var(--accent); }
+
+/* ── keyboard focus ──────────────────────────────────────────────────
+   Nothing in the app has this today: zero pages use :focus-visible and
+   six declare outline:none. A keyboard or switch user currently has no
+   idea where they are.                                               */
+body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
+                         border-radius:var(--r); }
+
+@media (prefers-reduced-motion:reduce){
+  body.ui2 *{ transition:none !important; }
+  body.ui2 .ptr.spin svg{ animation:none; }
+}
+
+/* keep controls off paper */
+@media print{
+  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav,
+  body.ui2 .tabbar{ display:none !important; }
+  body.ui2.hastabs::after{ display:none; }
+}
+</style>
+
+<!-- aircon.html's own sheet: what a build would carry. Everything shared is
+     nala-ui2.css's, above. -->
+<style id="pagecss" media="not all">
+body.acboard{ padding:14px var(--appgut) 0; }
+.acpage .daterow{ margin-bottom:0; }
+/* When the units were last read: the board is only as true as this. */
+.readat{ font-size:var(--t2); color:var(--mid); white-space:nowrap; }
+
+/* Three counts, plain type. Amber says chase this and red says a unit has
+   failed, the colour law's own, and only while the count is not nought. */
+.acpage .stats{ flex-wrap:wrap; gap:var(--s2) var(--s5); margin:var(--s3) 0 0; }
+.acpage .stat-n.amb{ color:var(--law-amber-ink); }
+.acpage .stat-n.red{ color:var(--law-red); }
+
+/* The villas are one card, grown 8 into the margin as the Reservations
+   board's is, so nothing inside it moves. */
+.accard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
+         margin:var(--s4) -8px 0; padding:7px; box-shadow:var(--lift); }
+/* Three across at 390 and 360, two at 320: the grid's own fit, no width
+   query, as the app is fluid rather than breakpointed. */
+.acgrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:6px; }
+/* A tile is a control: the grid is the board's control surface, as the
+   Reservations tiles are. Its colour is the humidity against the target,
+   drawn over the white as every paper tint is. */
+.actile{ display:flex; flex-direction:column; gap:1px; min-width:0; text-align:left;
+         padding:6px 8px 5px; border:1px solid var(--rule); border-radius:var(--r);
+         background:var(--surface); color:var(--ink); font-family:var(--ui-font);
+         cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.actile.ok  { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface);
+              border-color:var(--law-green-b); }
+.actile.over{ background:linear-gradient(var(--law-amber), var(--law-amber)), var(--surface);
+              border-color:var(--law-amber-b); }
+.actile:active{ filter:brightness(.96); }
+.atop{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+.vn{ font-size:var(--t3); font-weight:600; }
+.gs{ font-size:var(--t1); color:var(--mid); white-space:nowrap; }
+.hum{ font-size:var(--t4); font-weight:600; line-height:1.15; }
+.ok .hum{ color:var(--law-green); }
+.over .hum{ color:var(--law-amber-ink); }
+/* The room's temperature and the unit's setting share a line; at 320 the
+   setting wraps under it rather than bleeding out of the tile. */
+.amid{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+       gap:0 6px; font-size:var(--t1); color:var(--mid); }
+.tmp{ font-size:var(--t2); color:var(--ink); }
+.nrtext{ font-size:var(--t2); font-weight:600; line-height:1.25; color:var(--law-red);
+         padding-top:2px; }
+/* The last 24 hours of humidity: one scale for every villa, 40 to 100%,
+   and the target as a faint rule across it. */
+.spark{ display:block; width:100%; height:18px; margin-top:auto; padding-top:3px; overflow:visible;
+        color:var(--mid); }
+.spark polyline{ fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
+                 stroke-linecap:round; }
+.spark line{ stroke:currentColor; stroke-width:1; opacity:.3; }
+.ok .spark{ color:var(--law-green); }
+.over .spark{ color:var(--law-amber-ink); }
+.aclegend{ display:flex; flex-wrap:wrap; gap:4px 12px; padding:9px 3px 2px;
+           font-size:var(--t1); color:var(--mid); }
+.aclegend > span{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.aclegend i{ display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid; }
+.aclegend i.ok{ background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface);
+                border-color:var(--law-green-b); }
+.aclegend i.over{ background:var(--law-amber); border-color:var(--law-amber-b); }
+.aclegend .nr{ color:var(--law-red); font-weight:600; }
+.aclegend svg{ width:18px; height:10px; overflow:visible; }
+.aclegend svg polyline{ fill:none; stroke:var(--mid); stroke-width:1.5; stroke-linejoin:round;
+                        stroke-linecap:round; }
+
+/* A villa's sheet: paper like the page, rising from the foot over the bar,
+   as a sheet covers the page. */
+.backdrop{ position:fixed; inset:0; z-index:10; display:none; align-items:flex-end;
+           justify-content:center; background:rgba(28,28,26,.35); }
+.backdrop.show{ display:flex; }
+.sheet{ width:100%; max-width:var(--appw); max-height:92vh; overflow-y:auto;
+        -webkit-overflow-scrolling:touch; background:var(--ground);
+        border-top:1px solid var(--rule); padding:16px var(--appgut) 28px; }
+.shead{ display:flex; align-items:center; gap:var(--s3); }
+.stt{ flex:1 1 auto; min-width:0; }
+.stitle{ font-size:var(--t4); font-weight:600; }
+.ssub{ font-size:var(--t2); color:var(--mid); }
+/* body.ui2 .btn is full width; a header's Close is not. */
+body.ui2 .shead .btn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(--s4); font-size:var(--t2); }
+.snow{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:var(--s2) var(--s5);
+       margin:var(--s3) 0; }
+.fig .v{ display:block; font-size:var(--t4); font-weight:600; line-height:1.1; }
+.fig .v.big{ font-size:var(--t5); }
+.fig .v.amb{ color:var(--law-amber-ink); }
+.fig .v.grn{ color:var(--law-green); }
+.fig .v.red{ font-size:var(--t3); color:var(--law-red); }
+.fig .l{ display:block; font-size:var(--t2); color:var(--mid); margin-top:2px; }
+.chcard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
+         box-shadow:var(--lift); margin:0 -8px; padding:10px 8px 8px; }
+/* One readout for both charts, above them, so a finger never covers it. */
+.readout{ min-height:20px; margin:0 2px 4px; font-size:var(--t2); color:var(--mid);
+          font-variant-numeric:tabular-nums; }
+.readout b{ color:var(--ink); font-weight:600; }
+.chtitle{ font-size:var(--t2); font-weight:600; margin:6px 2px 0; }
+.chtitle span{ font-weight:400; color:var(--mid); }
+.chart{ display:block; width:100%; height:128px; touch-action:pan-y; cursor:crosshair; }
+.chart:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+.chart text{ font-family:var(--ui-font); font-size:var(--t1); fill:var(--mid);
+             font-variant-numeric:tabular-nums; }
+.chart .grid{ stroke:var(--rule); stroke-width:1; shape-rendering:crispEdges; }
+.chart .line{ fill:none; stroke:var(--ink); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+.chart .setl{ fill:none; stroke:var(--mid); stroke-width:1.5; stroke-linejoin:round; }
+.chart .band{ fill:var(--law-amber); }
+.chart .bandrule{ stroke:var(--law-amber-b); stroke-width:1; shape-rendering:crispEdges; }
+.chart .bandlabel{ fill:var(--law-amber-ink); }
+.chart .below{ fill:rgba(28,28,26,.06); }
+.chart .xh{ stroke:var(--ink); stroke-width:1; shape-rendering:crispEdges; }
+.chart .dot{ fill:var(--ink); stroke:var(--surface); stroke-width:2; }
+.chart .endlabel{ fill:var(--ink); font-weight:600; }
+.chnote{ margin:6px 2px 0; font-size:var(--t1); line-height:1.5; color:var(--mid); }
+.chkeys{ display:flex; flex-wrap:wrap; gap:2px 12px; }
+.chkeys span{ white-space:nowrap; }
+.chnote i{ display:inline-block; width:12px; height:10px; border-radius:2px; margin-right:4px;
+           vertical-align:-1px; }
+.chnote i.amb{ background:var(--law-amber); box-shadow:inset 0 0 0 1px var(--law-amber-b); }
+.chnote i.below{ background:rgba(28,28,26,.12); }
+.chnote i.setkey{ height:0; border-top:1.5px solid var(--mid); border-radius:0; vertical-align:3px; }
+details.readings{ margin-top:var(--s4); font-size:var(--t2); }
+details.readings summary{ cursor:pointer; padding:var(--s1) 0; }
+.readings table{ width:100%; margin-top:var(--s2); border-collapse:collapse;
+                 background:var(--surface); font-variant-numeric:tabular-nums; }
+.readings th, .readings td{ padding:5px 6px; text-align:right; white-space:nowrap;
+                            border-top:1px solid var(--rule); }
+.readings th{ font-weight:500; color:var(--mid); }
+.readings th:first-child, .readings td:first-child{ text-align:left; }
+</style>
+
+<script>
+/* The admin's tab bar, as buildTabs draws it: the first five of TABBAR and
+   the menu after them. Lucide's icons (ISC), copied unchanged from
+   PAGE_ICONS and MENU_ICONS in nala-shared.js. The board opens from the
+   menu while it is the admin's alone, so the menu icon is the blue one. */
+var TABS = [{"name": "Dashboard", "svg": "<path d=\"M13 5h8\"/><path d=\"M13 12h8\"/><path d=\"M13 19h8\"/><path d=\"m3 17 2 2 4-4\"/><rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\"/>"}, {"name": "Reservations", "svg": "<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\"/><path d=\"M7 2v20\"/><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\"/>"}, {"name": "Cleans", "svg": "<path d=\"m16 22-1-4\"/><path d=\"M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1\"/><path d=\"M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z\"/><path d=\"m8 22 1-4\"/>"}, {"name": "Chat", "svg": "<path d=\"M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/><path d=\"M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1\"/>"}, {"name": "Tasks", "svg": "<path d=\"M12 6v6l4 2\"/><path d=\"M20 12v5\"/><path d=\"M20 21h.01\"/><path d=\"M21.25 8.2A10 10 0 1 0 16 21.16\"/>"}];
+var MENU_SVG = "<path d=\"M4 5h16\"/><path d=\"M4 12h16\"/><path d=\"M4 19h16\"/>";
+
+/* ── the invented readings ─────────────────────────────────────────────
+   Thursday and Friday, 2 Oct, every ten minutes, from a small model of a
+   villa: outside air, the sun, who is in, and what the unit is set to. In
+   Cool a unit runs, and dries, only while the room would otherwise be
+   above its set temperature; below it, the unit stops and the room takes
+   on the outside air's moisture. Deterministic, so every screen agrees. */
+function makeData(){
+  function es(T){ return 6.112 * Math.exp(17.62 * T / (243.12 + T)); }
+  function lerp(pts, m){
+    for (var i = 1; i < pts.length; i++){
+      if (m <= pts[i][0]){
+        var a = pts[i-1], b = pts[i], f = (m - a[0]) / (b[0] - a[0]);
+        return a[1] + f * (b[1] - a[1]);
+      }
+    }
+    return pts[pts.length-1][1];
+  }
+  function H(day, h, m){ return day * 1440 + h * 60 + (m || 0); }      /* day 0 Thu, 1 Fri */
+  var OUT_T = [[H(0,0),22.5],[H(0,6),22.0],[H(0,10),26.5],[H(0,14),29.0],[H(0,17),27.5],
+               [H(0,20),24.0],[H(0,23),22.2],[H(1,2),21.4],[H(1,5),21.0],[H(1,7,40),21.1],
+               [H(1,9),21.8],[H(1,10,30),24.0],[H(1,12),27.0],[H(1,14),28.6],[H(1,15,10),28.8]];
+  var OUT_RH = [[H(0,0),90],[H(0,6),92],[H(0,10),76],[H(0,14),68],[H(0,17),72],[H(0,20),84],
+                [H(0,23),91],[H(1,2),94],[H(1,5),95],[H(1,7,40),95],[H(1,9),92],[H(1,10,30),82],
+                [H(1,12),72],[H(1,14),66],[H(1,15,10),65]];
+  function sun(m){
+    var h = (m % 1440) / 60; if (h < 7 || h > 18) return 0;
+    var grey = m >= H(1,0) && m < H(1,10);                              /* Friday is grey until ten */
+    return (grey ? .15 : 1) * Math.sin(Math.PI * (h - 7) / 11);
+  }
+  var GUEST = ['In house','In house','Vacant','Arrives','In house','In house','Departs','Vacant',
+               'In house','In house','In house','Turnover','In house','Departs','In house',
+               'Arrives','In house'];
+  function occupied(n, m){
+    var g = GUEST[n-1], fri = m >= H(1,0);
+    if (g === 'Vacant') return false;
+    if (g === 'Arrives') return fri && m >= H(1,14);                    /* in at two */
+    if (g === 'Departs') return !fri || m < H(1,10);                    /* out by ten */
+    if (g === 'Turnover') return !fri || m < H(1,10) || m >= H(1,14);
+    return true;
+  }
+  /* The house setting is 23 / Cool / Auto. Three guests changed theirs. */
+  function setting(n, m){
+    if (n === 5) return { on:true, md:'Cool', s:20 };
+    if (n === 9 && m >= H(0,22,15)) return { on:false, md:'Cool', s:23 };
+    if (n === 17 && m >= H(1,1,30)) return { on:true, md:'Heat', s:24 };
+    return { on:true, md:'Cool', s:23 };
+  }
+  var seed = 7;
+  function rnd(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  var END = H(1,15,10), DOWN = H(1,6,50), villas = [];
+  for (var n = 1; n <= 17; n++){
+    var sunGain = .3 + rnd() * .6, occGain = .8 + rnd() * .5, hold = .15 + rnd() * .35;
+    var T = 22.7, e = .80 * es(22.7), pts = [];
+    for (var m = 0; m <= END; m += 10){
+      var To = lerp(OUT_T, m), eo = lerp(OUT_RH, m) / 100 * es(To);
+      var occ = occupied(n, m), doors = n === 12 && m >= H(1,10) && m < H(1,14);
+      var Tf = To + (occ ? occGain : .3) + sunGain * sun(m) + (doors ? 1.5 : 0);
+      var add = occ ? 1.2 : .3, s = setting(n, m), kInf = doors ? .15 : .025;
+      if (s.on && s.md === 'Cool' && Tf > s.s){
+        T += .35 * (s.s + (doors ? 2.1 : hold) - T);
+        e += .12 * (.55 * es(s.s) - e) + .02 * (eo + add - e);
+        if (doors) e += kInf * (eo + add - e);
+      } else if (s.on && s.md === 'Heat' && Tf < s.s){
+        T += .35 * (s.s + hold - T);
+        e += kInf * (eo + add - e);
+      } else {
+        T += .04 * (Tf - T);
+        e += kInf * (eo + add - e);
+      }
+      var rh = Math.max(35, Math.min(99, 100 * e / es(T)));
+      /* Villa 11's unit went offline at ten to seven on Friday. */
+      if (n === 11 && m > DOWN) continue;
+      pts.push({ m:m, h:Math.round(rh + (rnd() - .5) * 1.2), c:+(T + (rnd() - .5) * .12).toFixed(1),
+                 s:s.s, md:s.md, on:s.on });
+    }
+    villas.push({ n:n, guest:GUEST[n-1], pts:pts });
+  }
+  return { villas:villas, H:H };
+}
+
+var DATA = makeData();
+var LONG = { 'In house':'In house', 'Vacant':'Vacant', 'Arrives':'Arrives today',
+             'Departs':'Departs today', 'Turnover':'Departs and arrives today' };
+
+function clock(m){
+  var h = Math.floor(m / 60) % 24, mi = m % 60;
+  return (h % 12 || 12) + ':' + (mi < 10 ? '0' : '') + mi + (h < 12 ? 'am' : 'pm');
+}
+
+/* One screen's worth: the 24 hours to its moment, and each villa as it
+   stands then. */
+function scenario(end, open){
+  var start = end - 1440;
+  return {
+    date:'Fri 2nd Oct', now:clock(end % 1440), start:start, span:144, target:65,
+    tabs:TABS, menuSvg:MENU_SVG, open:open || 0,
+    villas:DATA.villas.map(function(v){
+      var series = v.pts.filter(function(p){ return p.m >= start && p.m <= end; })
+                        .map(function(p){ return { i:(p.m - start) / 10, h:p.h, c:p.c, s:p.s, md:p.md, on:p.on }; });
+      var last = series[series.length - 1], lastM = start + last.i * 10, off = lastM < end;
+      return { n:v.n, guest:v.guest, guestLong:LONG[v.guest], hum:last.h, tmp:last.c,
+               on:last.on, mode:last.md, set:last.s, offline:off,
+               since:off ? clock(lastM % 1440) : '', series:series };
+    })
+  };
+}
+
+/* ── one screen ────────────────────────────────────────────────────────
+   Runs inside each frame, so it may use nothing from out here: everything
+   it needs arrives as P. */
+function frameMain(P){
+  var d = document, NS = 'http://www.w3.org/2000/svg';
+  function el(tag, cls, text){
+    var e = d.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function sv(tag, attrs){
+    var e = d.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function stateOf(v){ return v.offline ? 'nr' : (v.hum > P.target ? 'over' : 'ok'); }
+  function setShort(v){ return v.on ? v.mode + ' ' + v.set : 'Off'; }
+  function deg(c){ return c.toFixed(1) + '°'; }
+  function clock(m, round){
+    var h = Math.floor(m / 60) % 24, mi = m % 60;
+    return (h % 12 || 12) + (round && !mi ? '' : ':' + (mi < 10 ? '0' : '') + mi) + (h < 12 ? 'am' : 'pm');
+  }
+  function dayOf(m){ return m < 1440 ? 'Thu' : 'Fri'; }
+  var byN = {};
+  P.villas.forEach(function(v){ byN[v.n] = v; });
+
+  /* the header: the day, and when the units were last read */
+  var main = el('main', 'acpage');
+  var row = el('div', 'daterow');
+  row.appendChild(el('div', 'date', P.date));
+  row.appendChild(el('div', 'readat', 'Updated ' + P.now));
+  main.appendChild(row);
+
+  /* the counts */
+  var count = { over:0, ok:0, nr:0 };
+  P.villas.forEach(function(v){ count[stateOf(v)]++; });
+  var stats = el('div', 'stats');
+  [[count.over, 'over ' + P.target + '%', count.over ? 'amb' : ''],
+   [count.ok, P.target + '% or under', ''],
+   [count.nr, 'offline', count.nr ? 'red' : '']].forEach(function(s){
+    var st = el('div', 'stat');
+    st.appendChild(el('span', 'stat-n' + (s[2] ? ' ' + s[2] : ''), String(s[0])));
+    st.appendChild(el('span', 'stat-l', s[1]));
+    stats.appendChild(st);
+  });
+  main.appendChild(stats);
+
+  /* the villas */
+  function spark(v){
+    var s = sv('svg', { 'class':'spark', viewBox:'0 0 100 20', preserveAspectRatio:'none',
+                        'aria-hidden':'true' });
+    function y(h){ return (20 - (Math.max(40, Math.min(100, h)) - 40) / 60 * 20).toFixed(2); }
+    s.appendChild(sv('line', { x1:0, x2:100, y1:y(P.target), y2:y(P.target),
+                               'vector-effect':'non-scaling-stroke' }));
+    s.appendChild(sv('polyline', { 'vector-effect':'non-scaling-stroke',
+      points:v.series.map(function(p){ return (p.i / P.span * 100).toFixed(2) + ',' + y(p.h); }).join(' ') }));
+    return s;
+  }
+  function tile(v){
+    var b = el('button', 'actile ' + stateOf(v));
+    b.type = 'button';
+    var top = el('span', 'atop');
+    top.appendChild(el('span', 'vn', String(v.n)));
+    top.appendChild(el('span', 'gs', v.guest));
+    b.appendChild(top);
+    if (v.offline){
+      b.appendChild(el('span', 'nrtext', 'Offline'));
+      b.appendChild(el('span', 'amid', 'since ' + v.since));
+    } else {
+      b.appendChild(el('span', 'hum', v.hum + '%'));
+      var mid = el('span', 'amid');
+      mid.appendChild(el('span', 'tmp', deg(v.tmp)));
+      mid.appendChild(el('span', 'set', setShort(v)));
+      b.appendChild(mid);
+    }
+    b.appendChild(spark(v));
+    b.setAttribute('aria-label', 'Villa ' + v.n + ', ' + v.guestLong + ', ' +
+      (v.offline ? 'offline since ' + v.since
+                 : 'humidity ' + v.hum + '%, ' + v.tmp.toFixed(1) + ' degrees, ' + setShort(v)));
+    b.addEventListener('click', function(){ openSheet(v.n); });
+    return b;
+  }
+  var card = el('section', 'accard');
+  card.setAttribute('aria-label', 'Villas');
+  var grid = el('div', 'acgrid');
+  P.villas.forEach(function(v){ grid.appendChild(tile(v)); });
+  card.appendChild(grid);
+  var lg = el('div', 'aclegend');
+  [['ok', P.target + '% or under'], ['over', 'Over ' + P.target + '%']].forEach(function(k){
+    var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
+  });
+  lg.appendChild(el('span', 'nr', 'Offline'));
+  var ls = el('span'), lsv = sv('svg', { viewBox:'0 0 18 10', 'aria-hidden':'true' });
+  lsv.appendChild(sv('polyline', { points:'1,8 6,6 10,7 17,2' }));
+  ls.appendChild(lsv); ls.appendChild(d.createTextNode('Humidity, last 24 hours'));
+  lg.appendChild(ls);
+  card.appendChild(lg);
+  main.appendChild(card);
+  d.body.appendChild(main);
+
+  /* the tab bar, drawn as buildTabs draws it */
+  var nav = el('nav', 'tabbar');
+  nav.id = 'tabBar'; nav.setAttribute('aria-label', 'Pages');
+  var tr = el('div', 'tabrow');
+  P.tabs.forEach(function(t){
+    var a = el('a'); a.href = '#'; a.title = t.name;
+    a.addEventListener('click', function(e){ e.preventDefault(); });
+    var ic = el('span', 'tabic'), isv = sv('svg', { viewBox:'0 0 24 24', 'aria-hidden':'true' });
+    isv.innerHTML = t.svg;                  /* Lucide's own markup, constant */
+    ic.appendChild(isv); a.appendChild(ic); a.appendChild(el('span', 'tablbl', t.name));
+    tr.appendChild(a);
+  });
+  var mb = el('button', 'tabmenu here'); mb.type = 'button'; mb.setAttribute('aria-label', 'Menu');
+  var mic = el('span', 'tabic'), msv = sv('svg', { viewBox:'0 0 24 24', 'aria-hidden':'true' });
+  msv.innerHTML = P.menuSvg;
+  mic.appendChild(msv); mb.appendChild(mic);
+  tr.appendChild(mb); nav.appendChild(tr); d.body.appendChild(nav);
+
+  /* a villa's sheet */
+  var bd = el('div', 'backdrop'), sh = el('div', 'sheet');
+  sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true');
+  bd.appendChild(sh); d.body.appendChild(bd);
+  bd.addEventListener('click', function(e){ if (e.target === bd) closeSheet(); });
+  d.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSheet(); });
+  function closeSheet(){ bd.classList.remove('show'); }
+
+  function fig(value, label, cls){
+    var f = el('div', 'fig');
+    f.appendChild(el('span', 'v' + (cls ? ' ' + cls : ''), value));
+    f.appendChild(el('span', 'l', label));
+    return f;
+  }
+  function openSheet(n){
+    var v = byN[n];
+    sh.textContent = '';
+    sh.setAttribute('aria-label', 'Villa ' + n);
+    var head = el('div', 'shead'), tt = el('div', 'stt');
+    tt.appendChild(el('div', 'stitle', 'Villa ' + n));
+    tt.appendChild(el('div', 'ssub', v.guestLong));
+    head.appendChild(tt);
+    var x = el('button', 'btn is-secondary', 'Close');
+    x.type = 'button'; x.addEventListener('click', closeSheet);
+    head.appendChild(x);
+    sh.appendChild(head);
+
+    var now = el('div', 'snow');
+    if (v.offline){
+      now.appendChild(fig('Offline', 'since ' + v.since, 'red'));
+      now.appendChild(fig(v.hum + '%', 'humidity then', ''));
+      now.appendChild(fig(deg(v.tmp), 'room then', ''));
+    } else {
+      now.appendChild(fig(v.hum + '%', 'humidity', 'big ' + (v.hum > P.target ? 'amb' : 'grn')));
+      now.appendChild(fig(deg(v.tmp), 'room', ''));
+      now.appendChild(fig(v.on ? v.mode + ' ' + v.set + '°' : 'Off', v.on ? 'Auto fan' : 'unit off', ''));
+    }
+    sh.appendChild(now);
+
+    var cc = el('div', 'chcard');
+    var ro = el('div', 'readout', 'Touch a chart to read any moment');
+    ro.setAttribute('aria-live', 'polite');
+    cc.appendChild(ro);
+    function ctitle(a, b){ var t = el('div', 'chtitle', a + ' '); t.appendChild(el('span', null, b)); return t; }
+    cc.appendChild(ctitle('Humidity', 'last 24 hours'));
+    var s1 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
+                         'aria-label':'Humidity over the last 24 hours; arrow keys move through the hours' });
+    cc.appendChild(s1);
+    cc.appendChild(ctitle('Room temperature', 'last 24 hours'));
+    var s2 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
+                         'aria-label':'Room temperature over the last 24 hours; arrow keys move through the hours' });
+    cc.appendChild(s2);
+    /* the key, short words that never wrap, then the one sentence that
+       says why the grey matters, which may */
+    var keys = el('div', 'chnote chkeys');
+    function key(cls, text){ var s = el('span'); s.appendChild(el('i', cls)); s.appendChild(d.createTextNode(text)); return s; }
+    keys.appendChild(key('amb', 'over ' + P.target + '%'));
+    keys.appendChild(key('setkey', 'set temperature'));
+    keys.appendChild(key('below', 'room below it'));
+    cc.appendChild(keys);
+    cc.appendChild(el('div', 'chnote',
+      'In Cool, a room below its set temperature means the unit has stopped, so it is not drying.'));
+    sh.appendChild(cc);
+    sh.appendChild(readings(v));
+
+    bd.classList.add('show');
+    sh.scrollTop = 0;
+    charts(v, s1, s2, ro);
+  }
+
+  /* Two charts on one time axis: humidity, then the room against its set
+     temperature. Never one chart with two scales. */
+  function charts(v, s1, s2, ro){
+    var W = Math.max(240, Math.round(s1.getBoundingClientRect().width)), HT = 128;
+    var L = 34, R = 42, T = 8, B = 20, n = P.span, S = v.series, cur = S.length - 1;
+    function X(i){ return L + (W - L - R) * i / n; }
+    function scale(lo, hi){ return function(val){ return T + (HT - T - B) * (hi - val) / (hi - lo); }; }
+    function prep(svg){ svg.setAttribute('viewBox', '0 0 ' + W + ' ' + HT); svg.textContent = ''; }
+    function text(svg, x, y, s, anchor, cls){
+      var t = sv('text', { x:x, y:y, 'text-anchor':anchor || 'start' });
+      if (cls) t.setAttribute('class', cls);
+      t.textContent = s; svg.appendChild(t); return t;
+    }
+    function yaxis(svg, Y, ticks, fmt){
+      ticks.forEach(function(t){
+        svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R, y1:Y(t), y2:Y(t) }));
+        text(svg, L - 6, Y(t) + 4, fmt(t), 'end');
+      });
+    }
+    /* A time every four hours, or every eight where four would touch: at
+       320 "10pm" and "2am" met. */
+    var sparse = (W - L - R) * 24 / n < 44;
+    function xaxis(svg){
+      svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R, y1:HT - B, y2:HT - B }));
+      for (var i = 0; i <= n; i++){
+        var m = P.start + i * 10;
+        if (m % 240 === 120 && (!sparse || m % 480 === 360))
+          text(svg, X(i), HT - 5, clock(m % 1440, true), 'middle');
+      }
+    }
+    function line(svg, Y, key, cls){
+      svg.appendChild(sv('polyline', { 'class':cls,
+        points:S.map(function(p){ return X(p.i).toFixed(1) + ',' + Y(p[key]).toFixed(1); }).join(' ') }));
+    }
+    function end(svg, Y, key, label){
+      var p = S[S.length - 1];
+      svg.appendChild(sv('circle', { 'class':'dot', cx:X(p.i), cy:Y(p[key]), r:4 }));
+      text(svg, X(p.i) + 7, Y(p[key]) + 4, label, 'start', 'endlabel');
+    }
+    function hover(svg){
+      var g = sv('g', { 'class':'hov', style:'display:none' });
+      g.appendChild(sv('line', { 'class':'xh', y1:T, y2:HT - B }));
+      g.appendChild(sv('circle', { 'class':'dot', r:4 }));
+      svg.appendChild(g);
+      return g;
+    }
+
+    /* humidity: the target as a band above it, named in words */
+    var yH = scale(40, 100);
+    prep(s1);
+    s1.appendChild(sv('rect', { 'class':'band', x:L, y:yH(100), width:W - L - R, height:yH(P.target) - yH(100) }));
+    yaxis(s1, yH, [50, 70, 90], function(t){ return t + '%'; });
+    s1.appendChild(sv('line', { 'class':'bandrule', x1:L, x2:W - R, y1:yH(P.target), y2:yH(P.target) }));
+    text(s1, L + 5, yH(100) + 14, 'over ' + P.target + '%', 'start', 'bandlabel');
+    xaxis(s1);
+    line(s1, yH, 'h', 'line');
+    end(s1, yH, 'h', S[S.length - 1].h + '%');
+    var h1 = hover(s1);
+
+    /* temperature: grey where the room sits below its set temperature in
+       Cool, which is when the unit has stopped and is not drying */
+    var lo = Infinity, hi = -Infinity;
+    S.forEach(function(p){ lo = Math.min(lo, p.c, p.on ? p.s : p.c); hi = Math.max(hi, p.c, p.on ? p.s : p.c); });
+    lo = Math.floor(lo - .4); hi = Math.ceil(hi + .4);
+    if (hi - lo < 4) hi = lo + 4;
+    var step = hi - lo > 6 ? 2 : 1, ticks = [];
+    for (var t = Math.ceil(lo / step) * step; t <= hi; t += step) ticks.push(t);
+    var yT = scale(lo, hi);
+    prep(s2);
+    var run = -1;
+    S.forEach(function(p, k){
+      var below = p.on && p.md === 'Cool' && p.c < p.s - .1;
+      if (below && run < 0) run = k;
+      if ((!below || k === S.length - 1) && run >= 0){
+        var a = S[run].i, b = below ? p.i : S[k - 1].i;
+        s2.appendChild(sv('rect', { 'class':'below', x:X(a), y:T, width:Math.max(1, X(b) - X(a)), height:HT - T - B }));
+        run = -1;
+      }
+    });
+    yaxis(s2, yT, ticks, function(t){ return t + '°'; });
+    xaxis(s2);
+    /* the set temperature, a step line, broken where the unit is off */
+    var seg = [];
+    function flush(){
+      if (seg.length > 1) s2.appendChild(sv('polyline', { 'class':'setl', points:seg.join(' ') }));
+      seg = [];
+    }
+    S.forEach(function(p, k){
+      if (!p.on){ flush(); return; }
+      if (k && S[k - 1].on && S[k - 1].s !== p.s) seg.push(X(p.i).toFixed(1) + ',' + yT(S[k - 1].s).toFixed(1));
+      seg.push(X(p.i).toFixed(1) + ',' + yT(p.s).toFixed(1));
+    });
+    flush();
+    line(s2, yT, 'c', 'line');
+    end(s2, yT, 'c', deg(S[S.length - 1].c));
+    var h2 = hover(s2);
+
+    /* One readout for both charts: the crosshair finds the time. */
+    function show(k){
+      cur = Math.max(0, Math.min(S.length - 1, k));
+      var p = S[cur], x = X(p.i).toFixed(1), m = P.start + p.i * 10;
+      [[h1, yH(p.h)], [h2, yT(p.c)]].forEach(function(o){
+        var g = o[0]; g.style.display = '';
+        g.firstChild.setAttribute('x1', x); g.firstChild.setAttribute('x2', x);
+        g.lastChild.setAttribute('cx', x); g.lastChild.setAttribute('cy', o[1].toFixed(1));
+      });
+      ro.textContent = '';
+      ro.appendChild(d.createTextNode(dayOf(m) + ' ' + clock(m % 1440) + ' · '));
+      ro.appendChild(el('b', null, p.h + '%'));
+      ro.appendChild(d.createTextNode(' · '));
+      ro.appendChild(el('b', null, deg(p.c)));
+      ro.appendChild(d.createTextNode(' · ' + (p.on ? p.md + ' ' + p.s : 'Off')));
+    }
+    [s1, s2].forEach(function(svg){
+      function at(e){
+        var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width;
+        var i = Math.round((x - L) / (W - L - R) * n), k = 0;
+        S.forEach(function(p, j){ if (Math.abs(p.i - i) < Math.abs(S[k].i - i)) k = j; });
+        show(k);
+      }
+      svg.addEventListener('pointerdown', at);
+      svg.addEventListener('pointermove', function(e){ if (e.pointerType === 'mouse' || e.buttons) at(e); });
+      svg.addEventListener('focus', function(){ show(cur); });
+      svg.addEventListener('keydown', function(e){
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault(); show(cur + (e.key === 'ArrowLeft' ? -6 : 6));
+      });
+    });
+  }
+
+  /* The same readings as a table, every hour, newest first. */
+  function readings(v){
+    var det = el('details', 'readings');
+    det.appendChild(el('summary', null, 'Readings, every hour'));
+    var t = el('table'), th = el('thead'), hr = el('tr'), tb = el('tbody');
+    ['Time', 'Humidity', 'Room', 'Set'].forEach(function(h){ hr.appendChild(el('th', null, h)); });
+    th.appendChild(hr); t.appendChild(th);
+    for (var k = v.series.length - 1; k >= 0; k -= 6){
+      var p = v.series[k], m = P.start + p.i * 10, r = el('tr');
+      [dayOf(m) + ' ' + clock(m % 1440), p.h + '%', deg(p.c), p.on ? p.md + ' ' + p.s : 'Off']
+        .forEach(function(c){ r.appendChild(el('td', null, c)); });
+      tb.appendChild(r);
+    }
+    t.appendChild(tb); det.appendChild(t);
+    return det;
+  }
+
+  if (P.open) openSheet(P.open);
+}
+
+/* ── the frames ────────────────────────────────────────────────────────*/
+var H = DATA.H;
+var FRAMES = [
+  { key:'morning',   title:'Cool, humid morning, 7:40am', P:function(){ return scenario(H(1,7,40)); } },
+  { key:'afternoon', title:'Warm afternoon, 3:10pm',      P:function(){ return scenario(H(1,15,10)); } },
+  { key:'villa',     title:'Villa 4 tapped, 7:40am',      P:function(){ return scenario(H(1,7,40), 4); } }
+];
+var UI2 = document.getElementById('ui2css').textContent;
+var PAGE = document.getElementById('pagecss').textContent;
+function doc(f){
+  return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>' + f.title + '</title><style>' + UI2 + '</style><style>' + PAGE + '</style></head>' +
+    '<body class="ui2 paper hastabs acboard"><scr' + 'ipt>(' + frameMain.toString() + ')(' +
+    JSON.stringify(f.P()).replace(/</g, '\\u003c') + ');</scr' + 'ipt></body></html>';
+}
+
+var page = 'morning';
+try { var q = new URLSearchParams(location.search); if (q.get('page')) page = q.get('page'); } catch (e) {}
+var stage = document.getElementById('stage'), pages = document.getElementById('pages');
+var WIDE = window.matchMedia('(min-width:900px)').matches;
+function load(key){
+  var f = FRAMES.filter(function(x){ return x.key === key; })[0];
+  var i = stage.querySelector('iframe[data-key="' + key + '"]');
+  if (f && i && !i.srcdoc) i.srcdoc = doc(f);
+}
+FRAMES.forEach(function(f){
+  var ph = document.createElement('div');
+  ph.className = 'ph' + (f.key === page ? ' on' : ''); ph.id = 'ph-' + f.key;
+  var cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = f.title;
+  var scr = document.createElement('div'); scr.className = 'scr';
+  var ifr = document.createElement('iframe'); ifr.title = f.title;
+  ifr.dataset.key = f.key;                    /* loaded when first shown: a phone shows one */
+  if (f.key === page || WIDE) ifr.srcdoc = doc(f);
+  scr.appendChild(ifr); ph.appendChild(cap); ph.appendChild(scr); stage.appendChild(ph);
+  var o = document.createElement('option');
+  o.value = f.key; o.textContent = f.title; if (f.key === page) o.selected = true;
+  pages.appendChild(o);
+});
+pages.onchange = function(){
+  page = pages.value; load(page);
+  [].forEach.call(stage.children, function(el){ el.classList.toggle('on', el.id === 'ph-' + page); });
+};
+
+/* Size every screen: 390 by 844 where there is room, otherwise scaled to
+   the stage's width and given the stage's height, the page inside still
+   laid out at 390. */
+function fit(){
+  var wide = window.matchMedia('(min-width:900px)').matches;
+  if (wide) FRAMES.forEach(function(f){ load(f.key); });
+  var cs = getComputedStyle(stage);
+  var w = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  var h = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  var k = wide ? 1 : Math.min(1, w / 390);
+  var tall = wide ? 844 : Math.max(320, h);
+  [].forEach.call(stage.querySelectorAll('.ph'), function(ph){
+    var scr = ph.querySelector('.scr'), i = ph.querySelector('iframe');
+    scr.style.width = Math.floor(390 * k) + 'px'; scr.style.height = Math.floor(tall) + 'px';
+    i.style.height = Math.ceil(tall / k) + 'px';
+    i.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+  });
+}
+window.addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>
