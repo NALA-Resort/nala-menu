@@ -1107,15 +1107,20 @@ with sync_playwright() as p:
     STATE["nobook"] = True
     ck("no icon once the desk owes nothing",
        badge_on_pages() is None)
-    STATE["nobook"] = False
     # A refused read is not an empty node. Counting the half that answered
     # would show a smaller number than the truth, which reads as "less to
     # do" - the Clean Slate mistake wearing a badge. Both nodes or neither.
+    # Asked with the whole seed back, so /spa alone owes the desk something:
+    # with nothing owed there an undercount is no badge as well, and until
+    # 2 Oct this check could not tell the two apart (found by breaking it).
+    SPA = spa_seed()
+    ck("with no asks to read, the seed's /spa alone still owes the desk",
+       badge_on_pages() not in (None, ""))
+    STATE["nobook"] = False
     STATE["bookfail"] = True
     ck("a refused bookings read shows no badge, not an undercount",
        badge_on_pages() is None)
     STATE["bookfail"] = False
-    SPA = spa_seed()
 
     # ── which count each login is given ───────────────────
     # The masseuse holds one screen and nothing else, so she is always ON

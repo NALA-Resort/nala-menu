@@ -923,6 +923,9 @@ with sync_playwright() as p:
     q.click("#gdEye"); q.wait_for_timeout(300)
     txt=q.evaluate("()=>sheet.innerText")
     q.click("#gdClose"); q.wait_for_timeout(400)
+    ck("closing the details shuts them: nothing in them can be seen or pressed",
+       q.evaluate("""()=>{const b=document.querySelectorAll('#gdPanel button');
+           return b.length>0 && ![].some.call(b,e=>e.checkVisibility({visibilityProperty:true}));}"""))
     ck("chef opens the sheet and sees the guest's details",
        "0400" in txt and "allergy" in txt.lower())
     # The eye is excluded by id, not by trusting its label. It reveals what the
