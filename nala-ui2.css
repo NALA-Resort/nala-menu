@@ -359,6 +359,8 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
 
    --tabroom is the height of that strip, and 0px where there is no bar,
    for a page's own fixed bar to stand on. */
+:root{ --footfix:0px; }   /* how far Safari's foot of the screen is short: footCheck,
+                            nala-shared.js, sets it on this element; 0 when right */
 body.ui2{ --tabroom:0px; }
 body.ui2.hastabs{ --tabroom:83px; }          /* 62 of bar and 21 under it */
 body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:calc(0px - var(--footfix, 0px)); z-index:5;
