@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
@@ -249,13 +249,27 @@ function readNode(path){
     .catch(function(){ return { __failed: 0 }; });
 }
 
+/* The bookings a night in the window can need: those departing from its
+   first night on (fetchBookingsFrom, nala-shared.js), not every booking
+   ever made, which is what this read was until 2 Oct. Every reader on this
+   page stays inside the window - the nights it counts, and Dining
+   history's last week. A failed read keeps readNode's shape, so the page
+   still says what it could not read rather than count from nothing. */
+function readBookingsSince(fromKey){
+  return fetchBookingsFrom(fromKey).catch(function(e){
+    var m = /HTTP (\d+)/.exec(String(e && e.message));
+    return { __failed: m ? +m[1] : 0 };
+  });
+}
+
 function failure(node, res){
   return (res && res.__failed !== undefined) ? (node + ' (HTTP ' + res.__failed + ')') : null;
 }
 
 /* The window's nights in ONE ranged read - orderBy="$key", the Calendar's
-   and the Worker's pattern, no index needed - with /bookings read whole
-   beside it, as the boards read it. Together they answer a villa's arrival
+   and the Worker's pattern, no index needed - with the bookings that depart
+   inside or after it beside it, as the boards read them (readBookingsSince,
+   below). Together they answer a villa's arrival
    night the way the Reservations board answered it that evening: from the
    guest's own form, when no cell was ever written (nightAnswer). An
    un-indexed query may return dates outside the range; the window below
@@ -443,7 +457,7 @@ function initEaten(dinnerAll, respAll, menus, bookings){
 }
 
 Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory'),
-             readNode('/bookings'),
+             readBookingsSince(daysAgo(LOOKBACK - 1)),
              readStaysRange(daysAgo(LOOKBACK - 1), daysAgo(0))])
 .then(function(res){
   var failed = [failure('dinner', res[0]), failure('responses', res[1]),

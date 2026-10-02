@@ -176,7 +176,7 @@ body.paper .vrow.selall { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -592,11 +592,14 @@ function load(){
     days.push(dkey(d));
   }
   /* One ranged /stays read across the window (orderBy="$key", no index - the
-     calendar's fix, 22 Sep), and the per-booking records read WHOLE, plucked
-     by id, in place of a fetch per arriving booking: on the RTDB's HTTP/1.1
-     endpoint that trio was a six-at-a-time staircase. /spa was already read
-     whole here (massageAnswered wants it); /bookings, /previnvites and
-     /phonefix join it - each a node another screen already reads whole. */
+     calendar's fix, 22 Sep), and the per-booking records in one read each,
+     plucked by id, in place of a fetch per arriving booking: on the RTDB's
+     HTTP/1.1 endpoint that trio was a six-at-a-time staircase. /spa was
+     already read whole here (massageAnswered wants it); /previnvites and
+     /phonefix join it whole. /bookings is asked only from the window's
+     first day on (fetchBookingsFrom, 2 Oct): every guest arriving in the
+     window leaves after it, and the read stops growing with every booking
+     ever made. */
   var loK = days[0], hiK = days[0];
   days.forEach(function(k){ if (k < loK) loK = k; if (k > hiK) hiK = k; });
   var staysURL = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
@@ -616,7 +619,8 @@ function load(){
       }),
     loadTemplates(),
     whole('/spa'),
-    whole('/bookings'), whole('/previnvites'), whole('/phonefix')
+    fetchBookingsFrom(loK).catch(function(){ return null; }),
+    whole('/previnvites'), whole('/phonefix')
   ]).then(function(res){
     var spaAll = res[2] || {},
         bookings = res[3] || {}, prevAll = res[4] || {}, fixAll = res[5] || {};

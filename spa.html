@@ -184,7 +184,7 @@ body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -1346,10 +1346,11 @@ document.getElementById('statsRow').onclick = function(e){
 /* ── loading ─────────────────────────────────────────────────── */
 /* /stays across the window in ONE ranged read (the calendar's fix, 22 Sep),
    then the records this page lives on: the whole /spa node in one ask - a
-   small resort's treatments fit in one response - and the whole /bookings
-   node, which carries every booking's prearrival for the wellness answer
-   (and the badge's off-window asks). Everything else about a guest stays
-   unread here, and the rules hold the masseuse's login to that. */
+   small resort's treatments fit in one response - and the bookings that
+   depart from the window's first day on, which carry each prearrival for
+   the wellness answer (and the badge's off-window asks). Everything else
+   about a guest stays unread here, and the rules hold the masseuse's login
+   to that. */
 function load(){
   var real = dkey(new Date());
   var days = [], seen = {};
@@ -1387,15 +1388,17 @@ function load(){
         .then(function(r2){ return r2.ok ? r2.json() : null; })
         .catch(function(){ return null; });
     })(),
-    /* The whole node, because the badge counts from it. This board built its
-       list from a WINDOW of /stays, so a guest who ticked wellness and is not
-       staying inside that window had no card - while the hamburger counted
-       their ask all the same. A badge nobody can clear from the screen it
-       belongs to is worse than no badge, and waiting for the guest to arrive
-       is not an answer to a question they asked weeks ago. */
-    fetch(DB + '/bookings.json?v=' + Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; }),
+    /* Every booking the badge counts from, so every ask it counts has a
+       card here. This board built its list from a WINDOW of /stays, so a
+       guest who ticked wellness and is not staying inside that window had no
+       card - while the hamburger counted their ask all the same. A badge
+       nobody can clear from the screen it belongs to is worse than no badge,
+       and waiting for the guest to arrive is not an answer to a question they
+       asked weeks ago. Since 2 Oct both ask for the bookings departing from
+       today on (fetchBookingsFrom), not every booking ever made: the badge
+       passes over a guest who has left, and this from the window's first
+       day, which is today. A failed read is no bookings here, as before. */
+    fetchBookingsFrom(loK).catch(function(){ return null; }),
     /* The reminder log and the number fixes, for the logins that may open
        Spa reminders; nobody else draws the Guest reminder lines. */
     (function(){

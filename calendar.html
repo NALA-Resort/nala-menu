@@ -276,7 +276,7 @@ body.paper .mbtn.on { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 /* The whole house across a month: villas down the side, days across, each
    stay a bar. A reader in the rule-7 sense - every value here is owned
@@ -346,8 +346,8 @@ var ROLE = null, CAN_OPEN = false, LOADED = false;
    what made the board slow to load. An un-indexed query may hand back keys
    outside the asked range, so load() keys the result back into the days it
    asked for and drops the rest (the Worker's note). /spa whole (the node
-   Dashboard and Pre-arrival SMS already read whole), and /bookings whole
-   for every bar's pre-arrival answers - one read, not a fetch per booking
+   Dashboard and Pre-arrival SMS already read whole), and the bookings for
+   every bar's pre-arrival answers - one read, not a fetch per booking
    (readBookings below; the HTTP/1.1 staircase that made the board slow). */
 function readStays(loK, hiK){
   var url = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
@@ -360,16 +360,17 @@ function readStays(loK, hiK){
     .catch(function(){ return { failed:true }; });
 }
 
-/* One whole /bookings read for every bar's pre-arrival answers, in place
-   of a fetch per booking. The RTDB REST endpoint is HTTP/1.1 (the network
+/* One /bookings read for every bar's pre-arrival answers, in place of a
+   fetch per booking. The RTDB REST endpoint is HTTP/1.1 (the network
    trace, 22 Sep), so the browser runs six reads at a time: a two-month
    window's ~100 bookings queued into ~17 waves and made the board take
-   seconds - the prearrival staircase that dwarfed the stays reads. This is
-   the node the spa badge (nala-shared) and spa.html already read whole. */
-function readBookings(){
-  return fetch(DB + '/bookings.json?v=' + Date.now())
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .catch(function(){ return null; });
+   seconds - the prearrival staircase that dwarfed the stays reads. Since
+   2 Oct only the bookings departing from the window's first day on
+   (fetchBookingsFrom, nala-shared.js): a guest asleep on any night shown
+   leaves after it, and the read no longer grows with every booking ever
+   made. A failed read leaves every pre null, as before. */
+function readBookings(fromKey){
+  return fetchBookingsFrom(fromKey).catch(function(){ return null; });
 }
 
 function load(){
@@ -412,11 +413,11 @@ function load(){
         if (!bookings[s.id]) bookings[s.id] = { id:s.id, villa:String(v), stay:s };
       }
     }
-    /* pluck each in-window booking's pre-arrival out of the one whole read.
-       A booking with no record, or a whole read that failed, leaves pre
-       null - formState then reads it as not-started, the same as a missing
+    /* pluck each in-window booking's pre-arrival out of the one read. A
+       booking with no record, or a read that failed, leaves pre null -
+       formState then reads it as not-started, the same as a missing
        per-booking read did before. */
-    return readBookings().then(function(all){
+    return readBookings(dks[0]).then(function(all){
       all = all || {};
       Object.keys(bookings).forEach(function(id){
         var rec = all[id];

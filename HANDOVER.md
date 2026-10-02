@@ -230,13 +230,19 @@ that is not for the day being asked about, and reports an unreadable menu
 separately from an absent one. Three different pages had grown their own version
 of this and each was wrong differently.
 
-**The boards read the bookings a night can need**, not every booking ever
+**Every screen reads the bookings it can show**, not every booking ever
 made: `fetchBookingsFrom` in `nala-shared.js` asks for those departing from
-the day before the night viewed, through the index `".indexOn":
-["pms/depart"]` on `/bookings` in `rules.json` (pasted 2 Oct). A refused
-query reads the whole node, as before, never nothing. The Spa counter and
-board, the Calendar, the Dashboard's arrivals card and Diagnostics still read
-it whole.
+the day before the first night a screen shows, through the index
+`".indexOn": ["pms/depart"]` on `/bookings` in `rules.json` (pasted 2 Oct).
+The boards ask through `fetchStays`; the Spa count, the Spa board, the
+Calendar (a month back), the Dashboard, Pre-arrival SMS, Spa reminders and
+Statistics (its 120 nights) ask it directly. A refused query reads the whole
+node, as before, and a failed read rejects: the Spa count then shows no
+badge rather than a short one. A booking with no departure, a form answer
+Mews has no reservation for, is in no answer; Diagnostics' orphan search is
+the one read of the whole node left, for exactly those. `reads_suite` fails
+any page or count that asks for every booking, and holds the night each
+asks from to `bookings_from` in `tests/page_reads.json`.
 
 **Old and retired**, read-only, emptying as dates age out: `/responses`,
 `/roomguests`, `/guests`. Nothing writes them, and since 2 Oct no page asks

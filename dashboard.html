@@ -209,7 +209,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -291,19 +291,22 @@ function nowMins(){ return nav.isToday() ? mins(new Date()) : T1; }
    begins and a booking listed on two nights is taken once - the same filter
    the SMS page and the arrivals card above use. */
 var PRE_DAYS = 14;
-function loadPreSms(){
+function loadPreSms(day){
   var days = [], i, d;
   for (i = 0; i < PRE_DAYS; i++){
     d = new Date(); d.setDate(d.getDate() + i); days.push(dkey(d));
   }
   /* One ranged /stays read across the window (orderBy="$key", no index - the
-     calendar's fix, 22 Sep), then the three per-booking records read WHOLE,
-     not a fetch per arriving booking: on the RTDB's HTTP/1.1 endpoint that
-     trio was a six-at-a-time staircase. Each is a node other screens already
-     read whole - /bookings (Spa, the badge), /phonefix (Invitations) - and
-     /previnvites is keyed by booking id just like phonefix. */
+     calendar's fix, 22 Sep), then the three per-booking records in one read
+     each, not a fetch per arriving booking: on the RTDB's HTTP/1.1 endpoint
+     that trio was a six-at-a-time staircase. /phonefix (Invitations) and
+     /previnvites, keyed by booking id, are read whole; /bookings only from
+     the earlier of today and the night on show (fetchBookingsFrom, since
+     2 Oct), which holds every arrival here and every guest the spa
+     reminder card reads, and not every booking ever made. */
   var loK = days[0], hiK = days[0];
   days.forEach(function(k){ if (k < loK) loK = k; if (k > hiK) hiK = k; });
+  var fromK = (day && day < loK) ? day : loK;
   var staysURL = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
     '&startAt=' + encodeURIComponent('"' + loK + '"') +
     '&endAt='   + encodeURIComponent('"' + hiK + '"') + '&v=' + Date.now();
@@ -319,7 +322,8 @@ function loadPreSms(){
         all = all || {};
         return days.map(function(dk){ return { dk:dk, day:all[dk] || {} }; });
       }),
-    whole('/bookings'), whole('/previnvites'), whole('/phonefix')
+    fetchBookingsFrom(fromK).catch(function(){ return null; }),
+    whole('/previnvites'), whole('/phonefix')
   ]).then(function(res){
     var byDay = res[0], bookings = res[1] || {},
         prevAll = res[2] || {}, fixAll = res[3] || {};
@@ -394,7 +398,7 @@ function load(){
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
     /* the pre-arrival SMS window, gathered raw and read through preSmsState */
-    loadPreSms(),
+    loadPreSms(day),
     /* the spa reminder log, whole, read through spaReminderRows */
     fetch(DB + '/spareminders.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })

@@ -15,41 +15,48 @@
     "them were each put there on purpose, the Dashboard's above all (rule 7,",
     "dashboard_sources.json). A node is the first part of the path:",
     "/bookings/b1/prearrival is bookings. Rewrite a line from",
-    "python3 tests/reads_suite.py --record, never by guessing."
+    "python3 tests/reads_suite.py --record, never by guessing.",
+    "bookings_from (2 Oct): /bookings keeps every booking ever made, so no",
+    "page or count may ask for it whole. Each asks for the bookings departing",
+    "from the first night it shows (fetchBookingsFrom, nala-shared.js), which",
+    "the query starts a day before; this is that night in days from today.",
+    "Calendar's is a month back, Statistics' its 120 night look back. A page",
+    "asking from a later night would drop guests it shows, and fails by name."
   ],
   "shell": {
     "_comment": "Read by every page: the login (staff, permissions) and the menu's own announcement (menu).",
     "nodes": ["menu", "permissions", "staff"]
   },
   "counts": {
-    "_comment": "The menu's counts as the admin sees them on Reservations: Spa's (spa and every booking), Chat's (contactnew, asked shallow), Tasks' (contactsettings, then one query per team - six). Asked once as a page opens since 2 Oct, and again on their own timers.",
+    "_comment": "The menu's counts as the admin sees them on Reservations: Spa's (spa, and the bookings departing from today on), Chat's (contactnew, asked shallow), Tasks' (contactsettings, then one query per team - six). Asked once as a page opens since 2 Oct, and again on their own timers.",
     "page": "tally.html",
     "nodes": ["bookings", "contactnew", "contactsettings", "spa", "tasks"],
-    "max": 10
+    "max": 10,
+    "bookings_from": -1
   },
   "pages": {
-    "arrivals-sms.html": {"reads": ["bookings", "phonefix", "presmstemplates", "previnvites", "spa", "stays"], "max": 6},
-    "calendar.html": {"reads": ["bookings", "hk", "spa", "stays"], "max": 4},
-    "cleaners.html": {"reads": ["bookings", "dinner", "hk", "manual", "notify", "opened", "stays"], "max": 10},
-    "dashboard.html": {"reads": ["bookings", "cards", "contactnew", "contactsettings", "cutrun", "dayboard", "dinner", "invites", "manual", "opened", "phonefix", "previnvites", "spa", "spareminders", "stays", "tasks"], "max": 23},
+    "arrivals-sms.html": {"reads": ["bookings", "phonefix", "presmstemplates", "previnvites", "spa", "stays"], "max": 6, "bookings_from": -1},
+    "calendar.html": {"reads": ["bookings", "hk", "spa", "stays"], "max": 4, "bookings_from": -31},
+    "cleaners.html": {"reads": ["bookings", "dinner", "hk", "manual", "notify", "opened", "stays"], "max": 10, "bookings_from": -1},
+    "dashboard.html": {"reads": ["bookings", "cards", "contactnew", "contactsettings", "cutrun", "dayboard", "dinner", "invites", "manual", "opened", "phonefix", "previnvites", "spa", "spareminders", "stays", "tasks"], "max": 23, "bookings_from": -1},
     "flags.html": {"reads": ["flags"], "max": 1},
     "front-desk.html": {"reads": ["bookflags", "bookings", "cards", "dietaries", "dinner", "flags", "menutags", "phonefix", "spa", "stays"], "max": 11},
     "guest-contact.html": {"reads": ["contact", "contactnew", "contactsettings", "invites", "phonefix", "previnvites", "spareminders", "stays", "tasks"], "max": 14},
-    "housekeeping.html": {"reads": ["bookings", "dinner", "hk", "manual", "opened", "stays"], "max": 8},
-    "invitations.html": {"reads": ["bookings", "dinner", "extinvites", "invites", "manual", "opened", "phonefix", "smstemplates", "stays"], "max": 9},
+    "housekeeping.html": {"reads": ["bookings", "dinner", "hk", "manual", "opened", "stays"], "max": 8, "bookings_from": -1},
+    "invitations.html": {"reads": ["bookings", "dinner", "extinvites", "invites", "manual", "opened", "phonefix", "smstemplates", "stays"], "max": 9, "bookings_from": -1},
     "keys.html": {"reads": ["cards", "stays"], "max": 4},
-    "list.html": {"reads": ["bookflags", "bookings", "combined", "dinner", "internal", "manual", "menutags", "opened", "stays"], "max": 13},
+    "list.html": {"reads": ["bookflags", "bookings", "combined", "dinner", "internal", "manual", "menutags", "opened", "stays"], "max": 13, "bookings_from": -1},
     "menu-print.html": {"reads": [], "max": 0},
     "pages.html": {"reads": [], "max": 0},
     "past-menus.html": {"reads": ["menuhistory"], "max": 1},
-    "publish.html": {"reads": ["bookings", "dietaries", "dinner", "manual", "menutags", "opened", "stays"], "max": 7},
+    "publish.html": {"reads": ["bookings", "dietaries", "dinner", "manual", "menutags", "opened", "stays"], "max": 7, "bookings_from": -1},
     "registration.html": {"reads": ["bookings", "menutags", "spa", "stays"], "max": 5},
-    "spa-reminders.html": {"reads": ["bookings", "phonefix", "spa", "spareminders", "spasmstemplates", "stays"], "max": 6},
-    "spa.html": {"reads": ["bookings", "phonefix", "spa", "spacontact", "spareminders", "stays"], "max": 6},
+    "spa-reminders.html": {"reads": ["bookings", "phonefix", "spa", "spareminders", "spasmstemplates", "stays"], "max": 6, "bookings_from": -1},
+    "spa.html": {"reads": ["bookings", "phonefix", "spa", "spacontact", "spareminders", "stays"], "max": 6, "bookings_from": -1},
     "staff.html": {"reads": ["contactsettings", "notify", "prearrivalinfo", "spacontact", "spasettings"], "max": 5},
-    "stats.html": {"reads": ["bookings", "dinner", "menuhistory", "responses", "stays"], "max": 13},
+    "stats.html": {"reads": ["bookings", "dinner", "menuhistory", "responses", "stays"], "max": 13, "bookings_from": -120},
     "tag.html": {"reads": ["dietaries", "menutags"], "max": 2},
-    "tally.html": {"reads": ["bookings", "combined", "dinner", "extinvites", "manual", "opened", "stays"], "max": 8},
+    "tally.html": {"reads": ["bookings", "combined", "dinner", "extinvites", "manual", "opened", "stays"], "max": 8, "bookings_from": -1},
     "tasks.html": {"reads": ["contactsettings", "tasks"], "max": 13}
   }
 }

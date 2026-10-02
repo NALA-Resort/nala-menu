@@ -190,7 +190,7 @@ body.paper .knob { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -618,11 +618,14 @@ document.getElementById('sendBtn').onclick = function(){
 
 /* ── loading ─────────────────────────────────────────────────── */
 /* The nights SPA_REMIND_DAYS ahead in one ranged read (Pre-arrival SMS's,
-   orderBy="$key"), and the four nodes the reminder is read from, each whole
-   - each one another screen already reads whole. A failed read is not an
-   empty one (the standing caution): without the send log this page cannot
-   tell who has been texted, and a list drawn anyway could text a guest
-   twice. So any failed read draws nothing and says why. */
+   orderBy="$key"), and the four nodes the reminder is read from: /spa,
+   /spareminders and /phonefix whole, and /bookings from the first night on
+   (fetchBookingsFrom, 2 Oct), since a guest with a treatment in the window
+   leaves on or after its day. A failed read is not an empty one (the
+   standing caution): without the send log this page cannot tell who has
+   been texted, and a list drawn anyway could text a guest twice. So any
+   failed read draws nothing and says why, the bookings' included:
+   fetchBookingsFrom rejects rather than answer with nothing. */
 function load(){
   TODAY = dkey(new Date());
   var keys = spaRemindDays();
@@ -638,7 +641,7 @@ function load(){
           '&startAt=' + encodeURIComponent('"' + keys[0] + '"') +
           '&endAt=' + encodeURIComponent('"' + keys[keys.length - 1] + '"')),
     whole('/spa'), whole('/spareminders'),
-    whole('/bookings'), whole('/phonefix'), loadTemplates()
+    fetchBookingsFrom(keys[0]), whole('/phonefix'), loadTemplates()
   ]).then(function(res){
     var nights = res[0] || {}, bookings = res[3] || {}, now = Date.now();
     ALL = [];

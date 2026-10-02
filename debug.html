@@ -114,7 +114,7 @@ villas at once.</p>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </div>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=112"></script>
+<script src="nala-shared.js?v=113"></script>
 <script>
 /* This page deletes live data. Until 18 Aug it had no role gate at all, so any
    login that could sign in could open it and run Clean Slate: a cleaner, a
@@ -173,11 +173,12 @@ function read(path, id){
 
 /* The hamburger's Spa badge, shown line by line. It counts what a login
    still OWES, and the Spa board renders what it can reach - and those are
-   not the same set. The badge reads /bookings whole, every booking ever;
-   the board builds its list from a window of /stays, so a guest outside
-   that window is counted here and has no card there. A number nobody can
-   clear from the screen it belongs to is the shape of that gap, and this
-   is how to find which booking it is.
+   not the same set. The badge reads the bookings departing from today on
+   (fetchBookingsFrom; every booking ever made until 2 Oct); the board
+   builds its list from a window of /stays, so a guest outside that window
+   is counted here and has no card there. A number nobody can clear from
+   the screen it belongs to is the shape of that gap, and this is how to
+   find which booking it is.
 
    Read only: the same shared functions the badge itself calls, on the same
    two nodes, printing the reason for each. If this list disagrees with the
@@ -187,8 +188,7 @@ function spaBadgeWorking(){
   Promise.all([
     fetch(DB + '/spa.json?v=' + Date.now()).then(function(r){
       if (!r.ok) throw new Error('/spa HTTP ' + r.status); return r.json(); }),
-    fetch(DB + '/bookings.json?v=' + Date.now()).then(function(r){
-      if (!r.ok) throw new Error('/bookings HTTP ' + r.status); return r.json(); }),
+    fetchBookingsFrom(today),
     fetch(DB + '/stays/' + today + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
   ]).then(function(res){
@@ -496,6 +496,10 @@ function orphanReason(rec){
 
 function findOrphans(){
   document.getElementById('orphans').textContent = 'scanning…';
+  /* The whole node, on purpose: the one read in the app that still asks for
+     every booking ever made. An orphan has no Mews record, so no departure,
+     and the departure query every board uses (fetchBookingsFrom) can never
+     return one. It runs only when this button is pressed. */
   fetch(DB+'/bookings.json?v='+Date.now())
     .then(function(r){
       /* A read that fails is not an empty node. Reporting "no orphans" because

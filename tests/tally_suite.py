@@ -915,13 +915,14 @@ with sync_playwright() as p:
     live=q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
         e=>getComputedStyle(e).display!=='none').map(e=>e.textContent.trim())""")
     # The phone is in the booking's details behind the eye (see villa 1's
-    # sheet above). The sheet is opened afresh after reading it, so the
-    # controls below are counted on the sheet as it first opens: closing the
-    # details leaves Add staff notes standing on it (found 2 Oct, on main
-    # too, reported rather than mixed into this change).
+    # sheet above): read there, then shut again, as the chef would. The
+    # controls below are counted as a person sees them. A shut panel hides
+    # its buttons with visibility, not display, so a display test counts
+    # them anyway: on 2 Oct that miscount read as Add staff notes left on
+    # the sheet after closing, and a browser showed it never was.
     q.click("#gdEye"); q.wait_for_timeout(300)
     txt=q.evaluate("()=>sheet.innerText")
-    q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
+    q.click("#gdClose"); q.wait_for_timeout(400)
     ck("chef opens the sheet and sees the guest's details",
        "0400" in txt and "allergy" in txt.lower())
     # The eye is excluded by id, not by trusting its label. It reveals what the
@@ -934,7 +935,7 @@ with sync_playwright() as p:
     # offered whenever a booked stay has nights behind it - villa 1's, since
     # its fixture became a booking on 2 Oct.
     writes = q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
-        e=>getComputedStyle(e).display!=='none'
+        e=>e.checkVisibility({visibilityProperty:true})
            && e.id!=='gdEye' && e.id!=='gdClose' && e.id!=='oHist')
         .map(e=>e.textContent.trim())""")
     ck("chef's sheet offers nothing that writes, only Close",

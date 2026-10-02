@@ -549,6 +549,9 @@ a person must act on now is a push through `PUSH`, not a count on every page.
 the menu, opened with the counts off, fails on a node not on its line or
 requests past its number, and the counts are measured once on Reservations.
 A new page fails until it has a line, written from `reads_suite --record`.
+No page and no count may read `/bookings` whole, which keeps every booking
+ever made: each asks `fetchBookingsFrom` from the first night it shows,
+and its line's `bookings_from` holds that night (2 Oct).
 Another module's node arriving on a page's line is the moment to stop: say
 why beside it, or find the way that does not need it. The lines recorded on
 2 Oct carry the app's existing cross-module reads, each there on purpose -

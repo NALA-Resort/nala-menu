@@ -551,20 +551,34 @@ function editPhoneNumber(booking, cb){
    Until the rules carry it the database refuses the query, and this reads
    the whole node as it always did. A refused query must never read as no
    bookings: the boards would lose an arriving guest's form, their dinner
-   answer and their allergy with it, and nothing would look wrong. */
+   answer and their allergy with it, and nothing would look wrong.
+
+   Every screen that once read the node whole asks here since 2 Oct, from
+   the first night it shows: the boards through fetchStays, the Spa count,
+   the Spa board, the Calendar, the Dashboard, Pre-arrival SMS, Spa
+   reminders, Statistics. A booking with no departure at all - a form
+   answer Mews has no reservation for, which Diagnostics calls an orphan -
+   is in no such answer; Diagnostics' orphan search reads the node whole
+   for exactly those.
+
+   A read that fails rejects, never resolving to nothing: the Spa count
+   shows no badge rather than a short one, and each board decides for
+   itself what it draws without the bookings. */
 function fetchBookingsFrom(dateKey){
   function whole(){
     return fetch(DB + '/bookings.json?v=' + Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; });
+      .then(function(r){
+        if (!r.ok) throw new Error('/bookings HTTP ' + r.status);
+        return r.json();
+      });
   }
   var d = parseDepDate(dateKey);
   if (!d) return whole();
   d.setDate(d.getDate() - 1);
   return fetch(DB + '/bookings.json?orderBy=' + encodeURIComponent('"pms/depart"') +
                '&startAt=' + encodeURIComponent('"' + dkey(d) + '"') + '&v=' + Date.now())
-    .then(function(r){ return r.ok ? r.json() : whole(); })
-    .catch(function(){ return whole(); });
+    .then(function(r){ return r.ok ? r.json() : whole(); },
+          function(){ return whole(); });
 }
 
 function fetchStays(dateKey){
@@ -596,7 +610,7 @@ function fetchStays(dateKey){
        (fetchBookingsFrom, above). A failed read leaves the villas unset and
        the merge falls back to the night, exactly as a failed per-villa read
        did - not a blank board. */
-    fetchBookingsFrom(dateKey)
+    fetchBookingsFrom(dateKey).catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
     OPENED_MARKS = res[2] || {};
@@ -4033,8 +4047,12 @@ var NAV_ACTIONS = [
             return r.json();
           });
       }
-      Promise.all([node('/spa'), node('/bookings')]).then(function(res){
-        var c = spaOwedCounts(res[0], res[1], dkey(new Date()));
+      /* The bookings that can still be owed, not every booking ever made:
+         spaOwedCounts passes over a guest who has left, so the count asks
+         from today (fetchBookingsFrom), which rejects on a failed read. */
+      var today = dkey(new Date());
+      Promise.all([node('/spa'), fetchBookingsFrom(today)]).then(function(res){
+        var c = spaOwedCounts(res[0], res[1], today);
         cb(role === 'spa' ? c.spa : c.desk);
       }).catch(function(){});
   } },

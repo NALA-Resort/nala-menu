@@ -17,6 +17,12 @@ It then opens Reservations with the counts on, and fails a count that reads a
 node not in "counts", or counts that cost more requests than their number. A
 line that allows more than its page now reads is reported, not failed: trim it.
 
+And /bookings, which keeps every booking ever made and is never pruned: no
+page and no count may ask for the whole node (2 Oct). Each asks for the
+bookings departing from the first night it shows, and its line's
+"bookings_from" says which night that is, in days from today - so a page
+asking from a later night, which would drop guests it shows, fails by name.
+
 Every page in the menu (tests/nav_canon.json) must have a line here, so a new
 module's page cannot arrive without saying what it reads.
 
@@ -33,6 +39,11 @@ socketserver.TCPServer.allow_reuse_address = True
 httpd = http.server.ThreadingHTTPServer(("", PORT), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 RECORD = "--record" in sys.argv
+# Each opening's /bookings reads: the night a query starts from, or None for
+# the whole node. Keyed by (page, counts on).
+ASKS = {}
+def from_today(k):
+    return (datetime.date.fromisoformat(k) - now.date()).days
 
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("No Firebase App '[DEFAULT]' has been created"); return window.__A;}};
@@ -147,6 +158,14 @@ with sync_playwright() as p:
         pg.on("request", lambda r: seen.update([node_of(
             r.url.split("firebasedatabase.app", 1)[1].split("?")[0])])
             if "firebasedatabase.app" in r.url and r.method == "GET" else None)
+        asks = ASKS[(page, counts)] = []
+        def book_ask(r):
+            if r.method != "GET" or "firebasedatabase.app" not in r.url: return
+            if r.url.split("firebasedatabase.app", 1)[1].split("?")[0] != "/bookings.json": return
+            qs = urllib.parse.parse_qs(urllib.parse.urlsplit(r.url).query)
+            asks.append(json.loads(qs["startAt"][0]) if "orderBy" in qs and "startAt" in qs
+                        else None)
+        pg.on("request", book_ask)
         pg.goto("http://localhost:%d/%s" % (PORT, page))
         pg.wait_for_timeout(2500)
         pg.close()
@@ -159,10 +178,18 @@ with sync_playwright() as p:
         print("shell (read by every page):", sorted(shell))
         for pg_, c in got.items():
             own = {k: v for k, v in c.items() if k not in shell}
-            print('  "%s": {"reads": %s, "max": %d},' % (pg_, json.dumps(sorted(own)), sum(own.values())))
+            starts = sorted({from_today(a) for a in ASKS[(pg_, False)] if a is not None})
+            print('  "%s": {"reads": %s, "max": %d%s},' % (
+                pg_, json.dumps(sorted(own)), sum(own.values()),
+                (', "bookings_from": %d' % starts[0]) if len(starts) == 1 else
+                ("  <- asks from several nights: %s" % starts if starts else "")))
+            if None in ASKS[(pg_, False)]:
+                print("   %s asks for every booking" % pg_)
         on, off = opening("tally.html", counts=True), got["tally.html"]
         diff = on - off
         print("counts on tally.html:", dict(diff), "total", sum(diff.values()))
+        extra = collections.Counter(ASKS[("tally.html", True)]) - collections.Counter(ASKS[("tally.html", False)])
+        print("counts' bookings asks:", [a if a is None else from_today(a) for a in extra.elements()])
         b.close(); sys.exit(0)
 
     table = json.load(open("tests/page_reads.json"))
@@ -185,12 +212,30 @@ with sync_playwright() as p:
         if own < lines[page]["max"]:
             print("   note: %s opens with %d of its own, under its %d - lower its number"
                   % (page, own, lines[page]["max"]))
+        asks = ASKS[(page, False)]
+        ck("%s never asks for every booking" % page, None not in asks,
+           "%d whole /bookings reads" % asks.count(None))
+        starts = sorted({from_today(a) for a in asks if a is not None})
+        want = lines[page].get("bookings_from")
+        if want is None:
+            ck("%s asks for no bookings by departure, as its line says" % page, not starts,
+               "asks from %s days from today: put it on its line as bookings_from" % starts)
+        else:
+            ck("%s asks for the bookings departing from %d days from today" % (page, want),
+               starts == [want], starts)
     cp = table["counts"]["page"]
     diff = opening(cp, counts=True) - opening(cp)
     stray = sorted(set(diff) - set(table["counts"]["nodes"]))
     ck("the menu's counts read only their own nodes", not stray, stray)
     ck("the menu's counts cost at most %d requests on %s" % (table["counts"]["max"], cp),
        sum(diff.values()) <= table["counts"]["max"], sum(diff.values()))
+    extra = list((collections.Counter(ASKS[(cp, True)]) -
+                  collections.Counter(ASKS[(cp, False)])).elements())
+    ck("the menu's counts never ask for every booking", None not in extra, extra)
+    want = table["counts"].get("bookings_from")
+    ck("the menu's counts ask for the bookings departing from %s days from today" % want,
+       want is not None and extra and all(a is not None and from_today(a) == want for a in extra),
+       [a if a is None else from_today(a) for a in extra])
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))
