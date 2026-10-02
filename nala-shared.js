@@ -3458,34 +3458,89 @@ function drawTabs(tabs){
   if (tabs.length) drawTabs(tabs);
 })();
 
-/* The bar back at the foot when the keyboard goes. It stands down while a
-   field is typed in (nala-ui2.css), but Safari can leave a fixed bar where
-   the keyboard lifted it until the page next scrolls - Settings, 1 Oct,
-   294pt up - so the page scrolls one point and back, which has Safari lay
-   it out again. Asked when the visible screen grows back by more than a
-   keyboard's worth, which is the keyboard going, and on leaving a field. */
-function repinTabs(){
-  if (!document.getElementById('tabBar')) return;
-  var x = window.scrollX, y = window.scrollY;
-  window.scrollTo(x, y > 0 ? y - 1 : y + 1);
-  window.scrollTo(x, y);
+/* ── the foot of the screen, after the keyboard ──────────────────────────
+   Safari on the iPhone can keep the screen's foot where the keyboard's top
+   was after the keyboard has gone: the bar 294pt up on Settings (the
+   number pad's height, 1 Oct) and about 400pt up in Chat (the keyboard's,
+   2 Oct), Chat's box with it and the page carrying on underneath them -
+   the owner: "fix the sticky footer menu once and for all". A scroll of a
+   point and back, tried first, did not move it.
+
+   So the page measures instead of trusting: where Safari's foot is (a
+   fixed probe at bottom 0) and where the visible screen ends (the visual
+   viewport). On a page that is right they agree, and nothing moves. When
+   Safari's foot is a keyboard's worth short, --footfix is the difference,
+   and everything that stands at the foot reads it (nala-ui2.css): the
+   bar, its menu, a page's footer and save bar, Chat's box, a sheet. It is
+   asked again as the keyboard goes, the page scrolls or turns, or the app
+   comes back, so it lets go the moment Safari is right again. Nothing is
+   moved while a field is typed in, where the phone's own placing is
+   right, or while the page is pinched in. Each time it moves anything, the
+   numbers go to this phone's log, which Diagnostics shows: if the foot is
+   ever wrong again, they say why. */
+var FOOT_MIN = 150;            /* a keyboard's worth; no screen edge moves so far */
+var FOOT_LOG = 'nala-footlog';
+function typingNow(){
+  var a = document.activeElement;
+  if (!a) return false;
+  if (a.isContentEditable || /^(TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  return a.tagName === 'INPUT' &&
+         !/^(checkbox|radio|button|submit|reset|range|color|file|image|hidden)$/i.test(a.type);
+}
+function footDrift(){
+  var vv = window.visualViewport;
+  if (!vv || !document.body || typingNow() || Math.abs(vv.scale - 1) > 0.01) return 0;
+  var p = document.getElementById('footProbe');
+  if (!p){
+    p = document.createElement('div');
+    p.id = 'footProbe';
+    p.setAttribute('aria-hidden', 'true');
+    p.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:0;' +
+                      'visibility:hidden;pointer-events:none';
+    document.body.appendChild(p);
+  }
+  var d = vv.offsetTop + vv.height - p.getBoundingClientRect().top;
+  return d >= FOOT_MIN ? Math.round(d) : 0;
+}
+function footCheck(why){
+  var root = document.documentElement;
+  var was = parseInt(root.style.getPropertyValue('--footfix'), 10) || 0;
+  var d = footDrift();
+  if (d === was) return;
+  root.style.setProperty('--footfix', d + 'px');
+  if (!d) return;
+  var vv = window.visualViewport, p = document.getElementById('footProbe');
+  try {
+    var log = JSON.parse(localStorage.getItem(FOOT_LOG) || '[]') || [];
+    log.push({ at: new Date().toISOString(), page: location.pathname.split('/').pop(),
+               why: why, moved: d, probe: Math.round(p.getBoundingClientRect().top),
+               vv: [Math.round(vv.offsetTop), Math.round(vv.height), vv.scale],
+               inner: window.innerHeight, client: root.clientHeight,
+               screen: [screen.width, screen.height], scroll: Math.round(window.scrollY),
+               standalone: !!navigator.standalone });
+    localStorage.setItem(FOOT_LOG, JSON.stringify(log.slice(-20)));
+  } catch (e){}
 }
 (function(){
+  var queued = false;
+  function soon(why){
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function(){ queued = false; footCheck(why); });
+  }
   var vv = window.visualViewport;
   if (vv){
-    var h0 = vv.height;
-    vv.addEventListener('resize', function(){
-      if (vv.height > h0 + 150) setTimeout(repinTabs, 50);
-      h0 = vv.height;
-    });
+    vv.addEventListener('resize', function(){ soon('resize'); setTimeout(function(){ footCheck('settled'); }, 400); });
+    vv.addEventListener('scroll', function(){ soon('scroll'); });
   }
-  document.addEventListener('focusout', function(e){
-    var t = e.target;
-    if (!t || !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-    setTimeout(function(){
-      var a = document.activeElement;
-      if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) repinTabs();
-    }, 350);
+  window.addEventListener('scroll', function(){ soon('scroll'); }, { passive:true });
+  window.addEventListener('resize', function(){ soon('resize'); });
+  window.addEventListener('orientationchange', function(){ setTimeout(function(){ footCheck('turn'); }, 400); });
+  window.addEventListener('pageshow', function(){ soon('show'); });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) soon('back'); });
+  document.addEventListener('focusin', function(){ soon('focus'); });
+  document.addEventListener('focusout', function(){
+    setTimeout(function(){ footCheck('keyboard'); }, 450);
   });
 })();
 

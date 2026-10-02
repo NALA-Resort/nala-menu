@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Diagnostics</title>
-<link rel="stylesheet" href="nala-ui2.css?v=19">
+<link rel="stylesheet" href="nala-ui2.css?v=20">
 <style>
   body { padding:10px 12px; }
   body { font-size:var(--t2); line-height:1.35 }
@@ -39,6 +39,12 @@
 <div id="tools">
 <h2>Today</h2>
 <pre id="today"></pre>
+
+<h2>The screen's foot after the keyboard (this phone)</h2>
+<!-- Each time Safari left the foot of the screen short after a keyboard,
+     and the page moved the bar and the rest down to where the screen
+     ends (nala-shared.js, footCheck): newest last. Empty is good. -->
+<pre id="footlog">none</pre>
 
 <h2>Write test → /roomguests/&lt;today&gt;/99</h2>
 <button onclick="writeTest()">Run write test</button>
@@ -114,7 +120,7 @@ villas at once.</p>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </div>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=110"></script>
+<script src="nala-shared.js?v=111"></script>
 <script>
 /* This page deletes live data. Until 18 Aug it had no role gate at all, so any
    login that could sign in could open it and run Clean Slate: a cleaner, a
@@ -714,6 +720,13 @@ function writeTest(){
   }); })
   .catch(function(e){ show('write', 0, String(e)); });
 }
+</script>
+<script>
+(function(){
+  var out = document.getElementById('footlog'), log = [];
+  try { log = JSON.parse(localStorage.getItem('nala-footlog') || '[]') || []; } catch (e){}
+  if (log.length) out.textContent = log.map(function(x){ return JSON.stringify(x); }).join('\n');
+})();
 </script>
 </body>
 </html>

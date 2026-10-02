@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Chat</title>
-<link rel="stylesheet" href="nala-ui2.css?v=19">
+<link rel="stylesheet" href="nala-ui2.css?v=20">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* Built 29 Sep from mock-guest-contact.html, the owner's brief of that
@@ -253,7 +253,7 @@
      box and Send are one bar now, so neither is seen without the other.
      The strip under the bar is solid here, as under any page's footer. */
   #threadView { display:flex; flex-direction:column; flex:1 0 auto; }
-  #threadView .compose { position:sticky; bottom:var(--tabroom); z-index:4; margin-top:auto;
+  #threadView .compose { position:sticky; bottom:calc(var(--tabroom) - var(--footfix, 0px)); z-index:4; margin-top:auto;
                          padding:14px 0 10px;
                          background:linear-gradient(to bottom, transparent, var(--ground) 14px); }
   body.ui2:not(.hastabs) #threadView .compose { padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
@@ -331,7 +331,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
 <script src="contact-demo.js?v=11"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=110"></script>
+<script src="nala-shared.js?v=111"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 

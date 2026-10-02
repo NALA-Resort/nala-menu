@@ -840,10 +840,6 @@ with sync_playwright() as p:
        k2["shown"] and k2["gap"] == 21 and k2["room"] == "83px" and k2["y"] == k1["y"], (k1, k2))
     pg.focus("#masterTick"); pg.wait_for_timeout(100)
     ck("a switch with focus leaves it be: it is pressed, not typed in", pg.evaluate(KB)["shown"])
-    ys = pg.evaluate("""()=>[0, 200, document.documentElement.scrollHeight].map(y=>{
-        window.scrollTo(0, y); const b=Math.round(scrollY); repinTabs(); return [b, Math.round(scrollY)];})""")
-    ck("putting it back moves the page not at all, at the top, part-way or the foot",
-       all(a == c for a, c in ys), ys)
     ctx.close()
     ctx, pg = open_as(b, EMAIL["admin"], "staff.html")
     miss = press(pg, 'button.tab[data-t="tNotify"]'); pg.wait_for_timeout(300)
@@ -852,6 +848,82 @@ with sync_playwright() as p:
     ck("with a mouse there is no keyboard, and the bar stays",
        not miss and not k["coarse"] and k["shown"], miss or k)
     ctx.close()
+
+    # The foot, measured: the owner, 2 Oct, "fix the sticky footer menu once
+    # and for all", Chat's bar and box 400pt up the screen once the keyboard
+    # had gone. Safari's report is stood in for, a headless screen being
+    # always right: the visible screen said taller than the page's foot (the
+    # foot left short), or scrolled below it (the foot left behind). The
+    # page moves everything at the foot to where the screen ends.
+    STUCK = """(d)=>{const vv=window.visualViewport;
+      Object.defineProperty(vv,'height',{configurable:true,get:()=>innerHeight+d.h});
+      Object.defineProperty(vv,'offsetTop',{configurable:true,get:()=>d.top});
+      Object.defineProperty(vv,'scale',{configurable:true,get:()=>d.scale});
+      vv.dispatchEvent(new Event('resize'));}"""
+    FOOT = """()=>{const q=s=>document.querySelector(s), vv=window.visualViewport;
+      const t=q('#tabBar'), c=q('#tabBar .tabrow'), f=q('body > .foot'), k=q('.backdrop'), m=q('#navDrop');
+      return {fix:getComputedStyle(document.documentElement).getPropertyValue('--footfix').trim()||'0px',
+              screen:Math.round(vv.offsetTop+vv.height),
+              bar:t&&getComputedStyle(t).display!=='none'?Math.round(t.getBoundingClientRect().bottom):null,
+              cap:c?Math.round(c.getBoundingClientRect().bottom):null,
+              foot:f?Math.round(f.getBoundingClientRect().bottom):null,
+              menu:m&&m.classList.contains('open')?Math.round(m.getBoundingClientRect().bottom):null,
+              sheet:k?getComputedStyle(k).bottom:null,
+              logged:(JSON.parse(localStorage.getItem('nala-footlog')||'[]')).length};}"""
+    ctx, pg = open_as(b, EMAIL["admin"], "invitations.html", app=True)
+    f0 = pg.evaluate(FOOT)
+    ck("with Safari right, nothing is moved: the bar at the foot of the screen",
+       f0["fix"] == "0px" and f0["bar"] == 844 and f0["cap"] == 823 and f0["logged"] == 0, f0)
+    pg.evaluate(STUCK, {"h": 400, "top": 0, "scale": 1}); pg.wait_for_timeout(600)
+    f1 = pg.evaluate(FOOT)
+    ck("Safari's foot left 400pt short: the bar and the page's footer go down to where the screen ends",
+       f1["fix"] == "400px" and f1["screen"] == 1244 and f1["bar"] == 1244 and f1["cap"] == 1223 and
+       f1["foot"] == 1244 - 83, f1)
+    ck("and a sheet reaches it", f1["sheet"] == "-400px", f1)
+    pg.evaluate("()=>document.getElementById('navBtn').click()"); pg.wait_for_timeout(400)
+    ck("and the menu rises from the bar where it now is", pg.evaluate(FOOT)["menu"] == 1244 - 83 - 10,
+       pg.evaluate(FOOT))
+    pg.evaluate("()=>document.getElementById('navBtn').click()"); pg.wait_for_timeout(300)
+    ck("and the phone keeps the numbers, which Diagnostics shows", f1["logged"] == 1, f1)
+    pg.evaluate(STUCK, {"h": 0, "top": 300, "scale": 1}); pg.wait_for_timeout(600)
+    f2 = pg.evaluate(FOOT)
+    ck("Safari's foot left behind, the screen 300pt below it: moved 300", f2["fix"] == "300px" and f2["bar"] == 1144, f2)
+    pg.evaluate(STUCK, {"h": 60, "top": 0, "scale": 1}); pg.wait_for_timeout(600)
+    ck("a difference smaller than any keyboard is left alone", pg.evaluate(FOOT)["fix"] == "0px", pg.evaluate(FOOT))
+    pg.evaluate(STUCK, {"h": 400, "top": 0, "scale": 1.5}); pg.wait_for_timeout(600)
+    ck("pinched in, nothing is moved", pg.evaluate(FOOT)["fix"] == "0px", pg.evaluate(FOOT))
+    # Invitations shows no field until a sheet opens: one of its own stands
+    # in, any field being a field.
+    pg.evaluate("""()=>{const i=document.createElement('input'); i.id='kbTry';
+        document.body.insertBefore(i, document.body.firstChild); i.focus();}""")
+    pg.evaluate(STUCK, {"h": 400, "top": 0, "scale": 1}); pg.wait_for_timeout(600)
+    ck("while a field is typed in, nothing is moved: the phone places the keyboard's own",
+       pg.evaluate(FOOT)["fix"] == "0px", pg.evaluate(FOOT))
+    pg.evaluate("()=>document.activeElement.blur()"); pg.wait_for_timeout(900)
+    ck("and when the keyboard goes, it is measured again", pg.evaluate(FOOT)["fix"] == "400px", pg.evaluate(FOOT))
+    pg.evaluate(STUCK, {"h": 0, "top": 0, "scale": 1}); pg.wait_for_timeout(600)
+    f3 = pg.evaluate(FOOT)
+    ck("and the moment Safari is right again, it lets go", f3["fix"] == "0px" and f3["bar"] == 844, f3)
+    ctx.close()
+
+    # Anything a staff page pins to the foot reads --footfix, in its own
+    # rule or by one of the classes nala-ui2.css moves, or it floats where
+    # the bar did (CLAUDE.md, the tab bar).
+    MOVED = ('.foot', '.onbar', '.savebar', '.selbar', '.backdrop', '.ov', '.cardov')
+    loose = []
+    for f in sorted(glob.glob("*.html")):
+        if f.startswith(("demo-", "mock-")): continue
+        src = open(f).read()
+        tag = re.search(r'<body[^>]*>', src)
+        if not tag or not re.search(r'\bui2\b', tag.group(0)): continue
+        for sel, rule in re.findall(r'([^{}]+)\{([^{}]*)\}', src):
+            r = ' '.join(rule.split())
+            if not re.search(r'position:\s*(fixed|sticky)', r) or not re.search(r'(^|[;\s])(bottom|inset):', r):
+                continue
+            s = ' '.join(sel.split()).split('*/')[-1].strip()
+            if 'footfix' in r or any(re.search(re.escape(c) + r'(?![\w-])', s) for c in MOVED): continue
+            loose.append((f, s))
+    ck("everything a staff page pins to the foot reads --footfix", loose == [], loose)
 
     b.close()
 

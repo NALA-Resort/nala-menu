@@ -361,7 +361,7 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
    for a page's own fixed bar to stand on. */
 body.ui2{ --tabroom:0px; }
 body.ui2.hastabs{ --tabroom:83px; }          /* 62 of bar and 21 under it */
-body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:5;
+body.ui2 .tabbar{ position:fixed; left:0; right:0; bottom:calc(0px - var(--footfix, 0px)); z-index:5;
                   height:var(--tabroom); pointer-events:none;
                   background:linear-gradient(to bottom, transparent, var(--ground) 50%); }
 /* Under a page's own footer, or its own bar wearing onbar (Publish's),
@@ -444,7 +444,7 @@ body.ui2 .tabbar .navbadge{ position:absolute; top:-3px; left:calc(50% + 5px);
    hamburger, and its menu drops from it. */
 body.ui2.hastabs .navbtn{ display:none; }
 body.ui2.hastabs .navdrop{ display:block; position:fixed; z-index:1; top:auto; left:auto;
-                           bottom:calc(var(--tabroom) + 10px);
+                           bottom:calc(var(--tabroom) + 10px - var(--footfix, 0px));
                            right:max(21px, env(safe-area-inset-right), calc((100vw - var(--appw)) / 2));
                            width:260px; min-width:0; max-height:calc(100dvh - var(--tabroom) - 34px);
                            overflow-y:auto; overscroll-behavior:contain; border:0;
@@ -460,10 +460,22 @@ body.ui2.hastabs .navdrop a, body.ui2.hastabs .navgrp{ font-size:var(--t3); padd
 body.ui2.hastabs .navsub a{ padding-left:28px; }
 body.ui2 .menushade{ display:none; }
 body.ui2.hastabs .navdrop.open + .menushade{ display:block; position:fixed; inset:0; z-index:0;
+                                              bottom:calc(0px - var(--footfix, 0px));
                                             background:rgba(28,28,26,.16); }
 body.ui2.hastabs:has(.navdrop.open) .tabbar{ z-index:600; }
 body.ui2.hastabs::after{ content:''; display:block; flex:0 0 auto; height:var(--tabroom); }
-body.ui2.hastabs .foot{ bottom:var(--tabroom); padding-bottom:10px; }
+body.ui2 .foot{ bottom:calc(var(--tabroom) - var(--footfix, 0px)); }
+body.ui2.hastabs .foot{ padding-bottom:10px; }
+/* Everything else that stands at the foot of the screen reads --footfix
+   too: Safari can leave its foot a keyboard's height up after the keyboard
+   has gone (Chat, 2 Oct, the bar and the box 400pt up the screen), and
+   nala-shared.js measures the difference rather than trust it. A page's
+   own bar on the tab bar (onbar), a save or select bar over it, and a
+   sheet or a card filling the screen. Anything new pinned to the foot
+   takes its bottom less var(--footfix), or it floats where these did. */
+body.ui2 .onbar{ bottom:calc(var(--tabroom) - var(--footfix, 0px)); }
+body.ui2 .savebar, body.ui2 .selbar,
+body.ui2 .backdrop, body.ui2 .ov, body.ui2 .cardov{ bottom:calc(0px - var(--footfix, 0px)); }
 /* Pull to refresh's mark (pullToRefresh, nala-shared.js): a white disc
    with a turning arrow that follows the finger down from the top, grey
    while a release would do nothing and ink once it would reload. */
