@@ -4,40 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mock &middot; Air con board</title>
-<!-- Mock, 2 Oct, second pass. The air con controller: every villa's unit
+<!-- Mock, 2 Oct, fourth pass. The air con controller: every villa's unit
      under "all the usual controls as seen in the public application", and a
      humidity rule smarter than Climate React, because on a cool humid day
      ("95%rh at 21deg C") a unit left at 23 / Cool / Auto stops drying.
 
-     The first pass put a 24 hour history behind each villa. The owner, on
-     seeing it: "Strange place to start building, given what we are trying
-     to accomplish." Right: it showed what the first build would read, not
-     what the controller is for. So a villa now opens on its controls, the
-     app's own (on and off, the set temperature, mode, fan, swing), with the
-     humidity rule beside them saying what it would do in that villa now;
-     the history is folded away at the foot. The rule's settings, the
-     "ac settings fields" he asked for, are a screen of their own.
+     How it got here. The first pass opened a villa on a 24 hour history:
+     "Strange place to start building". The second coloured each tile by
+     humidity alone: "heavy on the within humidity range state and nothing
+     else like occupancy, power status, within temperature range, filter
+     status". The third folded every state into one verdict and still could
+     not show which villas were in the temperature range. So the owner was
+     asked, one question at a time. The screen is his ("Just me for now"),
+     and it answers six questions, in his order ("Right as it is"):
+
+       1 Anything broken?      units offline
+       2 Guests comfortable?   villas with guests in, inside the range
+       3 Villas dry?           every villa against the humidity target
+       4 Arrivals ready?       today's arrivals' villas, in range and dry
+       5 What's running?       each unit on or off, and its setting
+       6 Maintenance due?      filters the units say want a clean
+
+     The board opens on a row per question, answered in words ("2 cold ·
+     11 in range"). Tapping a row turns the villas into its answer, each
+     tile carrying it large in the colour law's meanings: green nothing to
+     do, amber chase this (the tile says why), dashed grey nothing to ask
+     here (nobody in, no arrival), red words offline, a failure, never a
+     red tile. With no row tapped the villas show Needs attention: every
+     question at once, amber naming what is wrong.
+
+     A villa opens on its controls, the app's own (on and off, the set
+     temperature, mode, fan, swing), sent at once as the app's are, with
+     the humidity rule beside them saying what it would do there now; the
+     history is folded at the foot. Select picks several villas and gives
+     them one change: the house setting (23 · Cool · Auto, his words), on,
+     or off, which names the villas and asks first. The rule's settings,
+     the "ac settings fields" he asked for, are a screen of their own.
 
      The readings are invented, from a small simulation of one cool, humid
      Friday in Far North Queensland: 21 degrees and 95% outside before dawn.
      In Cool a unit whose room is below its set temperature stops (GENERAL's
-     operating manuals), so it stops drying: every reporting villa amber but
-     one. Villa 13 is his screenshot of 2 Oct: Cool, high fan, set to 24.
+     operating manuals), so it stops drying. Villa 13 is his screenshot of
+     2 Oct: Cool, high fan, set to 24.
 
      What it decides, each open to his word:
-     - A tile's colour is humidity against the rule's target: green at or
-       under (nothing to do), amber over (chase this), red words when a
-       unit is offline (a failure, never a red tile). Change the target on
-       the rule's screen and the board follows.
-     - A control sends at once, as the app's do, and says so: "Sending to
-       the unit", then "The unit has it". Turn off is destructive and asks
-       first, in the sheet, naming the villa; Turn on is the one primary.
      - The rule starts watching only: it says what it would do and changes
        nothing until it is switched to Act.
      - Guests win: after a guest changes their unit the rule waits (3 hours
        here), and a unit a guest turned off stays off.
-     - Vacant villas are not sunk grey as on other boards: an empty villa's
-       air still needs watching, and it is where the rule dries hardest.
+     - Villas dry? counts empty villas too: an empty villa's air still needs
+       watching, and it is where the rule dries hardest.
+     - What's running? draws a unit that is off in amber: the house runs
+       every unit all year, so off is a thing to look at.
 
      What a build adds: a Worker, nala-aircon, holding the Sensibo key as a
      dashboard secret, reading every unit in one call every two minutes,
@@ -94,11 +112,11 @@
     <summary>About this mock</summary>
     <p>Invented readings for a cool, humid Friday: the morning, when units set
        to 23 in Cool have stopped running and stopped drying, and the warm
-       afternoon. Each tile's colour is its verdict: green, guests in and all
-       fine; amber, something to chase, named on the tile; dashed, empty with
-       nothing to do; red words, offline.</p>
-    <p>Press a count to fade the villas it does not count. Tap a villa for its
-       controls and the humidity rule; Humidity rule opens its settings.</p>
+       afternoon. The board answers six questions, a row each; tap a row and
+       the villas answer it: green nothing to do, amber chase this, dashed
+       nothing to ask, red words offline.</p>
+    <p>Tap a villa for its controls and the humidity rule, Select to change
+       several at once, Humidity rule for its settings.</p>
   </details>
 </div>
 <div class="stage" id="stage"></div>
@@ -774,18 +792,51 @@ body.acboard{ padding:14px var(--appgut) 0; }
 body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(--s3);
                              font-size:var(--t2); }
 
-/* A count for each state the board shows, and each a filter: press one
-   and the villas it does not count fade, keeping their places. Amber and
-   red on a count are the colour law's, chase this and failed. */
-.fchips{ display:flex; flex-wrap:wrap; gap:6px; margin:var(--s3) 0 0; }
-.fchips button{ min-height:36px; padding:0 12px; border:1px solid var(--rule); border-radius:var(--pill);
-                background:var(--surface); color:var(--ink); font-family:var(--ui-font);
-                font-size:var(--t2); cursor:pointer; }
-.fchips button.on{ background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface);
-                   border-color:var(--sel-bdr); }
-.fchips b{ margin-left:5px; font-weight:600; }
-.fchips b.amb{ color:var(--law-amber-ink); }
-.fchips b.red{ color:var(--law-red); }
+/* The owner's six questions (2 Oct, "Right as it is"), in his order: a
+   row each, answered in words, and each a way to look at the villas. The
+   row being looked at wears the house's Selected dress. */
+.qcard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
+        box-shadow:var(--lift); margin:var(--s3) -8px 0; padding:2px; }
+.qrow{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+       gap:2px var(--s3); width:100%; min-height:44px; padding:10px; border:0;
+       border-top:1px solid var(--rule); border-radius:0; background:var(--surface); color:var(--ink);
+       font-family:var(--ui-font); font-size:var(--t2); text-align:left; cursor:pointer; }
+.qrow:first-child{ border-top-color:transparent; }
+.qrow.on{ background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface);
+          box-shadow:inset 0 0 0 1px var(--sel-bdr); border-radius:var(--r); }
+.qrow.on + .qrow{ border-top-color:transparent; }
+.qask{ font-weight:600; }
+.qans{ margin-left:auto; text-align:right; color:var(--mid); }
+.qans b{ font-weight:600; color:var(--ink); }
+.qans b.amb{ color:var(--law-amber-ink); }
+.qans b.red{ color:var(--law-red); }
+.qans b.grn{ color:var(--law-green); }
+/* Above the villas: which question they answer, Clear back to Needs
+   attention (tally.html's word for undoing a choice), and Select. */
+.ghead{ display:flex; align-items:center; justify-content:space-between; gap:var(--s3);
+        margin:var(--s4) 0 0; }
+.gview{ min-width:0; font-size:var(--t3); font-weight:600; }
+.gbtns{ display:flex; flex:0 0 auto; gap:var(--s2); }
+body.ui2 .gbtns .btn{ width:auto; min-height:36px; padding:0 var(--s3); font-size:var(--t2); }
+.ghead + .accard{ margin-top:var(--s2); }
+/* A question's tile: its answer large, then what explains it. */
+.qbig{ padding-top:2px; font-size:var(--t4); font-weight:600; line-height:1.2; }
+.over .qbig{ color:var(--law-amber-ink); }
+.qsmall{ font-size:var(--t1); color:var(--mid); }
+/* Picked for a change to several: an ink ring over the tile's own colour,
+   the selection mark, so the colour still says what it said. */
+.actile.picked{ box-shadow:0 0 0 2px var(--ink); }
+/* The select bar rises from the foot over the tab bar, as the house's
+   select bar does; the page keeps room for it. */
+.selbar{ position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--surface);
+         border-top:1px solid var(--rule); box-shadow:0 -4px 16px rgba(28,28,26,.08);
+         padding:12px var(--appgut) calc(14px + env(safe-area-inset-bottom)); }
+.sbin{ max-width:var(--appw); margin:0 auto; display:flex; flex-wrap:wrap; align-items:center;
+       gap:var(--s2); }
+.scount{ flex:1 1 100%; font-size:var(--t2); color:var(--mid); }
+.scount.done{ color:var(--law-green); }
+body.ui2 .selbar .btn{ width:auto; min-height:40px; padding:0 var(--s3); font-size:var(--t2); }
+body.ui2.acboard.selecting{ padding-bottom:120px; }
 
 /* The villas are one card, grown 8 into the margin as the Reservations
    board's is, so nothing inside it moves. */
@@ -840,6 +891,8 @@ body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding
 .aclegend i.over{ background:var(--law-amber); border-color:var(--law-amber-b); }
 .aclegend i.empty{ background:var(--surface); border:1px dashed var(--mid); opacity:.62; }
 .aclegend .nr{ color:var(--law-red); font-weight:600; }
+/* a question's key is a sentence, and wraps */
+.aclegend > span.lgnote{ display:block; flex:1 1 100%; white-space:normal; }
 
 /* A sheet: paper like the page, rising from the foot over the bar, as a
    sheet covers the page. */
@@ -1051,6 +1104,8 @@ function makeData(){
   /* Each unit's filter as the app shows it ("Filters 74%", villa 13 in his
      screenshot); 0 is due for a clean. */
   var FILTER = [74, 88, 52, 91, 66, 0, 79, 85, 47, 93, 70, 58, 74, 0, 81, 62, 90];
+  var CLEANED = ['18 Aug', '29 Aug', '2 Aug', '2 Sep', '14 Aug', '2 Jul', '21 Aug', '27 Aug', '30 Jul',
+                 '5 Sep', '16 Aug', '6 Aug', '12 Aug', '28 Jun', '24 Aug', '11 Aug', '3 Sep'];
   var END = H(1,15,10), DOWN = H(1,6,50), villas = [];
   for (var n = 1; n <= 17; n++){
     var sunGain = .3 + rnd() * .6, occGain = .8 + rnd() * .5, hold = .15 + rnd() * .35;
@@ -1077,7 +1132,7 @@ function makeData(){
       pts.push({ m:m, h:Math.round(rh + (rnd() - .5) * 1.2), c:+(T + (rnd() - .5) * .12).toFixed(1),
                  s:s.s, md:s.md, on:s.on, fan:s.fan, o:occ });
     }
-    villas.push({ n:n, guest:GUEST[n-1], pts:pts, changed:CHANGED[n] || null, filter:FILTER[n-1],
+    villas.push({ n:n, guest:GUEST[n-1], pts:pts, changed:CHANGED[n] || null, filter:FILTER[n-1], cleaned:CLEANED[n-1],
                   arrives:(GUEST[n-1] === 'Arrives' || GUEST[n-1] === 'Turnover') ? H(1,14) : null });
   }
   return { villas:villas, H:H };
@@ -1106,13 +1161,14 @@ function clock(m){
 
 /* One screen's worth: the 24 hours to its moment, each villa as it stands
    then, and the rule as it ships: watching only, 65%, 21.5 to 24. */
-function scenario(end, open){
+function scenario(end, open, view, picks){
   var start = end - 1440, rule = { target:65, lo:21.5, hi:24, empty:true, back:3, hold:3,
                                    act:false, villas:{} };
   for (var n = 1; n <= 17; n++) rule.villas[n] = true;
   return {
     date:'Fri 2nd Oct', now:clock(end), end:end, start:start, span:144, rule:rule,
     tabs:TABS, menuSvg:MENU_SVG, powerSvg:POWER_SVG, open:open || 0,
+    view:view || 'all', picks:picks || [],
     villas:DATA.villas.map(function(v){
       var series = v.pts.filter(function(p){ return p.m >= start && p.m <= end; })
                         .map(function(p){ return { i:(p.m - start) / 10, h:p.h, c:p.c, s:p.s, md:p.md, on:p.on }; });
@@ -1121,7 +1177,7 @@ function scenario(end, open){
       var label = labelAt(v.guest, end);
       return { n:v.n, label:label, guestLong:LONG[label], occ:!!lastP.o, hum:last.h, tmp:last.c,
                on:last.on, mode:last.md, set:last.s, fan:lastP.fan, swing:'Fixed', offline:off,
-               since:off ? clock(lastM) : '', empty:!lastP.o, filter:v.filter, filterDue:v.filter === 0,
+               since:off ? clock(lastM) : '', empty:!lastP.o, filter:v.filter, filterDue:v.filter === 0, cleaned:v.cleaned, arrToday:v.arrives,
                arrives:v.arrives != null && v.arrives > end ? v.arrives : null,
                changedAt:v.changed && v.changed[0] <= end ? v.changed[0] : null,
                changedWhat:v.changed ? v.changed[1] : '', series:series };
@@ -1213,19 +1269,14 @@ function frameMain(P){
   /* ── the board ── */
   var main = el('main', 'acpage');
   d.body.appendChild(main);
-  /* What the counts count, each a filter. A state no villa is in is not
-     offered, unless it is the one pressed; Show all comes only while one
-     is, and pressing the pressed one again does the same. */
-  var lens = 'all';
-  var LENSES = [
-    ['all', 'Show all', function(){ return true; }, ''],
-    ['att', 'Attention', function(v){ return verdict(v).k === 'over'; }, 'amb'],
-    ['in', 'In house', function(v){ return v.occ && !v.offline; }, ''],
-    ['empty', 'Empty', function(v){ return !v.occ && !v.offline; }, ''],
-    ['off', 'Off', function(v){ return !v.offline && !v.on; }, ''],
-    ['filter', 'Filter', function(v){ return v.filterDue; }, 'amb'],
-    ['nr', 'Offline', function(v){ return v.offline; }, 'red']
-  ];
+  /* ── the board ──
+     The owner's six questions (2 Oct, "Right as it is"), answered in words
+     at the top, each a way to look at the villas; with none pressed the
+     villas show everything that needs attention. Select picks several for
+     one change: the house setting, on or off. */
+  var view = P.view || 'all', selecting = (P.picks || []).length > 0, picked = {}, barMsg = '';
+  (P.picks || []).forEach(function(n){ picked[n] = true; });
+  var HOUSE = { mode:'Cool', set:23, fan:'Auto' };          /* the house setting, his words */
   function power(v){
     var p = el('span', 'pwr' + (v.on ? '' : ' off'));
     var s = sv('svg', { viewBox:'0 0 24 24', 'aria-hidden':'true' });
@@ -1234,13 +1285,132 @@ function frameMain(P){
     p.appendChild(d.createTextNode(setShort(v)));
     return p;
   }
-  function tile(v, shown){
-    var vd = verdict(v);
-    var b = button('actile ' + vd.k + (shown ? '' : ' dim'), null, function(){ openVilla(v.n); });
+  function comfortOf(v){
+    if (v.offline || !v.occ) return null;
+    return v.tmp < R.lo ? 'cold' : v.tmp > R.hi ? 'warm' : 'in';
+  }
+  function notReady(v){
+    var w = [];
+    if (v.hum > R.target) w.push('humid');
+    if (v.tmp < R.lo) w.push('cold');
+    if (v.tmp > R.hi) w.push('warm');
+    return w;
+  }
+  function part(t, c){ return { t:t, c:c || '' }; }
+  var reporting = function(v){ return !v.offline; };
+  var QS = [
+    { key:'broken', ask:'Anything broken?',
+      answer:function(){
+        var n = P.villas.filter(function(v){ return v.offline; }).length;
+        return n ? [part(n + ' offline', 'red'), part((P.villas.length - n) + ' working')]
+                 : [part('All ' + P.villas.length + ' working', 'grn')];
+      },
+      state:function(v){
+        return v.offline ? { k:'nr', big:'Offline', small:'since ' + v.since }
+                         : { k:'ok', big:'Working', small:setShort(v) };
+      },
+      legend:function(){ return 'Green: the unit is reporting. Red words: nothing reaches it.'; } },
+    { key:'comfort', ask:'Guests comfortable?',
+      answer:function(){
+        var c = { in:0, cold:0, warm:0 };
+        P.villas.forEach(function(v){ var k = comfortOf(v); if (k) c[k]++; });
+        if (!c.cold && !c.warm) return [part('All ' + c.in + ' in range', 'grn')];
+        var out = [];
+        if (c.cold) out.push(part(c.cold + ' cold', 'amb'));
+        if (c.warm) out.push(part(c.warm + ' warm', 'amb'));
+        out.push(part(c.in + ' in range'));
+        return out;
+      },
+      state:function(v){
+        if (v.offline) return { k:'nr', big:'Offline', small:'since ' + v.since };
+        var k = comfortOf(v);
+        if (!k) return { k:'empty', big:deg(v.tmp), small:'Nobody in' };
+        return { k:k === 'in' ? 'ok' : 'over', big:deg(v.tmp), small:setShort(v),
+                 why:k === 'cold' ? 'Cold: under ' + one(R.lo) + '°'
+                   : k === 'warm' ? 'Warm: over ' + one(R.hi) + '°' : '' };
+      },
+      legend:function(){ return 'Guests in: green ' + one(R.lo) + ' to ' + one(R.hi) +
+                                '°, amber cold or warm. Dashed: nobody in.'; } },
+    { key:'dry', ask:'Villas dry?',
+      answer:function(){
+        var r = P.villas.filter(reporting), over = r.filter(function(v){ return v.hum > R.target; }).length;
+        return over ? [part(over + ' over ' + R.target + '%', 'amb'), part((r.length - over) + ' dry')]
+                    : [part('All ' + r.length + ' dry', 'grn')];
+      },
+      state:function(v){
+        if (v.offline) return { k:'nr', big:'Offline', small:'since ' + v.since };
+        var over = v.hum > R.target;
+        return { k:over ? 'over' : 'ok', big:v.hum + '%', small:deg(v.tmp),
+                 why:over ? 'Over ' + R.target + '%' : '' };
+      },
+      legend:function(){ return 'Every villa, guests in or not: green ' + R.target + '% or under, amber over.'; } },
+    { key:'arrivals', ask:'Arrivals ready?',
+      answer:function(){
+        var a = P.villas.filter(function(v){ return v.arrToday != null; });
+        if (!a.length) return [part('None today')];
+        var due = a.filter(function(v){ return P.end < v.arrToday; });
+        if (!due.length) return [part(a.length + ' arrived')];
+        var bad = due.filter(function(v){ return v.offline || notReady(v).length; }).length;
+        var at = 'in at ' + clock(due[0].arrToday, true);
+        return bad ? [part(bad + ' of ' + due.length + ' not ready', 'amb'), part(at)]
+                   : [part(due.length + ' ready', 'grn'), part(at)];
+      },
+      state:function(v){
+        if (v.arrToday == null) return { k:'empty', big:'', small:'No arrival today' };
+        if (v.offline) return { k:'nr', big:'Offline', small:'since ' + v.since };
+        var nums = deg(v.tmp) + ' · ' + v.hum + '%';
+        if (P.end >= v.arrToday){
+          var k = comfortOf(v);
+          return { k:k === 'in' && v.hum <= R.target ? 'ok' : 'over', big:'Arrived',
+                   small:nums, why:notReady(v).join(', ') };
+        }
+        var w = notReady(v);
+        return { k:w.length ? 'over' : 'ok', big:'In ' + clock(v.arrToday, true), small:nums,
+                 why:w.length ? 'Not ready: ' + w.join(', ') : 'Ready' };
+      },
+      legend:function(){ return 'Arriving today: green ready, in range and dry; amber not yet. Dashed: no arrival.'; } },
+    { key:'running', ask:'What’s running?',
+      answer:function(){
+        var r = P.villas.filter(reporting), off = r.filter(function(v){ return !v.on; }).length;
+        return off ? [part((r.length - off) + ' on'), part(off + ' off', 'amb')]
+                   : [part('All ' + r.length + ' on', 'grn')];
+      },
+      state:function(v){
+        if (v.offline) return { k:'nr', big:'Offline', small:'since ' + v.since };
+        if (v.on) return { k:'ok', big:'On', small:v.mode + ' ' + v.set + ' · ' + v.fan };
+        return { k:'over', big:'Off', small:v.occ ? 'Guests in' : 'Nobody in',
+                 why:v.staffOff ? 'Turned off here' : v.changedAt != null ? 'Guest turned it off' : '' };
+      },
+      legend:function(){ return 'Green: on. Amber: off, as the house runs every unit all year.'; } },
+    { key:'maint', ask:'Maintenance due?',
+      answer:function(){
+        var n = P.villas.filter(function(v){ return v.filterDue; }).length;
+        return n ? [part(n + (n === 1 ? ' filter due' : ' filters due'), 'amb')] : [part('Nothing due', 'grn')];
+      },
+      state:function(v){
+        if (v.offline) return { k:'nr', big:'Offline', small:'since ' + v.since };
+        return v.filterDue ? { k:'over', big:'Filter due', small:'Cleaned ' + v.cleaned }
+                           : { k:'ok', big:'Filter ' + v.filter + '%', small:'Cleaned ' + v.cleaned };
+      },
+      legend:function(){ return 'Filters as the units report them: amber, due for a clean.'; } }
+  ];
+  function tap(v){
+    if (!selecting) return openVilla(v.n);
+    if (v.offline) return;
+    picked[v.n] = !picked[v.n]; barMsg = ''; drawBoard();
+  }
+  function shell(v, cls){
+    var b = button('actile ' + cls + (selecting && picked[v.n] ? ' picked' : ''), null, function(){ tap(v); });
+    if (selecting) b.setAttribute('aria-pressed', picked[v.n] ? 'true' : 'false');
     var top = el('span', 'atop');
     top.appendChild(el('span', 'vn', String(v.n)));
     top.appendChild(el('span', 'gs', v.label));
     b.appendChild(top);
+    return b;
+  }
+  /* With no question pressed: everything, the verdict over every state. */
+  function tile(v){
+    var vd = verdict(v), b = shell(v, vd.k);
     if (v.offline){
       b.appendChild(el('span', 'nrtext', 'Offline'));
       b.appendChild(el('span', 'pwr', 'since ' + v.since));
@@ -1258,42 +1428,117 @@ function frameMain(P){
                    (vd.why.length ? ', needs attention: ' + vd.why.join(', ') : '')));
     return b;
   }
+  /* With a question pressed: that question's answer, large. */
+  function viewTile(v, st){
+    var b = shell(v, st.k);
+    if (st.big) b.appendChild(el('span', st.k === 'nr' ? 'nrtext' : 'qbig', st.big));
+    if (st.small) b.appendChild(el('span', 'qsmall', st.small));
+    b.appendChild(el('span', 'why', st.why || ''));
+    b.setAttribute('aria-label', 'Villa ' + v.n + ', ' + v.guestLong + ', ' +
+      [st.big, st.small, st.why].filter(Boolean).join(', '));
+    return b;
+  }
   function drawBoard(){
     main.textContent = '';
     var row = el('div', 'daterow');
     row.appendChild(el('div', 'date', P.date));
     row.appendChild(button('btn is-secondary rulesbtn', 'Humidity rule', openRule));
     main.appendChild(row);
-    var test = LENSES.filter(function(l){ return l[0] === lens; })[0][2];
-    var chips = el('div', 'fchips');
-    chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Show');
-    LENSES.forEach(function(l){
-      var n = P.villas.filter(l[2]).length;
-      if (l[0] === 'all' ? lens === 'all' : !n && l[0] !== lens) return;
-      var c = button(l[0] === lens ? 'on' : '', null, function(){
-        lens = l[0] === lens ? 'all' : l[0]; drawBoard();
+    var qc = el('div', 'qcard');
+    qc.setAttribute('role', 'group'); qc.setAttribute('aria-label', 'Questions');
+    QS.forEach(function(q){
+      var r = button('qrow' + (view === q.key ? ' on' : ''), null, function(){
+        view = view === q.key ? 'all' : q.key; drawBoard();
       });
-      c.id = 'show-' + l[0];
-      c.setAttribute('aria-pressed', l[0] === lens ? 'true' : 'false');
-      c.appendChild(d.createTextNode(l[1]));
-      if (l[0] !== 'all') c.appendChild(el('b', n && l[3] ? l[3] : null, String(n)));
-      chips.appendChild(c);
+      r.id = 'q-' + q.key;
+      r.setAttribute('aria-pressed', view === q.key ? 'true' : 'false');
+      r.appendChild(el('span', 'qask', q.ask));
+      var a = el('span', 'qans');
+      q.answer().forEach(function(p, i){
+        if (i) a.appendChild(d.createTextNode(' · '));
+        a.appendChild(p.c ? el('b', p.c, p.t) : d.createTextNode(p.t));
+      });
+      r.appendChild(a);
+      qc.appendChild(r);
     });
-    main.appendChild(chips);
+    main.appendChild(qc);
+    var cur = QS.filter(function(q){ return q.key === view; })[0] || null;
+    var gh = el('div', 'ghead');
+    gh.appendChild(el('div', 'gview', cur ? cur.ask : 'Needs attention'));
+    var gb = el('div', 'gbtns');
+    if (cur) gb.appendChild(button('btn is-secondary', 'Clear', function(){ view = 'all'; drawBoard(); }));
+    var sb = button('btn is-secondary', selecting ? 'Cancel' : 'Select', function(){
+      selecting = !selecting; picked = {}; barMsg = ''; drawBoard();
+    });
+    sb.id = 'selectBtn';
+    gb.appendChild(sb);
+    gh.appendChild(gb);
+    main.appendChild(gh);
     var card = el('section', 'accard');
     card.setAttribute('aria-label', 'Villas');
     var grid = el('div', 'acgrid');
-    P.villas.forEach(function(v){ grid.appendChild(tile(v, test(v))); });
+    P.villas.forEach(function(v){ grid.appendChild(cur ? viewTile(v, cur.state(v)) : tile(v)); });
     card.appendChild(grid);
     var lg = el('div', 'aclegend');
-    [['ok', 'In house, all fine'], ['over', 'Needs attention: the tile says why'],
-     ['empty', 'Empty, nothing to do']].forEach(function(k){
-      var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
-    });
+    if (cur){
+      lg.appendChild(el('span', 'lgnote', cur.legend()));
+    } else {
+      [['ok', 'In house, all fine'], ['over', 'Needs attention: the tile says why'],
+       ['empty', 'Empty, nothing to do']].forEach(function(k){
+        var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
+      });
+    }
     lg.appendChild(el('span', 'nr', 'Offline'));
     lg.appendChild(el('span', null, 'Updated ' + P.now));
     card.appendChild(lg);
     main.appendChild(card);
+    drawSelbar();
+  }
+
+  /* ── several at once ── */
+  var bar = null;
+  function drawSelbar(){
+    if (bar){ bar.remove(); bar = null; }
+    d.body.classList.toggle('selecting', selecting);
+    if (!selecting) return;
+    bar = el('div', 'selbar');
+    var inn = el('div', 'sbin'), ns = P.villas.filter(function(v){ return picked[v.n]; });
+    var cnt = el('div', 'scount' + (barMsg ? ' done' : ''), barMsg || (ns.length
+      ? (ns.length === 1 ? 'Villa ' : ns.length + ' villas: ') + ns.map(function(v){ return v.n; }).join(', ')
+      : 'Tap villas to pick them'));
+    cnt.setAttribute('aria-live', 'polite');
+    inn.appendChild(cnt);
+    function apply(change, words){
+      ns.forEach(change);
+      barMsg = 'Sending to ' + ns.length + (ns.length === 1 ? ' unit' : ' units');
+      drawBoard();
+      setTimeout(function(){
+        barMsg = ns.length + (ns.length === 1 ? ' unit ' : ' units ') + words; drawBoard();
+      }, 900);
+    }
+    function house(v){ v.on = true; v.mode = HOUSE.mode; v.set = HOUSE.set; v.fan = HOUSE.fan; v.staffOff = false; }
+    var hb = button('btn is-primary', 'House setting', function(){
+      apply(house, 'at the house setting, 23 · Cool · Auto');
+    });
+    var onb = button('btn is-secondary', 'Turn on', function(){
+      apply(function(v){ v.on = true; v.staffOff = false; }, 'on');
+    });
+    var offb = button('btn is-destructive', 'Turn off', function(){
+      inn.textContent = '';
+      inn.appendChild(el('div', 'scount', 'Turn off ' + (ns.length === 1 ? 'villa ' : ns.length + ' villas: ') +
+        ns.map(function(v){ return v.n; }).join(', ') + '?'));
+      inn.appendChild(button('btn is-secondary', 'Keep them on', drawSelbar));
+      inn.appendChild(button('btn is-destructive', 'Turn off', function(){
+        apply(function(v){ v.on = false; v.staffOff = true; }, 'off');
+      }));
+    });
+    var allb = button('btn is-secondary', 'All', function(){
+      P.villas.forEach(function(v){ if (!v.offline) picked[v.n] = true; }); barMsg = ''; drawBoard();
+    });
+    hb.disabled = onb.disabled = offb.disabled = !ns.length;
+    [hb, onb, offb, allb].forEach(function(x){ inn.appendChild(x); });
+    bar.appendChild(inn);
+    d.body.appendChild(bar);
   }
   drawBoard();
 
@@ -1783,10 +2028,16 @@ function frameMain(P){
 /* ── the frames ────────────────────────────────────────────────────────*/
 var H = DATA.H;
 var FRAMES = [
-  { key:'morning',   title:'The board, a cool humid morning', P:function(){ return scenario(H(1,7,40)); } },
-  { key:'afternoon', title:'The board, a warm afternoon',     P:function(){ return scenario(H(1,15,10)); } },
-  { key:'villa',     title:'Villa 13 tapped: its controls',   P:function(){ return scenario(H(1,7,40), 13); } },
-  { key:'rule',      title:'Humidity rule: its settings',     P:function(){ return scenario(H(1,7,40), 'rule'); } }
+  { key:'morning', title:'The board, a cool humid morning',
+    P:function(){ return scenario(H(1,7,40)); } },
+  { key:'comfort', title:'Guests comfortable? pressed, warm afternoon',
+    P:function(){ return scenario(H(1,15,10), 0, 'comfort'); } },
+  { key:'select',  title:'Select: three villas to the house setting',
+    P:function(){ return scenario(H(1,15,10), 0, 'running', [9, 13, 17]); } },
+  { key:'villa',   title:'Villa 13 tapped: its controls',
+    P:function(){ return scenario(H(1,7,40), 13); } },
+  { key:'rule',    title:'Humidity rule: its settings',
+    P:function(){ return scenario(H(1,7,40), 'rule'); } }
 ];
 var UI2 = document.getElementById('ui2css').textContent;
 var PAGE = document.getElementById('pagecss').textContent;
