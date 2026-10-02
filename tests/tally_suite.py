@@ -2085,6 +2085,89 @@ with sync_playwright() as p:
        "Nut" in q.evaluate("()=>listBookings.textContent"))
     q.close()
 
+    # ── the bookings read follows the night, 2 Oct ──────────────────────
+    # fetchStays read every booking ever made, on every board's opening and
+    # every refresh, and nothing prunes /bookings. It now asks for those
+    # departing from the day before the viewed night on, which needs the
+    # index on pms/depart in rules.json. Until the console holds the index
+    # the database refuses the query and the whole read must take over: a
+    # refused query read as no bookings would drop an arriving guest's form
+    # answer, and their allergy with it, with nothing looking wrong. This
+    # stub answers the query as the database does - by pms/depart, or a 400
+    # while the index is missing.
+    import urllib.parse as _up
+    ck("rules.json carries the index the query needs",
+       "pms/depart" in json.load(open("rules.json"))["rules"]["bookings"].get(".indexOn", []))
+    BOOK_ASKS = []
+    INDEX = {"on": True}
+    PAST = plus(-10)
+    BOOKS = {s["id"]: {"pms": {"depart": s["depart"]}, "prearrival": PRE_FORM[s["id"]]}
+             for s in PRE_STAYS.values()}
+    BOOKS["bk-p11"] = {"pms": {"depart": plus(-8)},
+                       "prearrival": {"dining": True, "pax": 2, "diets": ["Nut allergy"]}}
+    BOOKS["old-1"] = {"pms": {"depart": plus(-60)}, "prearrival": {"diets": ["Gluten"]}}
+    PAST_STAYS = {"11": {"id": "bk-p11", "first": "Pia", "last": "Moss", "arrive": PAST,
+                         "depart": plus(-8), "adults": 2}}
+    def book_fb(route, request):
+        u = request.url
+        if request.method == "GET" and u.split("?")[0].endswith("/bookings.json"):
+            qs = _up.parse_qs(_up.urlsplit(u).query)
+            if "orderBy" not in qs:
+                BOOK_ASKS.append(("whole", ""))
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(BOOKS)); return
+            BOOK_ASKS.append((qs["orderBy"][0], qs.get("startAt", [""])[0]))
+            if not INDEX["on"]:
+                route.fulfill(status=400, content_type="application/json", body=json.dumps(
+                    {"error": "Index not defined, add \".indexOn\": \"pms/depart\", "
+                              "for path \"/bookings\", to the rules"})); return
+            start = json.loads(qs["startAt"][0])
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(
+                {k: v for k, v in BOOKS.items() if (v.get("pms") or {}).get("depart", "") >= start}))
+            return
+        if request.method == "GET" and "/stays/" + PAST in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PAST_STAYS)); return
+        form_fb(route, request)
+    def book_page(path):
+        del BOOK_ASKS[:]
+        p = b.new_page(viewport={"width": 430, "height": 930})
+        p.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+            status=200, content_type="application/javascript", body=SDK))
+        p.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        p.route("**firebasedatabase.app/**", book_fb)
+        p.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+            content_type="application/json", body=json.dumps(menu)))
+        p.goto("http://localhost:8953/" + path); p.wait_for_timeout(1800)
+        return p
+    def bcls(p, n):
+        return p.evaluate("n=>{const b=[...document.querySelectorAll('#rooms .room')]"
+                          ".find(x=>x.querySelector('.room-n')"
+                          "&&x.querySelector('.room-n').textContent===n);"
+                          "return b?b.className:'';}", str(n))
+    p = book_page("tally.html")
+    ck("the board asks for the bookings departing from the day before tonight, not all of them",
+       ('"pms/depart"', '"' + plus(-1) + '"') in BOOK_ASKS)
+    ck("and that is enough: the form's dinner answers and allergy still reach the board",
+       " in" in bcls(p, 11) and " out" in bcls(p, 12) and
+       "Nut" in p.evaluate("()=>listBookings.textContent"))
+    p.close()
+    INDEX["on"] = False
+    p = book_page("tally.html")
+    ck("before the rules carry the index the query is refused, and the arriving guest's "
+       "form answer and allergy still reach the board",
+       ('"pms/depart"', '"' + plus(-1) + '"') in BOOK_ASKS and
+       " in" in bcls(p, 11) and "Nut" in p.evaluate("()=>listBookings.textContent"))
+    p.close()
+    INDEX["on"] = True
+    p = book_page("tally.html?date=" + PAST)
+    ck("a past night asks from the day before that night, not from today",
+       ('"pms/depart"', '"' + plus(-11) + '"') in BOOK_ASKS)
+    ck("so browsing back still shows that night's arriving guest's answer and allergy",
+       " in" in bcls(p, 11) and "Nut" in p.evaluate("()=>listBookings.textContent"))
+    p.close()
+
     # ── All: everyone who could still be dining tonight ─────────────────
     # The chef's ask, through the owner, 24 Sep: a guest in house who had
     # not answered dinner tonight was on no list, so their allergy showed

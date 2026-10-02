@@ -523,6 +523,7 @@
           ".write": "auth != null"
         }
       },
+      ".indexOn": ["pms/depart"],
       ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists()"
     },
     "stays": {
