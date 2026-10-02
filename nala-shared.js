@@ -4043,6 +4043,15 @@ var NAV_ACTIONS = [
 var NAV_N = {};            /* href: the last count heard */
 var NAV_ROLE = null;
 var NAV_EVERY = 30000;
+/* The counts the opening asked: the role and the pages counted. The menu
+   filter runs twice as a page opens - the page's own call, then the timer
+   at the foot of this file - and until 2 Oct each pass asked every count,
+   so Reservations opened asking Chat's, Tasks' and Spa's queues twice,
+   Spa's reading every booking both times: 10 of its 47 database requests.
+   A pass that would ask the same counts again asks nothing; another role,
+   or a page newly counted, asks at once. The timers and the return to the
+   app ask through navRecount and are not held here. */
+var NAV_ASKED = null;
 function navLink(href){
   var drop = document.getElementById('navDrop');
   if (!drop) return null;
@@ -4052,10 +4061,23 @@ function navLink(href){
   }
   return null;
 }
+/* Whether this login is shown a count for the page: it may do the work and
+   open the page, and the page has a link or an icon to wear it. One test,
+   for the asking and for the opening's check above. */
+function navCounts(a, role){
+  /* The tab bar's icon for the page wears the same count (30 Sep), from
+     the same one fetch - on the page you are on too: the owner, "Don't
+     mute the counters when the icon is selected". The menu leaves out
+     the page you are on, so there the icon alone carries it. */
+  return can(role, a.need) && canOpen(role, a.href) &&
+         !!(navLink(a.href) || document.getElementById('tab-' + pageKey(a.href)));
+}
 function navActionBadges(role){
   var first = NAV_ROLE === null;
   NAV_ROLE = role;
-  navRecount(false);
+  var what = role + ' ' + NAV_ACTIONS.filter(function(a){ return navCounts(a, role); })
+                                     .map(function(a){ return a.href; }).join(' ');
+  if (what !== NAV_ASKED){ NAV_ASKED = what; navRecount(false); }
   if (!first) return;
   setInterval(function(){ if (!document.hidden) navRecount(true); }, NAV_EVERY);
   document.addEventListener('visibilitychange', function(){
@@ -4067,12 +4089,7 @@ function navRecount(liveOnly){
   var role = NAV_ROLE;
   NAV_ACTIONS.forEach(function(a){
     if (liveOnly && !a.live) return;
-    if (!can(role, a.need) || !canOpen(role, a.href)) return;
-    /* The tab bar's icon for the page wears the same count (30 Sep), from
-       the same one fetch - on the page you are on too: the owner, "Don't
-       mute the counters when the icon is selected". The menu leaves out
-       the page you are on, so there the icon alone carries it. */
-    if (!navLink(a.href) && !document.getElementById('tab-' + pageKey(a.href))) return;
+    if (!navCounts(a, role)) return;
     var asked = a.asked = (a.asked || 0) + 1;
     a.count(role, function(n){
       if (asked < (a.heard || 0)) return;          /* an older answer, come late */
@@ -4219,7 +4236,8 @@ function wireNotify(){
 window.NALA_WIRENOTIFY = wireNotify;
 
 /* Pages that never filtered their own menu get it applied for them. Pages
-   that call it themselves are unaffected: running twice is harmless. */
+   that call it themselves are unaffected: running twice draws the menu and
+   the bar again, and asks no count twice (navActionBadges). */
 (function(){
   var tries = 0;
   var t = setInterval(function(){

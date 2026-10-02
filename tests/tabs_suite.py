@@ -116,13 +116,14 @@ def ck(name, cond, detail=""):
     P, F = (P + 1, F) if cond else (P, F + 1)
 
 def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
-            kept=None, hold=None, out=False, settle=2000, ticking=False):
+            kept=None, hold=None, out=False, settle=2000, ticking=False, seen=None):
     """A page on the fixture night, signed in as email, settled. app: as the
     Home Screen app, on a touch screen; touch: a touch screen in a tab.
     kept: the tab bar's icons this phone was last given; hold: the login
     lands that many ms in; out: nobody is signed in; settle: ms to wait;
     ticking: the page's clock and timers are the test's, run on with
-    pg.clock.run_for."""
+    pg.clock.run_for; seen: a list that collects the path of every
+    database request, from the first."""
     if perms is None: TREE.pop("permissions", None)
     else: TREE["permissions"] = perms
     state = {"cookies": [], "origins": []}
@@ -141,6 +142,9 @@ def open_as(b, email, page, w=390, h=844, perms=None, app=False, touch=False,
     if hold: pg.add_init_script("window.__HOLD=%d;" % hold)
     if out: pg.add_init_script("window.__OUT=true;")
     pg.add_init_script(FIRST_FRAME)
+    if seen is not None:
+        pg.on("request", lambda r: seen.append(r.url.split("firebasedatabase.app", 1)[1].split("?")[0])
+              if "firebasedatabase.app" in r.url else None)
     pg.route("**firebasedatabase.app/**", fb)
     pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
@@ -439,6 +443,21 @@ with sync_playwright() as p:
         .map(b=>getComputedStyle(b).backgroundColor)""")
     ck("a count is blue, the accent's, on the bar and in the menu (\"Counter is blue\")",
        blue and all(c == "rgb(26, 102, 194)" for c in blue), blue)
+    ctx.close()
+
+    # Each count is asked once as a page opens (2 Oct). The menu filter runs
+    # twice, the page's own call and then the shared timer's, and each pass
+    # asked every count: Reservations opened asking Chat's, Tasks' and Spa's
+    # queues twice, Spa's reading every booking both times. Counted at the
+    # database, by path; Reservations reads none of these for itself.
+    seen = []
+    ctx, pg = open_as(b, EMAIL["admin"], "tally.html", seen=seen)
+    asks = [p for p in seen if p in ("/spa.json", "/contactnew.json", "/contactsettings.json")
+            or p.startswith("/tasks/")]
+    twice = sorted({p for p in asks if asks.count(p) > 1})
+    ck("opening Reservations asks each count once: Spa's, Chat's and every team's",
+       "/spa.json" in asks and "/contactnew.json" in asks and
+       any(p.startswith("/tasks/") for p in asks) and twice == [], (twice, sorted(set(asks))))
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["admin"], "guest-contact.html")
