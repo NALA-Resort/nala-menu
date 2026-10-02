@@ -149,7 +149,13 @@ page to page (the owner, 30 Sep: "It should stay there"): a page draws
 the icons this phone was last given (`nala-tabs`) as nala-shared.js
 loads, before its login lands, standing on auth.js's cover while that
 only waits (`#nalaCover.waiting`), and `buildTabs` puts the login's own
-in their place when they differ.
+in their place when they differ. Anything pinned to the foot of the
+screen - a footer, a save bar, a sheet, Chat's box - takes its bottom
+less `var(--footfix)`: Safari can keep the screen's foot where the
+keyboard's top was, and `footCheck` (nala-shared.js) measures the
+difference rather than trust it (the owner, 2 Oct: "fix the sticky
+footer menu once and for all"). `tabs_suite` names a staff page that
+pins something to the foot without it.
 
 A page can go live to the admin alone first (29 Sep, Chat before
 Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the

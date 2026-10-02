@@ -369,10 +369,14 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
    new page's icon turns blue at once and the page fills in above the bar,
    which never goes away. The counts come a moment later, counted afresh.
    Only the first page after signing in draws the bar late, once.
-8. **Settings, Notifications: tap 07:30, type a time, press Done.**
-   **Expect** no bar while the keypad is up, then the bar back at the foot
-   of the screen, and staying there as you scroll. Same anywhere you type.
-   The headless browser has no keyboard, so this is the check that counts.
+8. **Settings, Notifications: tap 07:30, type a time, press Done. Then
+   Chat: open a conversation, type a message, close the keyboard.**
+   **Expect** no bar while the keyboard is up, then the bar - and in Chat
+   the box above it - back at the foot of the screen, staying there as you
+   scroll. The headless browser has no keyboard, so this is the check that
+   counts. If the bar is ever mid-screen again: open Diagnostics on that
+   phone and send a screenshot of "The screen's foot after the keyboard",
+   which holds Safari's numbers.
 
 ---
 

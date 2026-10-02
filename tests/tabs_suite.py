@@ -64,7 +64,12 @@ answer to each other, and whichever side a change misses fails by name.
      phone the bar stands down while a field is typed in, its room with it
      so what stands on it comes down onto the keyboard, and is back at
      the foot when it is left, the page not moved; a switch leaves it be;
-     with a mouse there is no keyboard and it stays.
+     with a mouse there is no keyboard and it stays. And the foot measured
+     (2 Oct, "once and for all"): Safari's foot left short or behind by a
+     keyboard's worth, the bar, a footer, a sheet and the menu go to where
+     the screen ends, logged; a smaller difference, a pinch or a field in
+     use moves nothing; it lets go when Safari is right; and everything a
+     staff page pins to the foot reads --footfix.
 
 The night is tests/paper_night.json, read through tests/night_harness.py,
 with a login for each role added here.
