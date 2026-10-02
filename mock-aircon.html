@@ -4,53 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mock &middot; Air con board</title>
-<!-- Mock, 2 Oct. Step 1 of the air con controller: a board that only reads.
-     The owner wants every villa's air con under "all the usual controls as
-     seen in the public application", and rules smarter than Climate React,
-     because on a cool humid day ("95%rh at 21deg C") a unit left at
-     23 / Cool / Auto stops drying the room. Step 1 reads the units and
-     nothing more, so this is what Sensibo will tell us, every two minutes.
+<!-- Mock, 2 Oct, second pass. The air con controller: every villa's unit
+     under "all the usual controls as seen in the public application", and a
+     humidity rule smarter than Climate React, because on a cool humid day
+     ("95%rh at 21deg C") a unit left at 23 / Cool / Auto stops drying.
+
+     The first pass put a 24 hour history behind each villa. The owner, on
+     seeing it: "Strange place to start building, given what we are trying
+     to accomplish." Right: it showed what the first build would read, not
+     what the controller is for. So a villa now opens on its controls, the
+     app's own (on and off, the set temperature, mode, fan, swing), with the
+     humidity rule beside them saying what it would do in that villa now;
+     the history is folded away at the foot. The rule's settings, the
+     "ac settings fields" he asked for, are a screen of their own.
 
      The readings are invented, from a small simulation of one cool, humid
-     Friday in Far North Queensland: 21 degrees and 95% outside before dawn,
-     sun from ten. In Cool a unit whose room is below its set temperature
-     stops (GENERAL's operating manuals), so it stops drying. That is the
-     morning here: every reporting villa amber but one. Villa 5's guest set
-     Cool 20 and is the dry one; villa 17's switched to Heat 24 at 1:30am,
-     warmer and still 73%. By the warm afternoon the units are running and
-     have dried all but two.
+     Friday in Far North Queensland: 21 degrees and 95% outside before dawn.
+     In Cool a unit whose room is below its set temperature stops (GENERAL's
+     operating manuals), so it stops drying: every reporting villa amber but
+     one. Villa 13 is his screenshot of 2 Oct: Cool, high fan, set to 24.
 
      What it decides, each open to his word:
-     - Colour is humidity against the target, 65% until the settings screen
-       (step 3) holds it: green at or under it, nothing to do ("If it's not
-       green it looks like there is work to do"); amber over it, chase this;
-       red words when a unit goes offline, a failure, never a red tile.
-       Temperature and the setting are words.
-     - Vacant villas are not sunk grey as on the other boards. An empty
-       villa's air still needs watching, and it is where the drying rule
-       will work hardest.
-     - The villas keep their order, 1 to 17: three across at 390 and 360,
-       two at 320, by the grid's own fit rather than a width query.
-     - The line under each number is that villa's last 24 hours of humidity,
-       every villa on one scale (40 to 100%), so two lines compare at a
-       glance.
-     - Tap a villa: its 24 hours as two charts on one time axis, never one
-       chart with two scales, a readout that follows a finger across both,
-       and the same readings as a table.
-     Not in step 1: the controls (step 2), the rules and their settings
-     (step 3).
+     - A tile's colour is humidity against the rule's target: green at or
+       under (nothing to do), amber over (chase this), red words when a
+       unit is offline (a failure, never a red tile). Change the target on
+       the rule's screen and the board follows.
+     - A control sends at once, as the app's do, and says so: "Sending to
+       the unit", then "The unit has it". Turn off is destructive and asks
+       first, in the sheet, naming the villa; Turn on is the one primary.
+     - The rule starts watching only: it says what it would do and changes
+       nothing until it is switched to Act.
+     - Guests win: after a guest changes their unit the rule waits (3 hours
+       here), and a unit a guest turned off stays off.
+     - Vacant villas are not sunk grey as on other boards: an empty villa's
+       air still needs watching, and it is where the rule dries hardest.
 
      What a build adds: a Worker, nala-aircon, holding the Sensibo key as a
-     dashboard secret, reading every unit in one call every two minutes and
-     writing the readings and their history to Firebase; aircon.html, which
-     reads only that (rule 7), the admin's alone at first through
-     PREVIEW_PAGES; its NAV entry, the canon's line and an icon in PAGE_ICONS
-     (Lucide's air-vent); rules.json for the new nodes. colour_law.json does
-     not move: every colour here is already in it.
+     dashboard secret, reading every unit in one call every two minutes,
+     sending the controls' changes, and running the rule; aircon.html,
+     reading only what the Worker writes (rule 7), the admin's alone at
+     first through PREVIEW_PAGES; its NAV entry, the canon's line and an
+     icon in PAGE_ICONS (Lucide's air-vent); rules.json for the new nodes.
+     colour_law.json does not move: every colour here is already in it.
 
-     Frozen like the others: the shared sheet and the tab bar's icons are
-     copied in once (nala-ui2.css and PAGE_ICONS at 813bce6), so this file
-     carries no ?v= and nothing in it reaches the live app. -->
+     Frozen like the others: nala-ui2.css and the tab bar's icons are copied
+     in once (at 813bce6), so this file carries no ?v= and nothing in it
+     reaches the live app. -->
 <style>
   /* One look in either theme, a neutral grey surround, as mock-paper.html. */
   :root{ --surround:#E4E4E0; --ink:#1B1B19; --mid:#5F5F58; --field:#FFFFFF;
@@ -93,12 +92,13 @@
   <select class="pages" id="pages" aria-label="Screen"></select>
   <details class="about">
     <summary>About this mock</summary>
-    <p>Step 1 only reads the units. Invented readings for a cool, humid Friday:
-       before dawn it is 21&deg; and 95% outside, and units set to 23 in Cool have
-       stopped running, so they have stopped drying.</p>
-    <p>Green: humidity 65% or under. Amber: over 65%. Red words: the unit has
-       gone offline. The line under each number is the last 24 hours of
-       humidity. Tap a villa for its charts; touch a chart to read any moment.</p>
+    <p>Invented readings for a cool, humid Friday morning: units set to 23 in
+       Cool have stopped running, so they have stopped drying. Green: humidity
+       at or under the rule's target. Amber: over it. Red words: the unit is
+       offline.</p>
+    <p>Tap a villa for its controls and what the humidity rule would do there.
+       Humidity rule opens its settings; change one and see what it would do
+       in every villa.</p>
   </details>
 </div>
 <div class="stage" id="stage"></div>
@@ -769,8 +769,10 @@ body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
 <style id="pagecss" media="not all">
 body.acboard{ padding:14px var(--appgut) 0; }
 .acpage .daterow{ margin-bottom:0; }
-/* When the units were last read: the board is only as true as this. */
-.readat{ font-size:var(--t2); color:var(--mid); white-space:nowrap; }
+/* the rule's own screen, from the board's header row: 36 like every
+   control in it (the header law) */
+body.ui2 .daterow .rulesbtn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(--s3);
+                             font-size:var(--t2); }
 
 /* Three counts, plain type. Amber says chase this and red says a unit has
    failed, the colour law's own, and only while the count is not nought. */
@@ -831,8 +833,8 @@ body.acboard{ padding:14px var(--appgut) 0; }
 .aclegend svg polyline{ fill:none; stroke:var(--mid); stroke-width:1.5; stroke-linejoin:round;
                         stroke-linecap:round; }
 
-/* A villa's sheet: paper like the page, rising from the foot over the bar,
-   as a sheet covers the page. */
+/* A sheet: paper like the page, rising from the foot over the bar, as a
+   sheet covers the page. */
 .backdrop{ position:fixed; inset:0; z-index:10; display:none; align-items:flex-end;
            justify-content:center; background:rgba(28,28,26,.35); }
 .backdrop.show{ display:flex; }
@@ -853,8 +855,85 @@ body.ui2 .shead .btn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(
 .fig .v.grn{ color:var(--law-green); }
 .fig .v.red{ font-size:var(--t3); color:var(--law-red); }
 .fig .l{ display:block; font-size:var(--t2); color:var(--mid); margin-top:2px; }
+
+/* A villa's controls: the app's own, in this app's dress. Each sends at
+   once, as the app's do, so the card has no Save; the line at its foot
+   says where the change is. */
+.ctlcard, .rulecard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
+                     box-shadow:var(--lift); margin:0 -8px var(--s3); padding:4px 12px 8px; }
+.crow{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+       gap:var(--s2) var(--s3); padding:10px 0; }
+.crow + .crow{ border-top:1px solid var(--rule); }
+.clabel{ font-size:var(--t2); color:var(--mid); }
+.csum{ font-size:var(--t3); font-weight:600; min-width:0; }
+body.ui2 .crow .btn, body.ui2 .cbtns .btn{ width:auto; flex:0 0 auto; min-height:40px;
+                                           padding:0 var(--s4); font-size:var(--t2); }
+/* The set temperature: the number the app makes biggest, between two round
+   steps. 44 to a step, the tap floor. */
+.tstep{ display:flex; align-items:center; gap:var(--s3); }
+.tstep button{ width:44px; height:44px; flex:0 0 auto; border:0; border-radius:50%;
+               background:var(--card); color:var(--ink); font-family:var(--ui-font);
+               font-size:var(--t4); line-height:1; cursor:pointer; }
+.tstep button:active{ filter:brightness(.94); }
+.tstep button:disabled{ opacity:.35; cursor:default; }
+.tstep .tv{ min-width:64px; text-align:center; font-size:var(--t5); font-weight:600; }
+.tstep.small{ gap:var(--s2); }
+.tstep.small button{ width:36px; height:36px; font-size:var(--t3); }
+.tstep.small .tv{ min-width:58px; font-size:var(--t3); }
+/* Mode, fan and swing: a pill per choice, the picked one in the house's
+   Selected dress, grey fill and an ink edge. */
+.segs{ display:flex; flex-wrap:wrap; gap:6px; }
+.segs button{ min-height:36px; padding:0 12px; border:1px solid var(--rule); border-radius:var(--pill);
+              background:var(--surface); color:var(--ink); font-family:var(--ui-font);
+              font-size:var(--t2); cursor:pointer; }
+.segs button.on{ background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface);
+                 border-color:var(--sel-bdr); font-weight:500; }
+.segs button:disabled{ opacity:.35; cursor:default; }
+.ctlstatus{ min-height:18px; padding-top:2px; font-size:var(--t1); color:var(--mid); }
+.ctlstatus.done{ color:var(--law-green); }
+.confirm{ padding:12px 0 4px; }
+.confirm .cq{ font-size:var(--t3); font-weight:600; }
+.cbtns{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--s2); margin-top:var(--s3); }
+
+/* The house switch, as Settings draws it: blue when on, its colour the
+   value (STYLEGUIDE.md, the switch). */
+.sw{ width:50px; height:30px; border-radius:var(--pill); background:#C9C9C2;
+     position:relative; flex:0 0 auto; border:0; cursor:pointer; padding:0; }
+.sw.on{ background:var(--accent); }
+.sw:after{ content:''; position:absolute; top:3px; left:3px; width:24px;
+           height:24px; border-radius:50%; background:#fff; transition:left .16s; }
+.sw.on:after{ left:23px; }
+@media (prefers-reduced-motion:reduce){ .sw:after{ transition:none } }
+
+/* The humidity rule, on a villa's sheet and on its own screen. */
+.rhead{ display:flex; align-items:center; justify-content:space-between; gap:var(--s3); padding:8px 0 0; }
+.rtitle{ font-size:var(--t3); font-weight:600; }
+.rsays{ margin:var(--s2) 0 var(--s3); font-size:var(--t2); line-height:1.5; }
+.rsays .watch{ color:var(--mid); }
+body.ui2 .rulecard .rset{ width:auto; min-height:36px; padding:0 var(--s3); font-size:var(--t2);
+                          margin-bottom:6px; }
+.rsec{ margin:var(--s4) 2px var(--s2); font-size:var(--t2); font-weight:600; }
+.rnote{ font-size:var(--t1); line-height:1.45; color:var(--mid); }
+.crow .rnote{ flex-basis:100%; }
+/* Which villas the rule runs in: a chip each, picked in the Selected dress. */
+.vchips{ display:grid; grid-template-columns:repeat(auto-fill, minmax(40px, 1fr)); gap:6px; padding:10px 0 6px; }
+.vchips button{ height:40px; border:1px solid var(--rule); border-radius:var(--r);
+                background:var(--surface); color:var(--ink); font-family:var(--ui-font);
+                font-size:var(--t2); cursor:pointer; }
+.vchips button.on{ background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface);
+                   border-color:var(--sel-bdr); font-weight:500; }
+/* What the rule would do right now, as the settings stand. */
+.pv{ list-style:none; margin:0; padding:6px 0 4px; }
+.pv li{ padding:6px 0; font-size:var(--t2); line-height:1.45; }
+.pv li + li{ border-top:1px solid var(--rule); }
+.pv b{ font-weight:600; }
+.savewrap{ margin:var(--s4) 0 0; }
+
+/* The last 24 hours, folded away at the foot of a villa's sheet. */
+details.hist{ margin-top:var(--s2); }
+details.hist > summary{ cursor:pointer; padding:var(--s2) 0; font-size:var(--t2); }
 .chcard{ background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
-         box-shadow:var(--lift); margin:0 -8px; padding:10px 8px 8px; }
+         box-shadow:var(--lift); margin:var(--s2) -8px 0; padding:10px 8px 8px; }
 /* One readout for both charts, above them, so a finger never covers it. */
 .readout{ min-height:20px; margin:0 2px 4px; font-size:var(--t2); color:var(--mid);
           font-variant-numeric:tabular-nums; }
@@ -883,10 +962,8 @@ body.ui2 .shead .btn{ width:auto; flex:0 0 auto; min-height:36px; padding:0 var(
 .chnote i.amb{ background:var(--law-amber); box-shadow:inset 0 0 0 1px var(--law-amber-b); }
 .chnote i.below{ background:rgba(28,28,26,.12); }
 .chnote i.setkey{ height:0; border-top:1.5px solid var(--mid); border-radius:0; vertical-align:3px; }
-details.readings{ margin-top:var(--s4); font-size:var(--t2); }
-details.readings summary{ cursor:pointer; padding:var(--s1) 0; }
-.readings table{ width:100%; margin-top:var(--s2); border-collapse:collapse;
-                 background:var(--surface); font-variant-numeric:tabular-nums; }
+.readings{ width:100%; margin-top:var(--s3); border-collapse:collapse;
+           background:var(--surface); font-size:var(--t2); font-variant-numeric:tabular-nums; }
 .readings th, .readings td{ padding:5px 6px; text-align:right; white-space:nowrap;
                             border-top:1px solid var(--rule); }
 .readings th{ font-weight:500; color:var(--mid); }
@@ -941,12 +1018,19 @@ function makeData(){
     if (g === 'Turnover') return !fri || m < H(1,10) || m >= H(1,14);
     return true;
   }
-  /* The house setting is 23 / Cool / Auto. Three guests changed theirs. */
+  /* The house setting is 23 / Cool / Auto fan. Five guests changed theirs;
+     villa 13's is the owner's screenshot of 2 Oct. */
+  var CHANGED = { 5:[-600, 'set it to Cool 20'], 9:[H(0,22,15), 'turned it off'],
+                  13:[H(0,21,5), 'set it to Cool 24, high fan'], 15:[H(1,6,30), 'turned the fan up'],
+                  17:[H(1,1,30), 'set it to Heat 24'] };
   function setting(n, m){
-    if (n === 5) return { on:true, md:'Cool', s:20 };
-    if (n === 9 && m >= H(0,22,15)) return { on:false, md:'Cool', s:23 };
-    if (n === 17 && m >= H(1,1,30)) return { on:true, md:'Heat', s:24 };
-    return { on:true, md:'Cool', s:23 };
+    var at = CHANGED[n] ? CHANGED[n][0] : Infinity, mine = m >= at;
+    if (n === 5) return { on:true, md:'Cool', s:20, fan:'Auto' };
+    if (n === 9 && mine) return { on:false, md:'Cool', s:23, fan:'Auto' };
+    if (n === 13 && mine) return { on:true, md:'Cool', s:24, fan:'High' };
+    if (n === 15 && mine) return { on:true, md:'Cool', s:23, fan:'High' };
+    if (n === 17 && mine) return { on:true, md:'Heat', s:24, fan:'Auto' };
+    return { on:true, md:'Cool', s:23, fan:'Auto' };
   }
   var seed = 7;
   function rnd(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
@@ -974,9 +1058,10 @@ function makeData(){
       /* Villa 11's unit went offline at ten to seven on Friday. */
       if (n === 11 && m > DOWN) continue;
       pts.push({ m:m, h:Math.round(rh + (rnd() - .5) * 1.2), c:+(T + (rnd() - .5) * .12).toFixed(1),
-                 s:s.s, md:s.md, on:s.on });
+                 s:s.s, md:s.md, on:s.on, fan:s.fan, o:occ });
     }
-    villas.push({ n:n, guest:GUEST[n-1], pts:pts });
+    villas.push({ n:n, guest:GUEST[n-1], pts:pts, changed:CHANGED[n] || null,
+                  arrives:(GUEST[n-1] === 'Arrives' || GUEST[n-1] === 'Turnover') ? H(1,14) : null });
   }
   return { villas:villas, H:H };
 }
@@ -986,24 +1071,31 @@ var LONG = { 'In house':'In house', 'Vacant':'Vacant', 'Arrives':'Arrives today'
              'Departs':'Departs today', 'Turnover':'Departs and arrives today' };
 
 function clock(m){
-  var h = Math.floor(m / 60) % 24, mi = m % 60;
+  m = ((m % 1440) + 1440) % 1440;
+  var h = Math.floor(m / 60), mi = m % 60;
   return (h % 12 || 12) + ':' + (mi < 10 ? '0' : '') + mi + (h < 12 ? 'am' : 'pm');
 }
 
-/* One screen's worth: the 24 hours to its moment, and each villa as it
-   stands then. */
+/* One screen's worth: the 24 hours to its moment, each villa as it stands
+   then, and the rule as it ships: watching only, 65%, 21.5 to 24. */
 function scenario(end, open){
-  var start = end - 1440;
+  var start = end - 1440, rule = { target:65, lo:21.5, hi:24, empty:true, back:3, hold:3,
+                                   act:false, villas:{} };
+  for (var n = 1; n <= 17; n++) rule.villas[n] = true;
   return {
-    date:'Fri 2nd Oct', now:clock(end % 1440), start:start, span:144, target:65,
+    date:'Fri 2nd Oct', now:clock(end), end:end, start:start, span:144, rule:rule,
     tabs:TABS, menuSvg:MENU_SVG, open:open || 0,
     villas:DATA.villas.map(function(v){
       var series = v.pts.filter(function(p){ return p.m >= start && p.m <= end; })
                         .map(function(p){ return { i:(p.m - start) / 10, h:p.h, c:p.c, s:p.s, md:p.md, on:p.on }; });
+      var lastP = v.pts.filter(function(p){ return p.m <= end; }).pop();
       var last = series[series.length - 1], lastM = start + last.i * 10, off = lastM < end;
       return { n:v.n, guest:v.guest, guestLong:LONG[v.guest], hum:last.h, tmp:last.c,
-               on:last.on, mode:last.md, set:last.s, offline:off,
-               since:off ? clock(lastM % 1440) : '', series:series };
+               on:last.on, mode:last.md, set:last.s, fan:lastP.fan, swing:'Fixed', offline:off,
+               since:off ? clock(lastM) : '', empty:!lastP.o,
+               arrives:v.arrives != null && v.arrives > end ? v.arrives : null,
+               changedAt:v.changed && v.changed[0] <= end ? v.changed[0] : null,
+               changedWhat:v.changed ? v.changed[1] : '', series:series };
     })
   };
 }
@@ -1012,7 +1104,7 @@ function scenario(end, open){
    Runs inside each frame, so it may use nothing from out here: everything
    it needs arrives as P. */
 function frameMain(P){
-  var d = document, NS = 'http://www.w3.org/2000/svg';
+  var d = document, NS = 'http://www.w3.org/2000/svg', R = P.rule;
   function el(tag, cls, text){
     var e = d.createElement(tag);
     if (cls) e.className = cls;
@@ -1024,52 +1116,71 @@ function frameMain(P){
     for (var k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   }
-  function stateOf(v){ return v.offline ? 'nr' : (v.hum > P.target ? 'over' : 'ok'); }
-  function setShort(v){ return v.on ? v.mode + ' ' + v.set : 'Off'; }
-  function deg(c){ return c.toFixed(1) + '°'; }
+  function button(cls, text, onClick){
+    var b = el('button', cls, text);
+    b.type = 'button';
+    if (onClick) b.addEventListener('click', onClick);
+    return b;
+  }
   function clock(m, round){
-    var h = Math.floor(m / 60) % 24, mi = m % 60;
+    m = ((m % 1440) + 1440) % 1440;
+    var h = Math.floor(m / 60), mi = m % 60;
     return (h % 12 || 12) + (round && !mi ? '' : ':' + (mi < 10 ? '0' : '') + mi) + (h < 12 ? 'am' : 'pm');
   }
-  function dayOf(m){ return m < 1440 ? 'Thu' : 'Fri'; }
+  function dayOf(m){ return m < 0 ? 'Wed' : m < 1440 ? 'Thu' : 'Fri'; }
+  function when(m){ return (P.end - m >= 1440 ? dayOf(m) + ' ' : '') + clock(m); }
+  function deg(c){ return (+c).toFixed(1) + '°'; }
+  function one(x){ return String(+(+x).toFixed(1)); }
+  function stateOf(v){ return v.offline ? 'nr' : (v.hum > R.target ? 'over' : 'ok'); }
+  function setShort(v){ return v.on ? v.mode + ' ' + v.set : 'Off'; }
   var byN = {};
   P.villas.forEach(function(v){ byN[v.n] = v; });
 
-  /* the header: the day, and when the units were last read */
+  /* What the rule does in a villa, as the settings S stand: one reading,
+     for the villa's sheet and the rule's screen alike. */
+  function ruleFor(v, S){
+    function say(would, does){ return S.act ? does : would; }
+    if (!S.villas[v.n]) return { k:'off', why:'rule off', t:'The rule is off for this villa.' };
+    if (v.offline) return { k:'skip', why:'offline', t:'It cannot act: the unit is offline.' };
+    if (!v.on && v.changedAt != null)
+      return { k:'skip', why:'a guest turned it off',
+               t:'It leaves it alone: a guest turned it off at ' + when(v.changedAt) + '.' };
+    if (v.hum <= S.target)
+      return { k:'none', why:'', t:'Nothing to do: ' + v.hum + '% is ' + S.target + '% or under.' };
+    if (v.changedAt != null && P.end - v.changedAt < S.hold * 60)
+      return { k:'skip', why:'a guest changed it at ' + clock(v.changedAt),
+               t:'It leaves it alone until ' + clock(v.changedAt + S.hold * 60) + ': a guest ' +
+                 v.changedWhat + ' at ' + when(v.changedAt) + '.' };
+    if (v.empty && S.empty)
+      return { k:'dry', why:'empty',
+               t:say('It would dry it hard while it is empty', 'Drying it hard while it is empty') +
+                 (v.arrives != null ? ', back at 23° by ' + clock(v.arrives - S.back * 60, true) +
+                   ' for the ' + clock(v.arrives, true) + ' arrival.' : '.') };
+    if (v.tmp < S.lo)
+      return { k:'dry', why:'', t:say('It would warm the room to ', 'Warming the room to ') + one(S.lo) +
+               '° first, then dry it: ' + deg(v.tmp) + ' is under ' + one(S.lo) + '°.' };
+    if (v.tmp > S.hi)
+      return { k:'dry', why:'', t:say('It would cool and dry it: ', 'Cooling and drying it: ') +
+               v.hum + '% is over ' + S.target + '% and ' + deg(v.tmp) + ' is over ' + one(S.hi) + '°.' };
+    return { k:'dry', why:'', t:say('It would start drying: ', 'Drying: ') + v.hum + '% is over ' +
+             S.target + '%, and ' + deg(v.tmp) + ' is inside ' + one(S.lo) + ' to ' + one(S.hi) + '°.' };
+  }
+
+  /* ── the board ── */
   var main = el('main', 'acpage');
-  var row = el('div', 'daterow');
-  row.appendChild(el('div', 'date', P.date));
-  row.appendChild(el('div', 'readat', 'Updated ' + P.now));
-  main.appendChild(row);
-
-  /* the counts */
-  var count = { over:0, ok:0, nr:0 };
-  P.villas.forEach(function(v){ count[stateOf(v)]++; });
-  var stats = el('div', 'stats');
-  [[count.over, 'over ' + P.target + '%', count.over ? 'amb' : ''],
-   [count.ok, P.target + '% or under', ''],
-   [count.nr, 'offline', count.nr ? 'red' : '']].forEach(function(s){
-    var st = el('div', 'stat');
-    st.appendChild(el('span', 'stat-n' + (s[2] ? ' ' + s[2] : ''), String(s[0])));
-    st.appendChild(el('span', 'stat-l', s[1]));
-    stats.appendChild(st);
-  });
-  main.appendChild(stats);
-
-  /* the villas */
+  d.body.appendChild(main);
   function spark(v){
     var s = sv('svg', { 'class':'spark', viewBox:'0 0 100 20', preserveAspectRatio:'none',
                         'aria-hidden':'true' });
     function y(h){ return (20 - (Math.max(40, Math.min(100, h)) - 40) / 60 * 20).toFixed(2); }
-    s.appendChild(sv('line', { x1:0, x2:100, y1:y(P.target), y2:y(P.target),
+    s.appendChild(sv('line', { x1:0, x2:100, y1:y(R.target), y2:y(R.target),
                                'vector-effect':'non-scaling-stroke' }));
     s.appendChild(sv('polyline', { 'vector-effect':'non-scaling-stroke',
       points:v.series.map(function(p){ return (p.i / P.span * 100).toFixed(2) + ',' + y(p.h); }).join(' ') }));
     return s;
   }
   function tile(v){
-    var b = el('button', 'actile ' + stateOf(v));
-    b.type = 'button';
+    var b = button('actile ' + stateOf(v), null, function(){ openVilla(v.n); });
     var top = el('span', 'atop');
     top.appendChild(el('span', 'vn', String(v.n)));
     top.appendChild(el('span', 'gs', v.guest));
@@ -1088,26 +1199,45 @@ function frameMain(P){
     b.setAttribute('aria-label', 'Villa ' + v.n + ', ' + v.guestLong + ', ' +
       (v.offline ? 'offline since ' + v.since
                  : 'humidity ' + v.hum + '%, ' + v.tmp.toFixed(1) + ' degrees, ' + setShort(v)));
-    b.addEventListener('click', function(){ openSheet(v.n); });
     return b;
   }
-  var card = el('section', 'accard');
-  card.setAttribute('aria-label', 'Villas');
-  var grid = el('div', 'acgrid');
-  P.villas.forEach(function(v){ grid.appendChild(tile(v)); });
-  card.appendChild(grid);
-  var lg = el('div', 'aclegend');
-  [['ok', P.target + '% or under'], ['over', 'Over ' + P.target + '%']].forEach(function(k){
-    var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
-  });
-  lg.appendChild(el('span', 'nr', 'Offline'));
-  var ls = el('span'), lsv = sv('svg', { viewBox:'0 0 18 10', 'aria-hidden':'true' });
-  lsv.appendChild(sv('polyline', { points:'1,8 6,6 10,7 17,2' }));
-  ls.appendChild(lsv); ls.appendChild(d.createTextNode('Humidity, last 24 hours'));
-  lg.appendChild(ls);
-  card.appendChild(lg);
-  main.appendChild(card);
-  d.body.appendChild(main);
+  function drawBoard(){
+    main.textContent = '';
+    var row = el('div', 'daterow');
+    row.appendChild(el('div', 'date', P.date));
+    row.appendChild(button('btn is-secondary rulesbtn', 'Humidity rule', openRule));
+    main.appendChild(row);
+    var count = { over:0, ok:0, nr:0 };
+    P.villas.forEach(function(v){ count[stateOf(v)]++; });
+    var stats = el('div', 'stats');
+    [[count.over, 'over ' + R.target + '%', count.over ? 'amb' : ''],
+     [count.ok, R.target + '% or under', ''],
+     [count.nr, 'offline', count.nr ? 'red' : '']].forEach(function(s){
+      var st = el('div', 'stat');
+      st.appendChild(el('span', 'stat-n' + (s[2] ? ' ' + s[2] : ''), String(s[0])));
+      st.appendChild(el('span', 'stat-l', s[1]));
+      stats.appendChild(st);
+    });
+    main.appendChild(stats);
+    var card = el('section', 'accard');
+    card.setAttribute('aria-label', 'Villas');
+    var grid = el('div', 'acgrid');
+    P.villas.forEach(function(v){ grid.appendChild(tile(v)); });
+    card.appendChild(grid);
+    var lg = el('div', 'aclegend');
+    [['ok', R.target + '% or under'], ['over', 'Over ' + R.target + '%']].forEach(function(k){
+      var s = el('span'); s.appendChild(el('i', k[0])); s.appendChild(d.createTextNode(k[1])); lg.appendChild(s);
+    });
+    lg.appendChild(el('span', 'nr', 'Offline'));
+    var ls = el('span'), lsv = sv('svg', { viewBox:'0 0 18 10', 'aria-hidden':'true' });
+    lsv.appendChild(sv('polyline', { points:'1,8 6,6 10,7 17,2' }));
+    ls.appendChild(lsv); ls.appendChild(d.createTextNode('Humidity, last 24 hours'));
+    lg.appendChild(ls);
+    lg.appendChild(el('span', null, 'Updated ' + P.now));
+    card.appendChild(lg);
+    main.appendChild(card);
+  }
+  drawBoard();
 
   /* the tab bar, drawn as buildTabs draws it */
   var nav = el('nav', 'tabbar');
@@ -1121,88 +1251,325 @@ function frameMain(P){
     ic.appendChild(isv); a.appendChild(ic); a.appendChild(el('span', 'tablbl', t.name));
     tr.appendChild(a);
   });
-  var mb = el('button', 'tabmenu here'); mb.type = 'button'; mb.setAttribute('aria-label', 'Menu');
+  var mb = button('tabmenu here', null, null); mb.setAttribute('aria-label', 'Menu');
   var mic = el('span', 'tabic'), msv = sv('svg', { viewBox:'0 0 24 24', 'aria-hidden':'true' });
   msv.innerHTML = P.menuSvg;
   mic.appendChild(msv); mb.appendChild(mic);
   tr.appendChild(mb); nav.appendChild(tr); d.body.appendChild(nav);
 
-  /* a villa's sheet */
+  /* ── the sheets ── */
   var bd = el('div', 'backdrop'), sh = el('div', 'sheet');
   sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true');
   bd.appendChild(sh); d.body.appendChild(bd);
   bd.addEventListener('click', function(e){ if (e.target === bd) closeSheet(); });
   d.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSheet(); });
   function closeSheet(){ bd.classList.remove('show'); }
-
+  function head(title, sub){
+    var h = el('div', 'shead'), tt = el('div', 'stt');
+    tt.appendChild(el('div', 'stitle', title));
+    tt.appendChild(el('div', 'ssub', sub));
+    h.appendChild(tt);
+    h.appendChild(button('btn is-secondary', 'Close', closeSheet));
+    return h;
+  }
   function fig(value, label, cls){
     var f = el('div', 'fig');
     f.appendChild(el('span', 'v' + (cls ? ' ' + cls : ''), value));
     f.appendChild(el('span', 'l', label));
     return f;
   }
-  function openSheet(n){
+  function show(){ bd.classList.add('show'); sh.scrollTop = 0; }
+
+  /* A villa: what the room is now, the unit's controls, and the rule. */
+  function openVilla(n){
     var v = byN[n];
     sh.textContent = '';
     sh.setAttribute('aria-label', 'Villa ' + n);
-    var head = el('div', 'shead'), tt = el('div', 'stt');
-    tt.appendChild(el('div', 'stitle', 'Villa ' + n));
-    tt.appendChild(el('div', 'ssub', v.guestLong));
-    head.appendChild(tt);
-    var x = el('button', 'btn is-secondary', 'Close');
-    x.type = 'button'; x.addEventListener('click', closeSheet);
-    head.appendChild(x);
-    sh.appendChild(head);
-
+    sh.appendChild(head('Villa ' + n, v.guestLong));
     var now = el('div', 'snow');
     if (v.offline){
       now.appendChild(fig('Offline', 'since ' + v.since, 'red'));
       now.appendChild(fig(v.hum + '%', 'humidity then', ''));
       now.appendChild(fig(deg(v.tmp), 'room then', ''));
     } else {
-      now.appendChild(fig(v.hum + '%', 'humidity', 'big ' + (v.hum > P.target ? 'amb' : 'grn')));
+      now.appendChild(fig(v.hum + '%', 'humidity', 'big ' + (v.hum > R.target ? 'amb' : 'grn')));
       now.appendChild(fig(deg(v.tmp), 'room', ''));
-      now.appendChild(fig(v.on ? v.mode + ' ' + v.set + '°' : 'Off', v.on ? 'Auto fan' : 'unit off', ''));
     }
     sh.appendChild(now);
+    sh.appendChild(controls(v));
+    sh.appendChild(ruleCard(v));
+    sh.appendChild(history(v));
+    show();
+  }
 
-    var cc = el('div', 'chcard');
-    var ro = el('div', 'readout', 'Touch a chart to read any moment');
-    ro.setAttribute('aria-live', 'polite');
-    cc.appendChild(ro);
-    function ctitle(a, b){ var t = el('div', 'chtitle', a + ' '); t.appendChild(el('span', null, b)); return t; }
-    cc.appendChild(ctitle('Humidity', 'last 24 hours'));
-    var s1 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
-                         'aria-label':'Humidity over the last 24 hours; arrow keys move through the hours' });
-    cc.appendChild(s1);
-    cc.appendChild(ctitle('Room temperature', 'last 24 hours'));
-    var s2 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
-                         'aria-label':'Room temperature over the last 24 hours; arrow keys move through the hours' });
-    cc.appendChild(s2);
-    /* the key, short words that never wrap, then the one sentence that
-       says why the grey matters, which may */
-    var keys = el('div', 'chnote chkeys');
-    function key(cls, text){ var s = el('span'); s.appendChild(el('i', cls)); s.appendChild(d.createTextNode(text)); return s; }
-    keys.appendChild(key('amb', 'over ' + P.target + '%'));
-    keys.appendChild(key('setkey', 'set temperature'));
-    keys.appendChild(key('below', 'room below it'));
-    cc.appendChild(keys);
-    cc.appendChild(el('div', 'chnote',
-      'In Cool, a room below its set temperature means the unit has stopped, so it is not drying.'));
-    sh.appendChild(cc);
-    sh.appendChild(readings(v));
+  /* The app's controls. Each sends at once and says where it is. */
+  function controls(v){
+    var st = { on:v.on, mode:v.mode, set:v.set, fan:v.fan, swing:v.swing };
+    var card = el('section', 'ctlcard'), status = el('div', 'ctlstatus'), timer = null;
+    card.setAttribute('aria-label', 'Controls');
+    status.setAttribute('aria-live', 'polite');
+    if (v.offline) status.textContent = 'The unit is offline: a change cannot reach it.';
+    function send(){
+      status.className = 'ctlstatus'; status.textContent = 'Sending to the unit';
+      clearTimeout(timer);
+      timer = setTimeout(function(){
+        status.className = 'ctlstatus done'; status.textContent = 'The unit has it';
+      }, 700);
+      draw();
+    }
+    function segs(label, opts, cur, set){
+      var r = el('div', 'crow');
+      r.appendChild(el('div', 'clabel', label));
+      var g = el('div', 'segs');
+      g.setAttribute('role', 'group'); g.setAttribute('aria-label', label);
+      opts.forEach(function(o){
+        var b = button(o === cur ? 'on' : '', o, function(){ if (o !== cur){ set(o); send(); } });
+        b.setAttribute('aria-pressed', o === cur ? 'true' : 'false');
+        b.disabled = v.offline || !st.on;
+        g.appendChild(b);
+      });
+      r.appendChild(g);
+      return r;
+    }
+    function draw(){
+      card.textContent = '';
+      var pr = el('div', 'crow');
+      pr.appendChild(el('div', 'csum', st.on
+        ? 'On · ' + st.mode + (st.mode === 'Fan' ? '' : ' ' + st.set + '°') +
+          ' · ' + st.fan + ' fan'
+        : 'Off'));
+      var pb = st.on ? button('btn is-destructive', 'Turn off', askOff)
+                     : button('btn is-primary', 'Turn on', function(){ st.on = true; send(); });
+      pb.disabled = v.offline;
+      pr.appendChild(pb);
+      card.appendChild(pr);
 
-    bd.classList.add('show');
-    sh.scrollTop = 0;
-    charts(v, s1, s2, ro);
+      var tr = el('div', 'crow');
+      tr.appendChild(el('div', 'clabel', 'Set to'));
+      var ts = el('div', 'tstep'), noset = v.offline || !st.on || st.mode === 'Fan';
+      var lo = button(null, '−', function(){ st.set--; send(); });
+      var hi = button(null, '+', function(){ st.set++; send(); });
+      lo.setAttribute('aria-label', 'Lower the set temperature');
+      hi.setAttribute('aria-label', 'Raise the set temperature');
+      lo.disabled = noset || st.set <= 16; hi.disabled = noset || st.set >= 30;
+      ts.appendChild(lo); ts.appendChild(el('span', 'tv', st.set + '°')); ts.appendChild(hi);
+      tr.appendChild(ts);
+      card.appendChild(tr);
+
+      card.appendChild(segs('Mode', ['Cool', 'Heat', 'Dry', 'Fan', 'Auto'], st.mode,
+                            function(o){ st.mode = o; }));
+      card.appendChild(segs('Fan', ['Auto', 'Low', 'Medium', 'High'], st.fan,
+                            function(o){ st.fan = o; }));
+      card.appendChild(segs('Swing', ['Fixed', 'Swing'], st.swing,
+                            function(o){ st.swing = o; }));
+      card.appendChild(status);
+    }
+    /* Turning a guest's unit off is destructive: it asks first, in the
+       sheet, and names the villa. */
+    function askOff(){
+      card.textContent = '';
+      var q = el('div', 'confirm');
+      q.appendChild(el('div', 'cq', 'Turn off villa ' + v.n + '’s air con?'));
+      q.appendChild(el('div', 'rnote', v.empty
+        ? 'Nobody is in the villa now.'
+        : 'A guest is staying. With the unit off the room will warm and the humidity will climb.'));
+      var row = el('div', 'cbtns');
+      row.appendChild(button('btn is-secondary', 'Keep it on', draw));
+      row.appendChild(button('btn is-destructive', 'Turn off', function(){ st.on = false; send(); }));
+      q.appendChild(row);
+      card.appendChild(q);
+    }
+    draw();
+    return card;
+  }
+
+  /* The rule in this villa: its switch, and what it would do now. */
+  function ruleCard(v){
+    var c = el('section', 'rulecard');
+    c.setAttribute('aria-label', 'Humidity rule');
+    function draw(){
+      c.textContent = '';
+      var h = el('div', 'rhead');
+      h.appendChild(el('div', 'rtitle', 'Humidity rule'));
+      var sw = button('sw' + (R.villas[v.n] ? ' on' : ''), null, function(){
+        R.villas[v.n] = !R.villas[v.n]; draw();
+      });
+      sw.id = 'rsw' + v.n;
+      sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', R.villas[v.n] ? 'true' : 'false');
+      sw.setAttribute('aria-label', 'Humidity rule in villa ' + v.n);
+      h.appendChild(sw);
+      c.appendChild(h);
+      var r = ruleFor(v, R), p = el('p', 'rsays');
+      if (!R.act && r.k !== 'off') p.appendChild(el('span', 'watch', 'Watching only. '));
+      p.appendChild(d.createTextNode(r.t));
+      c.appendChild(p);
+      c.appendChild(button('btn is-secondary rset', 'Rule settings', openRule));
+    }
+    draw();
+    return c;
+  }
+
+  /* The rule's settings, the fields the owner asked for, and what the rule
+     would do in every villa as they stand. Saved with the one primary. */
+  function openRule(){
+    var W = JSON.parse(JSON.stringify(R));
+    sh.textContent = '';
+    sh.setAttribute('aria-label', 'Humidity rule');
+    sh.appendChild(head('Humidity rule', 'Dries a villa without making it cold'));
+    var saveBtn = button('btn is-primary', 'Save', save), pv = el('ul', 'pv');
+    function armSave(){ saveBtn.className = 'btn is-primary'; saveBtn.textContent = 'Save'; saveBtn.disabled = false; }
+    function changed(){ preview(); armSave(); }
+    function stepRow(label, key, step, min, max, unit){
+      var r = el('div', 'crow');
+      r.appendChild(el('div', 'clabel', label));
+      var s = el('div', 'tstep small'), val = el('span', 'tv');
+      var lo = button(null, '−', function(){ W[key] = Math.max(min, +(W[key] - step).toFixed(1)); paint(); changed(); });
+      var hi = button(null, '+', function(){ W[key] = Math.min(max, +(W[key] + step).toFixed(1)); paint(); changed(); });
+      lo.setAttribute('aria-label', 'Lower: ' + label); hi.setAttribute('aria-label', 'Raise: ' + label);
+      function paint(){ val.textContent = one(W[key]) + unit; lo.disabled = W[key] <= min; hi.disabled = W[key] >= max; }
+      paint();
+      s.appendChild(lo); s.appendChild(val); s.appendChild(hi); r.appendChild(s);
+      return r;
+    }
+    function switchRow(label, key, id){
+      var r = el('div', 'crow');
+      r.appendChild(el('div', 'clabel', label));
+      var sw = button('sw' + (W[key] ? ' on' : ''), null, function(){
+        W[key] = !W[key]; sw.className = 'sw' + (W[key] ? ' on' : '');
+        sw.setAttribute('aria-checked', W[key] ? 'true' : 'false'); changed();
+      });
+      sw.id = id; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-label', label);
+      sw.setAttribute('aria-checked', W[key] ? 'true' : 'false');
+      r.appendChild(sw);
+      return r;
+    }
+    function card(title, rows){
+      sh.appendChild(el('div', 'rsec', title));
+      var c = el('section', 'rulecard');
+      rows.forEach(function(x){ c.appendChild(x); });
+      sh.appendChild(c);
+      return c;
+    }
+    card('What it aims for', [
+      stepRow('Humidity at or under', 'target', 1, 50, 80, '%'),
+      stepRow('Room no colder than', 'lo', .5, 18, 24, '°'),
+      stepRow('Room no warmer than', 'hi', .5, 22, 28, '°')
+    ]);
+    var guestNote = el('div', 'crow'); guestNote.appendChild(el('div', 'rnote',
+      'A unit a guest turned off stays off. Empty villas are dried without the comfort range.'));
+    card('Guests and empty villas', [
+      stepRow('Wait after a guest change', 'hold', 1, 1, 12, ' h'),
+      switchRow('Dry empty villas hard', 'empty', 'rEmpty'),
+      stepRow('Back to 23° before arrival', 'back', 1, 1, 6, ' h'),
+      guestNote
+    ]);
+    var chips = el('div', 'vchips');
+    chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Villas the rule runs in');
+    for (var n = 1; n <= 17; n++) (function(n){
+      var b = button(W.villas[n] ? 'on' : '', String(n), function(){
+        W.villas[n] = !W.villas[n]; b.className = W.villas[n] ? 'on' : '';
+        b.setAttribute('aria-pressed', W.villas[n] ? 'true' : 'false'); changed();
+      });
+      b.setAttribute('aria-pressed', W.villas[n] ? 'true' : 'false');
+      b.setAttribute('aria-label', 'Villa ' + n);
+      chips.appendChild(b);
+    })(n);
+    card('Villas it runs in', [chips]);
+    var mode = el('div', 'crow'), mnote = el('div', 'rnote');
+    var mg = el('div', 'segs'); mg.setAttribute('role', 'group'); mg.setAttribute('aria-label', 'When it runs');
+    [['Watch only', false], ['Act', true]].forEach(function(o){
+      var b = button(W.act === o[1] ? 'on' : '', o[0], function(){
+        W.act = o[1];
+        [].forEach.call(mg.children, function(x, i){
+          var on = (i === 1) === W.act; x.className = on ? 'on' : ''; x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        paintMode(); changed();
+      });
+      b.setAttribute('aria-pressed', W.act === o[1] ? 'true' : 'false');
+      mg.appendChild(b);
+    });
+    function paintMode(){
+      mnote.textContent = W.act ? 'It changes the units.'
+                                : 'It writes down what it would do and changes nothing.';
+    }
+    paintMode();
+    mode.appendChild(mg); mode.appendChild(mnote);
+    card('How it runs', [mode]);
+    card('Right now it would', [pv]);
+    function preview(){
+      pv.textContent = '';
+      var g = { dry:[], skip:[], none:[], off:[] };
+      P.villas.forEach(function(v){ var r = ruleFor(v, W); g[r.k].push({ n:v.n, why:r.why }); });
+      function line(label, list, why){
+        if (!list.length) return;
+        var li = el('li');
+        li.appendChild(el('b', null, label + ' ' + list.length + ': '));
+        li.appendChild(d.createTextNode(list.map(function(x){
+          return x.n + (why && x.why ? ' (' + x.why + ')' : ''); }).join(', ')));
+        pv.appendChild(li);
+      }
+      line(W.act ? 'Drying' : 'Dry', g.dry, false);
+      line('Leave alone', g.skip, true);
+      line('Nothing to do in', g.none, false);
+      line('Rule off in', g.off, false);
+    }
+    preview();
+    var sw = el('div', 'savewrap');
+    sw.appendChild(saveBtn);
+    sh.appendChild(sw);
+    function save(){
+      saveBtn.className = 'btn is-primary saving'; saveBtn.textContent = 'Saving'; saveBtn.disabled = true;
+      setTimeout(function(){
+        for (var k in W) R[k] = W[k];
+        R.villas = JSON.parse(JSON.stringify(W.villas));
+        saveBtn.className = 'btn saved'; saveBtn.textContent = 'Saved';
+        drawBoard();
+      }, 600);
+    }
+    show();
+  }
+
+  /* ── the last 24 hours, folded away at the foot of a villa's sheet ── */
+  function history(v){
+    var det = el('details', 'hist'), drawn = false;
+    det.appendChild(el('summary', null, 'Last 24 hours'));
+    det.addEventListener('toggle', function(){
+      if (!det.open || drawn) return;
+      drawn = true;
+      var cc = el('div', 'chcard');
+      var ro = el('div', 'readout', 'Touch a chart to read any moment');
+      ro.setAttribute('aria-live', 'polite');
+      cc.appendChild(ro);
+      function ctitle(a, b){ var t = el('div', 'chtitle', a + ' '); t.appendChild(el('span', null, b)); return t; }
+      cc.appendChild(ctitle('Humidity', 'last 24 hours'));
+      var s1 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
+                           'aria-label':'Humidity over the last 24 hours; arrow keys move through the hours' });
+      cc.appendChild(s1);
+      cc.appendChild(ctitle('Room temperature', 'last 24 hours'));
+      var s2 = sv('svg', { 'class':'chart', role:'img', tabindex:'0',
+                           'aria-label':'Room temperature over the last 24 hours; arrow keys move through the hours' });
+      cc.appendChild(s2);
+      var keys = el('div', 'chnote chkeys');
+      function key(cls, text){ var s = el('span'); s.appendChild(el('i', cls)); s.appendChild(d.createTextNode(text)); return s; }
+      keys.appendChild(key('amb', 'over ' + R.target + '%'));
+      keys.appendChild(key('setkey', 'set temperature'));
+      keys.appendChild(key('below', 'room below it'));
+      cc.appendChild(keys);
+      cc.appendChild(el('div', 'chnote',
+        'In Cool, a room below its set temperature means the unit has stopped, so it is not drying.'));
+      det.appendChild(cc);
+      det.appendChild(readings(v));
+      charts(v, s1, s2, ro);
+    });
+    return det;
   }
 
   /* Two charts on one time axis: humidity, then the room against its set
      temperature. Never one chart with two scales. */
   function charts(v, s1, s2, ro){
     var W = Math.max(240, Math.round(s1.getBoundingClientRect().width)), HT = 128;
-    var L = 34, R = 42, T = 8, B = 20, n = P.span, S = v.series, cur = S.length - 1;
-    function X(i){ return L + (W - L - R) * i / n; }
+    var L = 34, R2 = 42, T = 8, B = 20, n = P.span, S = v.series, cur = S.length - 1;
+    function X(i){ return L + (W - L - R2) * i / n; }
     function scale(lo, hi){ return function(val){ return T + (HT - T - B) * (hi - val) / (hi - lo); }; }
     function prep(svg){ svg.setAttribute('viewBox', '0 0 ' + W + ' ' + HT); svg.textContent = ''; }
     function text(svg, x, y, s, anchor, cls){
@@ -1212,19 +1579,19 @@ function frameMain(P){
     }
     function yaxis(svg, Y, ticks, fmt){
       ticks.forEach(function(t){
-        svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R, y1:Y(t), y2:Y(t) }));
+        svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R2, y1:Y(t), y2:Y(t) }));
         text(svg, L - 6, Y(t) + 4, fmt(t), 'end');
       });
     }
     /* A time every four hours, or every eight where four would touch: at
        320 "10pm" and "2am" met. */
-    var sparse = (W - L - R) * 24 / n < 44;
+    var sparse = (W - L - R2) * 24 / n < 44;
     function xaxis(svg){
-      svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R, y1:HT - B, y2:HT - B }));
+      svg.appendChild(sv('line', { 'class':'grid', x1:L, x2:W - R2, y1:HT - B, y2:HT - B }));
       for (var i = 0; i <= n; i++){
         var m = P.start + i * 10;
         if (m % 240 === 120 && (!sparse || m % 480 === 360))
-          text(svg, X(i), HT - 5, clock(m % 1440, true), 'middle');
+          text(svg, X(i), HT - 5, clock(m, true), 'middle');
       }
     }
     function line(svg, Y, key, cls){
@@ -1243,21 +1610,17 @@ function frameMain(P){
       svg.appendChild(g);
       return g;
     }
-
-    /* humidity: the target as a band above it, named in words */
     var yH = scale(40, 100);
     prep(s1);
-    s1.appendChild(sv('rect', { 'class':'band', x:L, y:yH(100), width:W - L - R, height:yH(P.target) - yH(100) }));
+    s1.appendChild(sv('rect', { 'class':'band', x:L, y:yH(100), width:W - L - R2, height:yH(R.target) - yH(100) }));
     yaxis(s1, yH, [50, 70, 90], function(t){ return t + '%'; });
-    s1.appendChild(sv('line', { 'class':'bandrule', x1:L, x2:W - R, y1:yH(P.target), y2:yH(P.target) }));
-    text(s1, L + 5, yH(100) + 14, 'over ' + P.target + '%', 'start', 'bandlabel');
+    s1.appendChild(sv('line', { 'class':'bandrule', x1:L, x2:W - R2, y1:yH(R.target), y2:yH(R.target) }));
+    text(s1, L + 5, yH(100) + 14, 'over ' + R.target + '%', 'start', 'bandlabel');
     xaxis(s1);
     line(s1, yH, 'h', 'line');
     end(s1, yH, 'h', S[S.length - 1].h + '%');
     var h1 = hover(s1);
 
-    /* temperature: grey where the room sits below its set temperature in
-       Cool, which is when the unit has stopped and is not drying */
     var lo = Infinity, hi = -Infinity;
     S.forEach(function(p){ lo = Math.min(lo, p.c, p.on ? p.s : p.c); hi = Math.max(hi, p.c, p.on ? p.s : p.c); });
     lo = Math.floor(lo - .4); hi = Math.ceil(hi + .4);
@@ -1278,7 +1641,6 @@ function frameMain(P){
     });
     yaxis(s2, yT, ticks, function(t){ return t + '°'; });
     xaxis(s2);
-    /* the set temperature, a step line, broken where the unit is off */
     var seg = [];
     function flush(){
       if (seg.length > 1) s2.appendChild(sv('polyline', { 'class':'setl', points:seg.join(' ') }));
@@ -1294,8 +1656,7 @@ function frameMain(P){
     end(s2, yT, 'c', deg(S[S.length - 1].c));
     var h2 = hover(s2);
 
-    /* One readout for both charts: the crosshair finds the time. */
-    function show(k){
+    function showAt(k){
       cur = Math.max(0, Math.min(S.length - 1, k));
       var p = S[cur], x = X(p.i).toFixed(1), m = P.start + p.i * 10;
       [[h1, yH(p.h)], [h2, yT(p.c)]].forEach(function(o){
@@ -1304,7 +1665,7 @@ function frameMain(P){
         g.lastChild.setAttribute('cx', x); g.lastChild.setAttribute('cy', o[1].toFixed(1));
       });
       ro.textContent = '';
-      ro.appendChild(d.createTextNode(dayOf(m) + ' ' + clock(m % 1440) + ' · '));
+      ro.appendChild(d.createTextNode(dayOf(m) + ' ' + clock(m) + ' · '));
       ro.appendChild(el('b', null, p.h + '%'));
       ro.appendChild(d.createTextNode(' · '));
       ro.appendChild(el('b', null, deg(p.c)));
@@ -1313,46 +1674,45 @@ function frameMain(P){
     [s1, s2].forEach(function(svg){
       function at(e){
         var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width;
-        var i = Math.round((x - L) / (W - L - R) * n), k = 0;
+        var i = Math.round((x - L) / (W - L - R2) * n), k = 0;
         S.forEach(function(p, j){ if (Math.abs(p.i - i) < Math.abs(S[k].i - i)) k = j; });
-        show(k);
+        showAt(k);
       }
       svg.addEventListener('pointerdown', at);
       svg.addEventListener('pointermove', function(e){ if (e.pointerType === 'mouse' || e.buttons) at(e); });
-      svg.addEventListener('focus', function(){ show(cur); });
+      svg.addEventListener('focus', function(){ showAt(cur); });
       svg.addEventListener('keydown', function(e){
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-        e.preventDefault(); show(cur + (e.key === 'ArrowLeft' ? -6 : 6));
+        e.preventDefault(); showAt(cur + (e.key === 'ArrowLeft' ? -6 : 6));
       });
     });
   }
 
   /* The same readings as a table, every hour, newest first. */
   function readings(v){
-    var det = el('details', 'readings');
-    det.appendChild(el('summary', null, 'Readings, every hour'));
-    var t = el('table'), th = el('thead'), hr = el('tr'), tb = el('tbody');
+    var t = el('table', 'readings'), th = el('thead'), hr = el('tr'), tb = el('tbody');
     ['Time', 'Humidity', 'Room', 'Set'].forEach(function(h){ hr.appendChild(el('th', null, h)); });
     th.appendChild(hr); t.appendChild(th);
     for (var k = v.series.length - 1; k >= 0; k -= 6){
       var p = v.series[k], m = P.start + p.i * 10, r = el('tr');
-      [dayOf(m) + ' ' + clock(m % 1440), p.h + '%', deg(p.c), p.on ? p.md + ' ' + p.s : 'Off']
+      [dayOf(m) + ' ' + clock(m), p.h + '%', deg(p.c), p.on ? p.md + ' ' + p.s : 'Off']
         .forEach(function(c){ r.appendChild(el('td', null, c)); });
       tb.appendChild(r);
     }
-    t.appendChild(tb); det.appendChild(t);
-    return det;
+    t.appendChild(tb);
+    return t;
   }
 
-  if (P.open) openSheet(P.open);
+  if (P.open === 'rule') openRule();
+  else if (P.open) openVilla(P.open);
 }
 
 /* ── the frames ────────────────────────────────────────────────────────*/
 var H = DATA.H;
 var FRAMES = [
-  { key:'morning',   title:'Cool, humid morning, 7:40am', P:function(){ return scenario(H(1,7,40)); } },
-  { key:'afternoon', title:'Warm afternoon, 3:10pm',      P:function(){ return scenario(H(1,15,10)); } },
-  { key:'villa',     title:'Villa 4 tapped, 7:40am',      P:function(){ return scenario(H(1,7,40), 4); } }
+  { key:'board', title:'The board, a cool humid morning', P:function(){ return scenario(H(1,7,40)); } },
+  { key:'villa', title:'Villa 13 tapped: its controls',  P:function(){ return scenario(H(1,7,40), 13); } },
+  { key:'rule',  title:'Humidity rule: its settings',    P:function(){ return scenario(H(1,7,40), 'rule'); } }
 ];
 var UI2 = document.getElementById('ui2css').textContent;
 var PAGE = document.getElementById('pagecss').textContent;
@@ -1364,7 +1724,7 @@ function doc(f){
     JSON.stringify(f.P()).replace(/</g, '\\u003c') + ');</scr' + 'ipt></body></html>';
 }
 
-var page = 'morning';
+var page = 'board';
 try { var q = new URLSearchParams(location.search); if (q.get('page')) page = q.get('page'); } catch (e) {}
 var stage = document.getElementById('stage'), pages = document.getElementById('pages');
 var WIDE = window.matchMedia('(min-width:900px)').matches;
