@@ -182,7 +182,29 @@ so it takes minutes and always will. That is fine. Making someone watch it is
 not.
 
 - **While working:** `python3 tests/run.py --changed` plus the one new suite.
-- **Before publishing:** the full run, once.
+- **Before publishing:** `python3 tests/run.py --publish`, once. It sizes
+  the run to what the branch's change can reach and prints why, and it
+  runs everything when the change reaches every page or when it cannot
+  tell. The heavy tier (rule 6: the data model, permissions, a new module)
+  still takes the full run, `python3 tests/run.py`, before it goes live.
+
+The check is `tests/reach.py`, ruled 2 Oct (the owner: "I don't mind the
+25 mins, but even if it's fixing a bug on a sticky button, it runs it.
+What about a check on appropriateness"). Until then any change to a shared
+file ran everything, and most fixes live in one. A page's `?v=` bump alone
+is set aside. A style rule reaches the pages that use its selector: their
+suites without the sweeps when it only paints (colour, background, shadow,
+radius), whole when it moves anything, and everything when it moves a
+selector every page has (`button`, `body`). A shared function reaches the
+pages that call it, through whatever calls it in turn, and everything if
+that ever meets code run as a page loads (`buildNav()`, the menu filter, an
+IIFE). `auth.js` is always everything, and so is a page or a script the
+pages load that `COVERS` does not name. A table, a test helper or a mock
+reaches the suites that open it by name, for `--changed` too: until 2 Oct
+thirteen tables and `errortrap.py` selected nothing, so a case added to
+`phone_cases.json` ran no suite. `--publish --plan` says what it would run
+without running it, and `tests/reach_test.py` holds the cases it must get
+right, the commits of 2 Oct among them.
 
 The full run waits until the feature is finished and the owner is ready
 to publish, not the end of each step (the owner, 30 Sep, after one was
@@ -437,8 +459,9 @@ Before starting, say in one line which tier the change is. A filter, a
 label, a default, a layout or a tint is the light tier: build it, run the
 one suite that covers it, one screenshot, push. The heavy tier needs its
 reason named in that same line - the data model, permissions, a shared
-reader, the Worker - or it is the light tier. The pre-publish full run
-starts in the background and is reported when it lands; nobody waits on it.
+reader, the Worker - or it is the light tier. The pre-publish run
+(`--publish`, rule 4) starts in the background and is reported when it
+lands; nobody waits on it.
 
 Three habits that make the difference, all learned the hard way:
 
@@ -565,7 +588,8 @@ time out an interactive session.
 ```bash
 python3 tests/run.py --changed     # while working
 python3 tests/run.py <suite>       # the one suite you touched
-python3 tests/run.py               # once, before publishing only
+python3 tests/run.py --publish     # once, before publishing: sized to what it reaches
+python3 tests/run.py               # the full run: the heavy tier, before it goes live
 ```
 
 Run them just like that, from the repo root: not wrapped in `timeout` or a

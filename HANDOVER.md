@@ -142,9 +142,13 @@ a table. Do not type them out one at a time.
     python3 tests/run.py              # everything except the demo check
     python3 tests/run.py --changed    # only what covers your modified files
     python3 tests/run.py tally index  # by name
+    python3 tests/run.py --publish    # before a publish: sized to what it reaches
 
-Run everything before a publish. Publishing without them is how the printed
-sheet went blind for two commits without a single test failing.
+Before a publish, `--publish`: the run sized to what the change can reach,
+and everything when it reaches every page or cannot tell (CLAUDE.md rule
+4, since 2 Oct). The heavy tier still takes the full run. Publishing
+without the suites is how the printed sheet went blind for two commits
+without a single test failing.
 
 **Mock up before you build anything visual.** Render it at 390pt, check 360, do
 not break at 320. `STYLEGUIDE.md` first, always.

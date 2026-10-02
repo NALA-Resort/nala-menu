@@ -5,6 +5,8 @@
     python3 tests/run.py --demos        # everything, demo check included
     python3 tests/run.py tally index    # just the ones whose names match
     python3 tests/run.py --changed      # just the ones covering modified files
+    python3 tests/run.py --publish      # before a publish: sized to what it reaches
+    python3 tests/run.py --publish --plan   # say what that would run, and why
     python3 tests/run.py --jobs 6       # more at once
 
 WHY THIS EXISTS
@@ -50,6 +52,7 @@ surprise, which was the actual risk: a demo that still works, still looks
 right, and shows an app that no longer exists.
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -109,6 +112,7 @@ SUITES = [
     # The tab bar, 30 Sep: what each role is offered, and nothing under it.
     ("tabs",       ["python3", "tests/tabs_suite.py"],    400),
     ("reads",      ["python3", "tests/reads_suite.py"],   300),
+    ("reach",      ["python3", "tests/reach_test.py"],    300),
     ("colour",     ["python3", "tests/colour_suite.py"],  400),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("pastmenus",  ["python3", "tests/pastmenus_suite.py"], 120),
@@ -206,6 +210,10 @@ COVERS = {
     # The menu's shape and the tab bar's, read by these six.
     "tests/nav_canon.json": ["tabs", "pages", "tally", "pub", "tag", "reads"],
     "tests/page_reads.json": ["reads"],
+    # What --publish runs is decided here and in reach.py: their own cases.
+    "tests/run.py": ["reach"],
+    "tests/reach.py": ["reach"],
+    "tests/reach_js.js": ["reach"],
 }
 # Rule 8's table names every page in the menu, and a change to any of them can
 # make it read another module's data: reads_suite runs for each, from the
@@ -219,6 +227,98 @@ for _page in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file_
 EVERYTHING = ["nala-shared.js", "auth.js", "nala-ui.css", "nala-ui2.css"]
 
 
+def _imports(text, stem):
+    s = re.escape(stem)
+    return re.search(r"\bimport\s+(?:[\w.]+\s*,\s*)*%s\b|\bfrom\s+%s\s+import\b"
+                     r"|['\"][./\w-]*/%s(?:\.m?js)?['\"]" % (s, s, s), text)
+
+
+def read_by(f):
+    """The suites whose own files read f by name: a shared table
+    (phone_cases.json), a helper they import (errortrap.py), the mock a suite
+    holds its page to (mock-keys-store.html). Until 2 Oct thirteen tables
+    and errortrap.py selected nothing, so a case added to a table ran no
+    suite. A helper that reads f passes it on to whatever imports the
+    helper; beyond f itself only an import counts, not a docstring's
+    mention."""
+    runs = {}
+    for n, cmd, _ in SUITES:
+        for c in cmd:
+            if c.startswith(("tests/", "worker/")):
+                runs.setdefault(c, set()).add(n)
+    srcs = sorted(set(glob.glob("tests/*.py") + glob.glob("tests/*.js") +
+                      glob.glob("tests/*.mjs") + glob.glob("worker/*.js") +
+                      glob.glob("worker/*.mjs")) | set(runs))
+    # reach_test.py names files in strings as its cases for this function,
+    # and opens none of them.
+    srcs = [p for p in srcs if p != "tests/reach_test.py"]
+    text = {}
+    for p in srcs:
+        try:
+            text[p] = open(p, encoding="utf-8").read()
+        except (OSError, UnicodeDecodeError):
+            text[p] = ""
+    # Named in a string, as a file is opened: "phone_cases.json", or the end
+    # of a path. "Rule 8 in CLAUDE.md" in a docstring opens nothing.
+    named = re.compile(r"(?<=[\"'`/])%s(?=[\"'`?])" % re.escape(os.path.basename(f)))
+    found, seen, queue = set(), {f}, [(f, True)]
+    while queue:
+        g, by_name = queue.pop()
+        code = g.endswith((".py", ".js", ".mjs"))
+        stem = os.path.splitext(os.path.basename(g))[0]
+        for p in srcs:
+            if p == g:
+                continue
+            if not ((by_name and named.search(text[p])) or
+                    (code and _imports(text[p], stem))):
+                continue
+            found.update(runs.get(p, ()))
+            if p not in seen and p.endswith((".py", ".js", ".mjs")):
+                seen.add(p)
+                queue.append((p, False))
+    return sorted(found)
+
+
+def covered_by(f):
+    """The suites that cover one file, and why: (names, reason), or (None,
+    reason) when it reaches everything, or ([], "") when no suite reads it.
+    --changed and --publish (tests/reach.py) both ask here."""
+    if f.startswith("worker/"):
+        # and the Worker's own suite, where COVERS names one
+        return ["worker", "coercion", "cardworker"] + COVERS.get(f, []), "%s -> worker" % f
+    if f in EVERYTHING:
+        return None, "%s is shared, so everything runs" % f
+    if f in COVERS:
+        return list(COVERS[f]), "%s -> %s" % (f, ", ".join(COVERS[f]))
+    if f.startswith("tests/"):
+        # The suite whose command runs the file, before any guess from its
+        # name: hk_suite.py is housekeep, which no stem match ever found.
+        run_it = [n for n, cmd, _ in SUITES if f in cmd]
+        if run_it:
+            return run_it, "%s -> %s" % (f, ", ".join(run_it) if len(run_it) < 4
+                                         else "%d jobs" % len(run_it))
+    if ("/" not in f and f.endswith((".html", ".js", ".css"))
+            and not f.startswith(("mock-", "demo-"))):
+        # A page or a script the pages load, that nothing above names. A
+        # suite that mentions it is no measure of what it reaches.
+        return None, "%s: no suite covers it (COVERS), so everything runs" % f
+    named = read_by(f)
+    if named:
+        return named, "%s is read by %s" % (f, ", ".join(named) if len(named) < 6
+                                            else "%d suites" % len(named))
+    if f.startswith("tests/"):
+        stem = os.path.basename(f).replace("_suite.py", "").replace("_test.js", "")
+        hit = [n for n, _, _ in SUITES
+               if stem.startswith(n[:5]) or n.startswith(stem[:5])
+               or n.startswith(stem + ":")]
+        if hit:
+            # One file selecting twelve sweeps printed twelve near
+            # identical lines and buried the line that mattered.
+            return hit, "%s -> %s" % (f, ", ".join(hit) if len(hit) < 4
+                                      else "%d jobs" % len(hit))
+    return [], ""
+
+
 def changed_suites():
     out = subprocess.run(["git", "diff", "--name-only"],
                          capture_output=True, text=True).stdout.split()
@@ -228,29 +328,13 @@ def changed_suites():
         return None, []
     picked, why = set(), []
     for f in out:
-        if f in EVERYTHING or f.startswith("worker/"):
-            if f.startswith("worker/"):
-                picked.add("worker"); picked.add("coercion"); picked.add("cardworker")
-                # and the Worker's own suite, where COVERS names one
-                picked.update(COVERS.get(f, []))
-                why.append("%s -> worker" % f)
-            else:
-                why.append("%s is shared, so everything runs" % f)
-                return None, why
-        elif f in COVERS:
-            picked.update(COVERS[f])
-            why.append("%s -> %s" % (f, ", ".join(COVERS[f])))
-        elif f.startswith("tests/"):
-            stem = os.path.basename(f).replace("_suite.py", "").replace("_test.js", "")
-            hit = [n for n, _, _ in SUITES
-                   if stem.startswith(n[:5]) or n.startswith(stem[:5])
-                   or n.startswith(stem + ":")]
-            if hit:
-                picked.update(hit)
-                # One file selecting twelve sweeps printed twelve near
-                # identical lines and buried the line that mattered.
-                why.append("%s -> %s" % (f, ", ".join(hit) if len(hit) < 4
-                                         else "%d jobs" % len(hit)))
+        got, reason = covered_by(f)
+        if got is None:
+            why.append(reason)
+            return None, why
+        if got:
+            picked.update(got)
+            why.append(reason)
     return sorted(picked), why
 
 
@@ -352,9 +436,39 @@ def main():
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--demos", action="store_true", help="include the demo drift check as a suite")
     ap.add_argument("--changed", action="store_true", help="only suites covering modified files")
+    # The owner, 2 Oct: "even if it's fixing a bug on a sticky button, it runs
+    # it" - the full run before every publish. This sizes the run to what the
+    # branch's change can reach (tests/reach.py), and runs everything when it
+    # reaches every page or when it cannot tell.
+    ap.add_argument("--publish", action="store_true",
+                    help="the run before a publish, sized to what the change can reach")
+    ap.add_argument("--plan", action="store_true",
+                    help="with --publish: say what would run, and why, and stop")
     a = ap.parse_args()
 
     picked = SUITES
+    if a.publish:
+        import reach
+        pl = reach.plan(SUITES, COVERS, covered_by)
+        for line in pl.why:
+            print("  " + line)
+        everyday = [s for s in SUITES if s[0] not in ON_REQUEST]
+        # The demo check stays on request (--demos), here as everywhere.
+        reached = [s for s in SUITES if s[0] in pl.suites
+                   and (a.demos or s[0] not in ON_REQUEST)]
+        if pl.everything:
+            print("\nreach: every page, so the full run")
+        elif not reached:
+            print("\nnothing this change can reach is read by a suite%s"
+                  % (" run without asking (--demos)" if pl.suites else ""))
+            return 0
+        else:
+            picked = reached
+            print("\nreach: %d of %d suites" % (len(picked), len(everyday)))
+        if a.plan:
+            print("would run: %s" % ("everything" if pl.everything
+                                      else ", ".join(s[0] for s in picked)))
+            return 0
     if a.changed:
         want, why = changed_suites()
         for line in why:
