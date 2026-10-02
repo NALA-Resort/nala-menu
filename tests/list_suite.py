@@ -12,21 +12,23 @@ window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff
 onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},signOut:function(){}};"""
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
 def plus(d): return (now+datetime.timedelta(days=d)).strftime("%Y-%m-%d")
-responses={
- "0400000001":{"status":"in","pax":2,"name":"James","room":"1","phone":"0400000001",
-   "diets":["Nut allergy","Vegetarian"],"note":"Window seat","dnote":"Very allergic","premenu":True,
-   "arrives":plus(-2),"departs":plus(1),"at":"T1"},
- "0400000002":{"status":"out","room":"2","at":"T2"},
- "0400000003":{"status":"in","pax":2,"name":"Mark","room":"3","arrives":plus(-1),"departs":plus(3),"at":"T3"},
- "0400000090":{"status":"in","pax":2,"name":"Zara","phone":"400000090","at":"T4"},
- "0400000091":{"status":"in","pax":2,"name":"Bob","phone":"0400000091","at":"T5"},
+# Tonight's answers as the guest page writes them, one dinner cell per villa,
+# and the outside tables as /manual records: added by staff, or booked through
+# a link and answered from it. Until 2 Oct these were today's /responses and
+# /roomguests, the guest page's shapes until 17 Aug, which the sheet no longer
+# asks about a night from 1 Sep on.
+dinner={
+ "1":{"status":"in","pax":2,"room":"1","bookingId":"b1","by":"guest","at":"T1",
+   "diets":["Nut allergy","Vegetarian"],"note":"Window seat","dnote":"Very allergic","premenu":True},
+ "2":{"status":"out","pax":0,"room":"2","by":"guest","at":"T2"},
+ "3":{"status":"in","pax":2,"room":"3","bookingId":"b3","by":"guest","at":"T3"},
 }
 manual={
  "room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"},
  "ext-777":{"status":"in","pax":3,"name":"Alfie","phone":"0455 555 555","source":"manual","time":"17:30"},
- "extcancel-0400000091":{"status":"out","override":True,"source":"manual"},
+ "ext-tok90":{"status":"in","pax":2,"name":"Zara","phone":"400000090","source":"invite"},
+ "ext-tok91":{"status":"out","pax":2,"name":"Bob","phone":"0400000091","source":"invite"},
 }
-roomguests={"4":{"name":"Lucy","departs":plus(2)},"9":{"name":"Priya","departs":plus(3)}}
 combined={"g1":{"rooms":["3","4"]}}
 # publish timestamp with SIX fractional digits — the Safari killer
 menu={"published":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456",
@@ -41,9 +43,9 @@ menutags={"main":["Nut allergy"]}
 #  delivered must still reach paper; villa 9 none, so a sheet without second
 #  guests stays exactly as it was. The angle brackets in Ana's name are the
 #  escaping check: the cell is built by concatenation.
-STAYS={"1":{"id":"b1","first":"James","companion":"Zoe Wrong"},
-       "3":{"id":"b3","first":"Mark","companion":"Aria Stone"},
-       "4":{"id":"b4","name":"Lucy"},"9":{"id":"b9","name":"Priya"}}
+STAYS={"1":{"id":"b1","first":"James","companion":"Zoe Wrong","arrive":plus(-2),"depart":plus(1)},
+       "3":{"id":"b3","first":"Mark","companion":"Aria Stone","arrive":plus(-1),"depart":plus(3)},
+       "4":{"id":"b4","first":"Lucy","depart":plus(2)},"9":{"id":"b9","first":"Priya","depart":plus(3)}}
 prearrival={"b1":{"companion":"Ana <Ruiz>"}}
 internal={"b1":{"note":"Owner's friend, do not charge for wine"},
           "b3":{"fromMews":"Complained about noise last stay"},
@@ -61,10 +63,8 @@ staff={"staff@x":{"name":"Admin","role":"admin"},
 def fb(route,request):
     u=request.url; body="null"
     if "/staff" in u: body=json.dumps(staff)
-    elif "/responses/" in u: body=json.dumps(responses)
+    elif "/dinner/"+today in u: body=json.dumps(dinner)
     elif "/manual/" in u: body=json.dumps(manual)
-    elif "/roomguests/"+today in u: body=json.dumps(roomguests)
-    elif "/roomguests/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
     elif "/menutags/" in u: body=json.dumps(menutags)
     elif "/stays/"+today in u: body=json.dumps(STAYS)
@@ -685,25 +685,22 @@ with sync_playwright() as p:
             "over the beach rather than the pool, please. Many thanks, very "
             "much looking forward to our stay :) type: General "
             "updatedUtc: 2026-07-07T06:28:44Z") * 2
-    heavy_resp, heavy_guests, heavy_stays, heavy_internal = {}, {}, {}, {}
+    heavy_dinner, heavy_stays, heavy_internal = {}, {}, {}
     for i in range(1, 13):
-        heavy_resp["04000001%02d" % i] = {
-            "status": "in", "pax": 2, "room": str(i), "name": "Guest %d" % i,
-            "arrives": plus(-2), "departs": plus(2),
+        heavy_dinner[str(i)] = {
+            "status": "in", "pax": 2, "room": str(i), "bookingId": "hb%d" % i,
+            "by": "guest", "at": "T",
             "diets": ["Dairy free", "Gluten free"],
             "dnote": "No chilli, no cold food or drink below room temperature"}
-        heavy_guests[str(i)] = {"name": "Guest %d" % i, "departs": plus(2)}
-        heavy_stays[str(i)] = {"id": "hb%d" % i, "name": "Guest %d" % i}
+        heavy_stays[str(i)] = {"id": "hb%d" % i, "first": "Guest %d" % i,
+                               "arrive": plus(-2), "depart": plus(2)}
     for i in (1, 2, 3):
         heavy_internal["hb%d" % i] = {"fromMews": DUMP}
     def heavy_fb(route, request):
         u = request.url
-        if "/responses/" in u:
+        if "/dinner/" + today in u:
             route.fulfill(status=200, content_type="application/json",
-                          body=json.dumps(heavy_resp)); return
-        if "/roomguests/" + today in u:
-            route.fulfill(status=200, content_type="application/json",
-                          body=json.dumps(heavy_guests)); return
+                          body=json.dumps(heavy_dinner)); return
         if "/stays/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(heavy_stays)); return
@@ -753,8 +750,8 @@ with sync_playwright() as p:
     #  so by accident: seventeen labelled rows with dashes were unmistakable.
     #  Hidden, the same morning prints a short calm sheet that looks correct,
     #  which is the worse failure. So it says it out loud instead.
-    keep = (STAYS.copy(), dict(roomguests), dict(manual), dict(responses))
-    STAYS.clear(); roomguests.clear(); manual.clear(); responses.clear()
+    keep = (STAYS.copy(), dict(dinner), dict(manual))
+    STAYS.clear(); dinner.clear(); manual.clear()
     q = as_role("staff@x")
     q.wait_for_timeout(600)
     ck("a house with no bookings at all is called out, not printed blank",
@@ -765,8 +762,8 @@ with sync_playwright() as p:
     ck("and says not to trust the sheet",
        "trust" in warn)
     q.close()
-    STAYS.update(keep[0]); roomguests.update(keep[1])
-    manual.update(keep[2]); responses.update(keep[3])
+    STAYS.update(keep[0]); dinner.update(keep[1])
+    manual.update(keep[2])
 
     q=as_role("chef@x")
     q.wait_for_timeout(1200)
@@ -847,14 +844,12 @@ with sync_playwright() as p:
     for pax, expect in WORD_CASES:
         def word_fb(route, request, _p=pax):
             u = request.url
-            if "/roomguests/" in u and today in u:
+            # Tonight's parties as dinner cells, the only ones: the base
+            # fixture's own cells would add tables this case never asked for.
+            if "/dinner/" + today in u:
                 route.fulfill(status=200, content_type="application/json",
-                    body=json.dumps({str(i): {"name": "G%d" % i, "departs": today}
-                                     for i in _p})); return
-            if "/responses/" in u:
-                route.fulfill(status=200, content_type="application/json",
-                    body=json.dumps({"room-%d" % i: {"status": "in", "pax": _p[i],
-                                                     "room": str(i)} for i in _p})); return
+                    body=json.dumps({str(i): {"status": "in", "pax": _p[i], "room": str(i),
+                                              "by": "guest", "at": "T"} for i in _p})); return
             # The base fixture combines villas 3 and 4 onto one table, and
             # carries Alfie, a walk-in party of three in /manual. Both would
             # add tables this case never asked for.

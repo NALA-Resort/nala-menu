@@ -568,7 +568,7 @@ body.paper #selToggle.active { background:var(--ink); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=111"></script>
+<script src="nala-shared.js?v=112"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 /* Browsed dates, same header as every other board: ‹ › Today, and the date
@@ -674,7 +674,8 @@ function load(full){
      out this morning is not in tonight's file at all. They are the person this
      board exists for: the villa needs cleaning precisely because they left.
      Reading only tonight left every departure classified as unknown. */
-  return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+  return Promise.all([ retiredRead(todayKey(), function(){ return api('/responses/'+todayKey()); }),
+                api('/manual/'+todayKey()),
                 fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), lastHk(14),
                 fetchStays(todayKey()), api('/dinner/'+todayKey()),
                 api('/stays/'+yest) ])

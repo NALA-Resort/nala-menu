@@ -14,15 +14,21 @@ now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
 def plus(d): return (now+datetime.timedelta(days=d)).strftime("%Y-%m-%d")
 STATE={"fail":False}
 WRITES=[]
-responses={
- "0400000001":{"status":"in","pax":2,"name":"James","room":"1","phone":"0400 000 001","diets":["Nut allergy"],"note":"Window seat please","at":"2026-08-12T09:00:00"},
- "0400000002":{"status":"out","room":"2","at":"2026-08-12T09:05:00"},
- "0400000003":{"status":"in","pax":2,"name":"Mark","room":"3","premenu":True,"nodiet":True,"at":"2026-08-12T09:10:00"},
- "0400000099":{"status":"in","pax":2,"name":"Outside Guest","phone":"0400 000 099","at":"2026-08-12T10:00:00"},
+# Tonight's guest answers as the guest page writes them, one dinner cell per
+# villa, and the outside table booked through a link as its /manual record.
+# Until 2 Oct these were today's /responses, the guest page's shape until
+# 17 Aug, which the board no longer asks about a night from 1 Sep on.
+DINNER_SEED={
+ "1":{"status":"in","pax":2,"room":"1","bookingId":"res-1","by":"guest","diets":["Nut allergy"],
+      "note":"Window seat please","at":"2026-08-12T09:00:00"},
+ "2":{"status":"out","pax":0,"room":"2","by":"guest","at":"2026-08-12T09:05:00"},
+ "3":{"status":"in","pax":2,"room":"3","bookingId":"res-3","by":"guest","premenu":True,
+      "nodiet":True,"at":"2026-08-12T09:10:00"},
 }
 manual={
  "room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"},
  "room-6":{"status":"in","pax":3,"room":"6","source":"manual"},
+ "ext-tok99":{"status":"in","pax":2,"name":"Outside Guest","phone":"0400 000 099","source":"invite"},
 }
 # The villa cells. The board moved them out of /manual and into /dinner, and
 # this stub's READ side was never told: /dinner came back null on every load,
@@ -30,7 +36,7 @@ manual={
 # served an empty set back and silently undid every save the suite had just
 # made. A count asserted after a save then read whatever the run's wall clock
 # happened to allow. Kept here, written by remember() below.
-dinner={}
+dinner=json.loads(json.dumps(DINNER_SEED))
 # The external guests' send records (28 Sep), /extinvites/<date>/<key>.
 extsends={}
 
@@ -44,22 +50,25 @@ def resetDb():
     fresh board, and villa 13 starting vacant is a fixture statement, not a
     leftover from whatever the multi-select wrote forty assertions ago."""
     manual.clear(); manual.update(json.loads(MANUAL0))
-    dinner.clear()
+    dinner.clear(); dinner.update(json.loads(json.dumps(DINNER_SEED)))
     extsends.clear()
 
 MANUAL0=json.dumps(manual)          # the starting board, for resetDb
-roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","departs":plus(2)}}}
 # Villa 9 as Mews has it. Same name and departure as the guest written record,
 # so nothing on the board shifts and the only new fact is the party size, which
 # Mews knows and the app used to store and show nowhere.
-stays={today:{"9":{"id":"res-9","first":"Priya","last":"","arrive":plus(-1),
+stays={today:{"1":{"id":"res-1","first":"James","last":"","phone":"0400 000 001",
+                   "arrive":plus(-1),"depart":plus(2),"adults":2,"updated":"2026-08-16T10:00:00Z"},
+              "3":{"id":"res-3","first":"Mark","last":"","arrive":plus(-1),
+                   "depart":plus(2),"adults":2,"updated":"2026-08-16T10:00:00Z"},
+              "9":{"id":"res-9","first":"Priya","last":"","arrive":plus(-1),
                    "depart":plus(3),"adults":2,"updated":"2026-08-16T10:00:00Z"},
               # Villa 4 and 6 carry the second guest as Mews sent it, so the
               # board shows a name nobody at the resort typed: 4 on the
               # awaiting stub, 6 on a dining row. Neither stay carries a
               # first name, so Lucy and the unnamed manual entry render as
               # they always did; only the companion rides in.
-              "4":{"id":"res-4","depart":plus(2),"companion":"Sam Okafor",
+              "4":{"id":"res-4","first":"Lucy","depart":plus(2),"companion":"Sam Okafor",
                    "updated":"2026-08-16T10:00:00Z"},
               "6":{"id":"res-6","depart":plus(2),"companion":"Noah Ellis",
                    "updated":"2026-08-16T10:00:00Z"}}}
@@ -116,7 +125,6 @@ def fb(route,request):
         route.fulfill(status=200,content_type="application/json",body=request.post_data or "null"); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
-    elif "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/dinner/"+today in u: body=json.dumps(dinner)
@@ -124,8 +132,6 @@ def fb(route,request):
     elif "/dinner/" in u: body="null"
     elif "/stays/"+today in u: body=json.dumps(stays[today])
     elif "/stays/" in u: body="null"
-    elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
-    elif "/roomguests/" in u: body="null"
     elif "/opened/"+today in u: body=json.dumps(opened[today])
     elif "/opened/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
@@ -627,7 +633,12 @@ with sync_playwright() as p:
     ck("a long name never widens the page, and never breaks mid-name",
        ov["doc"]<=0 and ov["nameLines"])    # guest data on a digital room booking's sheet
     tile(pg,1).click(); pg.wait_for_timeout(200)
+    # The phone is the booking's, in the details behind the eye: a guest's
+    # dinner cell carries none. Until 2 Oct villa 1 was a /responses reply
+    # that carried its own, which put it in the sheet's first line.
+    pg.click("#gdEye"); pg.wait_for_timeout(200)
     sh1=pg.locator("#sheet").inner_text()
+    pg.click("#gdClose"); pg.wait_for_timeout(150)
     ck("digital room sheet shows name+phone+diets+note", "James" in sh1 and "0400 000 001" in sh1 and "Nut allergy" in sh1 and "Window seat" in sh1)
     pg.locator("#oClose").click(); pg.wait_for_timeout(150)
 
@@ -903,7 +914,14 @@ with sync_playwright() as p:
     q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
     live=q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
         e=>getComputedStyle(e).display!=='none').map(e=>e.textContent.trim())""")
+    # The phone is in the booking's details behind the eye (see villa 1's
+    # sheet above). The sheet is opened afresh after reading it, so the
+    # controls below are counted on the sheet as it first opens: closing the
+    # details leaves Add staff notes standing on it (found 2 Oct, on main
+    # too, reported rather than mixed into this change).
+    q.click("#gdEye"); q.wait_for_timeout(300)
     txt=q.evaluate("()=>sheet.innerText")
+    q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
     ck("chef opens the sheet and sees the guest's details",
        "0400" in txt and "allergy" in txt.lower())
     # The eye is excluded by id, not by trusting its label. It reveals what the
@@ -912,10 +930,12 @@ with sync_playwright() as p:
     # Everything else on a chef's sheet must still be Close and only Close.
     # Both controls belonging to the snapshot are excluded by id, not by
     # trusting their labels. Neither writes anything: one opens the panel and
-    # one shuts it again.
+    # one shuts it again. So is Dining history, which only reads and is
+    # offered whenever a booked stay has nights behind it - villa 1's, since
+    # its fixture became a booking on 2 Oct.
     writes = q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
         e=>getComputedStyle(e).display!=='none'
-           && e.id!=='gdEye' && e.id!=='gdClose')
+           && e.id!=='gdEye' && e.id!=='gdClose' && e.id!=='oHist')
         .map(e=>e.textContent.trim())""")
     ck("chef's sheet offers nothing that writes, only Close",
        [x.lower() for x in writes]==["close"])
@@ -972,14 +992,14 @@ with sync_playwright() as p:
     q.evaluate("()=>load(true)"); q.wait_for_timeout(900)
     ck("and back to vacant when the reservation goes",
        "room vacant" in tilecls(q, 13))
-    # An empty record is not a guest. roomguests carries these around from
-    # older writes, and one of them counting as a booking made the board look
-    # busier than the resort was.
-    roomguests[today]["15"] = {}
+    # An empty record is not a guest. Old roomguests records carried these
+    # around, and one of them counting as a booking made the board look busier
+    # than the resort was; a /stays record answers to the same rule.
+    stays[today]["15"] = {}
     q.evaluate("()=>load(true)"); q.wait_for_timeout(900)
     ck("an empty record does not make a villa look occupied",
        "room vacant" in tilecls(q, 15))
-    del roomguests[today]["15"]
+    del stays[today]["15"]
     q.close()
 
     # ── the manager is told when a menu is published ───────────
@@ -1104,16 +1124,51 @@ with sync_playwright() as p:
 
 
     # ── a note belongs to a night ──────────────────────────────
-    # roomguests is carried forward across a stay so a guest keeps their villa.
-    # Anything left on an old record there is from an earlier night, and shown
-    # as tonight's it is a stale dietary in front of the kitchen.
-    roomguests[today]["11"] = {"name":"Carla","departs":plus(2),
-                               "diets":["Shellfish allergy"],
-                               "note":"quiet table",
-                               "dnote":"severe, no cross contact"}
-    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
-                               "at":"2026-08-12T09:20:00"}
-    q=as_role("staff@x"); q.wait_for_timeout(400)
+    # roomguests carried a guest's record forward across their stay, and
+    # anything left on it was from an earlier night: shown as tonight's it is
+    # a stale dietary in front of the kitchen. Since 2 Oct only a night before
+    # 1 Sep reads roomguests (RETIRED_FROM in nala-shared.js), and browsing
+    # back to one is the only way left to meet an old record, so that is where
+    # this is asked. The requests are counted too: that night asks both
+    # retired nodes, and today asks neither.
+    HIST = "2026-08-20"
+    HIST_ASKS = []
+    hist_rg = {"11": {"name": "Carla", "departs": "2026-08-23",
+                      "diets": ["Shellfish allergy"], "note": "quiet table",
+                      "dnote": "severe, no cross contact"}}
+    hist_resp = {"0400000011": {"status": "in", "pax": 2, "name": "Carla", "room": "11",
+                                "at": "2026-08-20T09:20:00"}}
+    def hist_fb(route, request):
+        u = request.url
+        if "/roomguests/" in u or "/responses/" in u:
+            HIST_ASKS.append(u.split("firebasedatabase.app")[1].split("?")[0])
+        if request.method == "GET" and "/roomguests/" + HIST in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(hist_rg)); return
+        if request.method == "GET" and "/responses/" + HIST in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(hist_resp)); return
+        fb(route, request)
+    def hist_page(path):
+        resetDb()
+        del HIST_ASKS[:]
+        p = b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
+        p.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=SDK))
+        p.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        p.route("**firebasedatabase.app/**", hist_fb)
+        p.route("**/menu.json*",lambda r,_:r.fulfill(status=200,
+            content_type="application/json",body=json.dumps(menu)))
+        p.goto("http://localhost:8953/" + path); p.wait_for_timeout(1500)
+        return p
+    q = hist_page("tally.html")
+    ck("today asks neither retired node, /roomguests nor /responses", HIST_ASKS == [])
+    q.close()
+    q = hist_page("tally.html?date=" + HIST)
+    ck("a night before 1 Sep still asks both",
+       any(a.startswith("/roomguests/") for a in HIST_ASKS) and
+       "/responses/" + HIST + ".json" in HIST_ASKS)
     row=q.locator("#listBookings .row").filter(has_text="Carla").first
     ck("a dietary from an earlier night is not shown as tonight's",
        "Shellfish" not in row.inner_text())
@@ -1129,10 +1184,12 @@ with sync_playwright() as p:
        "DINING NOTES" not in notes.replace("PREVIOUS DINING NOTES", ""))
     q.close()
 
-    # The same villa once tonight's answer carries its own.
-    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
-                               "diets":["Vegan"],"note":"by the window",
-                               "dnote":"no dairy at all","at":"2026-08-12T09:20:00"}
+    # The same villa once tonight's answer carries its own, on its dinner cell.
+    stays[today]["11"] = {"id":"res-11","first":"Carla","last":"","arrive":plus(-1),
+                          "depart":plus(2),"adults":2}
+    DINNER_SEED["11"] = {"status":"in","pax":2,"room":"11","bookingId":"res-11","by":"guest",
+                         "diets":["Vegan"],"note":"by the window",
+                         "dnote":"no dairy at all","at":"2026-08-12T09:20:00"}
     q=as_role("staff@x"); q.wait_for_timeout(400)
     row=q.locator("#listBookings .row").filter(has_text="Carla").first
     ck("tonight's dietary is on the row", "VEGAN" in row.inner_text().upper())
@@ -1152,9 +1209,8 @@ with sync_playwright() as p:
     # forced open by it and printed "No note from the guest yet": an empty
     # section apologising for being empty, above the one real note. Reported
     # from a phone on 20 Aug, villa 10, "Red shellfish".
-    roomguests[today]["11"] = {"name":"Carla","departs":plus(2)}
-    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
-                               "note":"Red shellfish","at":"2026-08-12T09:20:00"}
+    DINNER_SEED["11"] = {"status":"in","pax":2,"room":"11","bookingId":"res-11","by":"guest",
+                         "note":"Red shellfish","at":"2026-08-12T09:20:00"}
     q=as_role("staff@x"); q.wait_for_timeout(400)
     row=q.locator("#listBookings .row").filter(has_text="Carla").first
     row.locator(".bub").click(); q.wait_for_timeout(400)
@@ -1165,8 +1221,8 @@ with sync_playwright() as p:
     ck("the note itself is there under its name",
        "DINNER NOTES" in notes and "RED SHELLFISH" in notes)
     q.close()
-    del responses["0400000011"]
-    del roomguests[today]["11"]
+    del DINNER_SEED["11"]; dinner.pop("11", None)
+    del stays[today]["11"]
 
     # ── the bubble's colour is one decision ─────────────────────────────
     # Worst wins: red to act on before cooking, amber to read, grey for
@@ -1960,7 +2016,7 @@ with sync_playwright() as p:
     # renamed on the row, lighting the renamed chip in the editor, and written
     # back under the new name on the next save. Losing the selection is the
     # failure this pins.
-    responses["0400000001"]["diets"] = ["Nut allergy", "Gluten free"]
+    dinner["1"] = dict(DINNER_SEED["1"], diets=["Nut allergy", "Gluten free"])
     r = b.new_page(viewport={"width": 430, "height": 930})
     r.route("**/firebase-app-compat.js", lambda rt,_: rt.fulfill(status=200,
         content_type="application/javascript", body=SDK))
@@ -1989,7 +2045,7 @@ with sync_playwright() as p:
        bool(wold) and "Gluten" in wold[-1].get("diets", [])
        and "Gluten free" not in wold[-1].get("diets", []))
     r.close()
-    responses["0400000001"]["diets"] = ["Nut allergy"]
+    dinner["1"] = json.loads(json.dumps(DINNER_SEED["1"]))
 
     # ── the guest's own answer reaches the chef ────────────────────────
     # The owner's ruling of 28 Aug. Their pre-arrival form asks about the

@@ -197,7 +197,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=111"></script>
+<script src="nala-shared.js?v=112"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -237,7 +237,8 @@ var yest = (function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return d
    They are the person this sheet exists for. Reading only tonight printed a
    same day turnover as a Pre-arrival and dropped a plain departure into the
    To verify count, off the paper entirely. */
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+Promise.all([ retiredRead(todayKey(), function(){ return api('/responses/'+todayKey()); }),
+              api('/manual/'+todayKey()),
               fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()),
               api('/stays/'+yest), lastHk(14) ])
   .then(function(res){

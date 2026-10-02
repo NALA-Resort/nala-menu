@@ -87,16 +87,16 @@ DINNER = {
   "2":  {"status": "vacant"},
 }
 
+# Externals arrive two ways, both under /manual: added by staff, or booked
+# through a link - Invitations' External guests send (28 Sep), whose record
+# the guest's own answer moves from awaiting to in or out. Until 2 Oct the
+# link-booked table here was a /responses reply keyed by phone, the guest
+# page's shape until 17 Aug; nothing has written one since, and this page no
+# longer asks /responses about a night from 1 Sep on.
 MANUAL = {"ext-a": {"status": "in", "pax": 4},
-          "ext-b": {"status": "out", "pax": 2}}   # a cancelled outside table
-
-# Externals arrive two ways. This is the digital one: a reply with no room on
-# it, keyed by phone, living under /responses - a node this page did not read
-# at all until 8 Sep, so every table booked through a link was invisible here
-# while Reservations counted it.
-RESPONSES = {"+61400000001": {"status": "in", "pax": 3},
-             "+61400000002": {"status": "out", "pax": 2},
-             "+61400000003": {"status": "in", "room": "3", "pax": 2}}
+          "ext-b": {"status": "out", "pax": 2},   # a cancelled outside table
+          "ext-tok1": {"status": "in", "pax": 3, "source": "invite"},
+          "ext-tok2": {"status": "out", "pax": 2, "source": "invite"}}   # declined from the link
 
 # The stamp a real publish writes: UTC, which in Australia falls on the
 # PREVIOUS calendar day for anything before 10am. Slicing its first ten
@@ -261,7 +261,6 @@ def fb(route, request):
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
     elif "/manual/" + today in u: body = json.dumps(MANUAL)
-    elif "/responses/" + today in u: body = json.dumps(RESPONSES)
     elif "/responses/" in u: body = "null"
     elif "/manual/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
@@ -404,8 +403,8 @@ with sync_playwright() as p:
        not any(c.startswith("2:") for c in reps["chips"]))
     # 2 (villa 3) + 2 (villa 5, in house) + 2 (villa 14, from its form) + 4
     # outside = 10. The cancelled outside table does not count.
-    # 4 staff-added + 3 digital = 7. The declined digital one does not count,
-    # and the one WITH a room is a villa reply, not an external.
+    # 4 staff-added + 3 booked through a link = 7. The table declined from
+    # its link does not count, and neither does the cancelled one.
     ck("outside diners are added to the covers and shown as their own chip",
        "ext 7:green" in reps["chips"])
     ck("a table booked through a link counts the same as one added by staff",

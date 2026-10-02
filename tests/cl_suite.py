@@ -17,16 +17,25 @@ onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},s
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
 def plus(d): return (now+datetime.timedelta(days=d)).strftime("%Y-%m-%d")
 STATE={"fail":False}; WRITES=[]
-responses={}
 manual={"room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"}}
-roomguests={
- "1":{"name":"James","departs":today},
- "2":{"name":"Elena","departs":plus(2)},
- "7":{"name":"Priya","departs":today},
- "8":{"name":"Owen","departs":today,"arrives":today},   # departed, arrival today
- "12":{"name":"Sam","departs":today},          # departed, nobody arriving
- "14":{"name":"Iris","departs":plus(3)},       # a service, seated later than villa 2
-}
+# The house as the Mews sync files it: a /stays record for every night a
+# guest sleeps, arrival in, departure out. Until 2 Oct this was today's
+# /roomguests, which nothing has written since 17 Aug and the board no
+# longer asks about a night from 1 Sep on.
+GUESTS = [("1",  "James", plus(-2), today),
+          ("2",  "Elena", plus(-2), plus(2)),
+          ("7",  "Priya", plus(-2), today),
+          ("8",  "Owen",  plus(-2), today),      # departed,
+          ("8",  "Nina",  today,    plus(2)),    # and an arrival today
+          ("12", "Sam",   plus(-2), today),      # departed, nobody arriving
+          ("14", "Iris",  plus(-2), plus(3))]    # a service, seated later than villa 2
+STAYS = {}
+for _v, _first, _a, _d in GUESTS:
+    _n = datetime.date.fromisoformat(_a)
+    while _n.isoformat() < _d:
+        STAYS.setdefault(_n.isoformat(), {})[_v] = {"id": "bk-%s-%s" % (_v, _first), "first": _first,
+                                                     "arrive": _a, "depart": _d, "adults": 2}
+        _n += datetime.timedelta(days=1)
 bf=(now-datetime.timedelta(minutes=12)).isoformat()
 bf2=(now-datetime.timedelta(minutes=4)).isoformat()
 bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
@@ -85,10 +94,10 @@ def fb(route,request):
         route.fulfill(status=200,content_type="application/json",body=request.post_data); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
-    elif "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
-    elif "/roomguests/"+today in u: body=json.dumps(roomguests)
-    elif "/roomguests/" in u: body="null"
+    elif "/stays/" in u:
+        d = u.split("/stays/")[1].split(".json")[0]
+        body = json.dumps(STAYS[d]) if d in STAYS else "null"
     elif "/hk/"+today in u: body=json.dumps(hk)
     elif "/hk/" in u: body=json.dumps(prevHk)
     route.fulfill(status=200,content_type="application/json",body=body)
@@ -1466,8 +1475,10 @@ with sync_playwright() as p:
        bool(days) and today in days[0])
     hits.clear()
     pg.evaluate("()=>load(true)"); pg.wait_for_timeout(900)
-    ck("a full load does refetch them, so bookings are never stale",
-       any("/roomguests/" in u for u in hits))
+    #  Since 2 Oct today never asks /roomguests at all (RETIRED_FROM in
+    #  nala-shared.js): the bookings come from /stays, which every poll reads.
+    ck("a full load asks no roomguests either: bookings come from /stays, read every time",
+       not any("/roomguests/" in u for u in hits) and any("/stays/" + today in u for u in hits))
 
     # with a villa sheet open the board must hold still
     tile(pg,3).click(); pg.wait_for_timeout(300)

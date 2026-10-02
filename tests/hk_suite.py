@@ -16,16 +16,24 @@ onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
 def plus(d): return (now+datetime.timedelta(days=d)).strftime("%Y-%m-%d")
 STATE={"break":False}
-responses={"0400000002":{"status":"in","pax":2,"name":"Elena","room":"2","arrives":plus(-3),"departs":plus(2),"at":"T1"}}
 manual={"room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"}}
-roomguests={
- "1":{"name":"James","arrives":plus(-2),"departs":today},
- "2":{"name":"Elena","arrives":plus(-3),"departs":plus(2)},
- "3":{"name":"Gone","departs":plus(-1)},
- "4":{"name":"Lucy","arrives":plus(-1),"departs":plus(3)},
- "7":{"name":"Priya","departs":today},
- "8":{"name":"Dev","departs":plus(1)},
-}
+# The house as the Mews sync files it: a /stays record for every night a
+# guest sleeps, arrival in, departure out. Until 2 Oct this was today's
+# /roomguests and /responses, which nothing has written since 17 Aug and
+# the sheet no longer asks for on a night from 1 Sep on.
+GUESTS = [("1", "James", plus(-2), today),     # left this morning
+          ("2", "Elena", plus(-3), plus(2)),
+          ("3", "Gone",  plus(-4), plus(-1)),  # left yesterday
+          ("4", "Lucy",  plus(-1), plus(3)),
+          ("7", "Priya", plus(-2), today),
+          ("8", "Dev",   plus(-2), plus(1))]
+STAYS = {}
+for _v, _first, _a, _d in GUESTS:
+    _n = datetime.date.fromisoformat(_a)
+    while _n.isoformat() < _d:
+        STAYS.setdefault(_n.isoformat(), {})[_v] = {"id": "bk-" + _v, "first": _first,
+                                                     "arrive": _a, "depart": _d, "adults": 2}
+        _n += datetime.timedelta(days=1)
 donets=now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"
 hk={"1":{"done":donets},"2":{"bfast":now.isoformat()},"4":{"departed":True},
     "7":{"bfast":now.isoformat(),"done":now.isoformat()},
@@ -46,12 +54,12 @@ def fb(route,request):
                       body=json.dumps(STAFF)); return
     if "/permissions" in u:
         route.fulfill(status=200,content_type="application/json",body="null"); return
-    if STATE["break"] and "/responses/" in u:
+    if STATE["break"] and "/manual/" in u:
         route.fulfill(status=500,body="err"); return
-    if "/responses/" in u: body=json.dumps(responses)
-    elif "/manual/" in u: body=json.dumps(manual)
-    elif "/roomguests/"+today in u: body=json.dumps(roomguests)
-    elif "/roomguests/" in u: body="null"
+    if "/manual/" in u: body=json.dumps(manual)
+    elif "/stays/" in u:
+        d = u.split("/stays/")[1].split(".json")[0]
+        body = json.dumps(STAYS[d]) if d in STAYS else "null"
     elif "/hk/" in u: body=json.dumps(hk)
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright

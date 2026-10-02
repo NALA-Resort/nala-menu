@@ -273,7 +273,7 @@ body.paper .bar { background:var(--ground); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=111"></script>
+<script src="nala-shared.js?v=112"></script>
 <script>
 /* Publishing is the chef's job and the manager's, gated on the same permission
    the tagging page uses. Sent to their own board rather than refused, since a
@@ -547,7 +547,7 @@ body.paper .bar { background:var(--ground); }
         .then(function(r){ return r.ok ? r.json() : null; })
         .catch(function(){ return null; });
     }
-    Promise.all([ quiet('/responses/' + K), quiet('/manual/' + K),
+    Promise.all([ retiredRead(K, function(){ return quiet('/responses/' + K); }), quiet('/manual/' + K),
                   fetchRoomGuests(K), fetchStays(K) ])
       .then(function(res){
         var responses = res[0] || {}, manual = res[1] || {};

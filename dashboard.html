@@ -209,7 +209,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=111"></script>
+<script src="nala-shared.js?v=112"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -371,9 +371,11 @@ function load(){
       .catch(function(){ return null; }),
     /* Digital externals live here, keyed by phone with no room on them.
        Reading /manual alone counted the staff-added shape only. */
-    fetch(DB + '/responses/' + day + '.json?v=' + Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; }),
+    retiredRead(day, function(){
+      return fetch(DB + '/responses/' + day + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; });
+    }),
     fetch(DB + '/spa.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),

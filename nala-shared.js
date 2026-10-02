@@ -170,8 +170,26 @@ function initDateNav(){
    Pass force = true to ignore the cache.                                  */
 var RG_CACHE = null, RG_AT = 0, RG_KEY = '', RG_MAX_AGE = 5 * 60 * 1000;
 
+/* /roomguests and /responses are retired. The guest page stopped writing
+   both on 17 Aug (3b2f60d), when its link moved to the one dinner cell, and
+   nothing has written either since. A roomguests record carries forward to
+   its departure only inside the fortnight read below, so no night from
+   1 Sep on can find anything in either. Nights before can, and the boards
+   still browse back to them, so those nights ask as they always did; later
+   nights do not ask (2 Oct) - fifteen of the requests Reservations made
+   opening on today, and one on every refresh. */
+var RETIRED_FROM = '2026-09-01';
+function readsRetired(dateKey){ return String(dateKey || '') < RETIRED_FROM; }
+/* A page's /responses read for a night, or null without asking from
+   RETIRED_FROM on. read is the page's own ask, so its failure handling
+   stands; every reader takes null as no replies. */
+function retiredRead(dateKey, read){
+  return readsRetired(dateKey) ? read() : Promise.resolve(null);
+}
+
 function fetchRoomGuests(endKey, days, force){
   days = days || 14;
+  if (!readsRetired(endKey)) return Promise.resolve({});
   if (!force && RG_CACHE && RG_KEY === endKey + ':' + days &&
       (Date.now() - RG_AT) < RG_MAX_AGE){
     return Promise.resolve(RG_CACHE);

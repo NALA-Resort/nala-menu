@@ -476,7 +476,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=13"></script>
-<script src="nala-shared.js?v=111"></script>
+<script src="nala-shared.js?v=112"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -809,7 +809,7 @@ function fetchStaffNotes(stays){
   }));
 }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()), fetchStays(todayKey()) ])
+Promise.all([ retiredRead(todayKey(), function(){ return api('/responses/'+todayKey()); }), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()), fetchStays(todayKey()) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
