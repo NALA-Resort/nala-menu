@@ -50,6 +50,7 @@ surprise, which was the actual risk: a demo that still works, still looks
 right, and shows an app that no longer exists.
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -107,6 +108,7 @@ SUITES = [
     ("paper",      ["python3", "tests/paper_suite.py"],   300),
     # The tab bar, 30 Sep: what each role is offered, and nothing under it.
     ("tabs",       ["python3", "tests/tabs_suite.py"],    400),
+    ("reads",      ["python3", "tests/reads_suite.py"],   300),
     ("colour",     ["python3", "tests/colour_suite.py"],  400),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("pastmenus",  ["python3", "tests/pastmenus_suite.py"], 120),
@@ -201,9 +203,16 @@ COVERS = {
     "tests/colour_law.json":  ["colour"],
     "tests/paper_night.json": ["paper", "colour"],
     "tests/night_harness.py": ["paper", "colour", "tabs"],
-    # The menu's shape and the tab bar's, read by these five.
-    "tests/nav_canon.json": ["tabs", "pages", "tally", "pub", "tag"],
+    # The menu's shape and the tab bar's, read by these six.
+    "tests/nav_canon.json": ["tabs", "pages", "tally", "pub", "tag", "reads"],
+    "tests/page_reads.json": ["reads"],
 }
+# Rule 8's table names every page in the menu, and a change to any of them can
+# make it read another module's data: reads_suite runs for each, from the
+# table's own list rather than a copy of it here.
+for _page in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "page_reads.json")))["pages"]:
+    COVERS.setdefault(_page, []).append("reads")
 # nala-ui.css and nala-ui2.css dress every page, so, like nala-shared.js, a
 # change to either has no single owner. Until 27 Sep neither was listed, and
 # --changed after a stylesheet edit ran nothing at all.

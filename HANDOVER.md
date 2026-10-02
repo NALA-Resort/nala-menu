@@ -226,8 +226,22 @@ that is not for the day being asked about, and reports an unreadable menu
 separately from an absent one. Three different pages had grown their own version
 of this and each was wrong differently.
 
+**The boards read the bookings a night can need**, not every booking ever
+made: `fetchBookingsFrom` in `nala-shared.js` asks for those departing from
+the day before the night viewed, through the index `".indexOn":
+["pms/depart"]` on `/bookings` in `rules.json` (pasted 2 Oct). A refused
+query reads the whole node, as before, never nothing. The Spa counter and
+board, the Calendar, the Dashboard's arrivals card and Diagnostics still read
+it whole.
+
 **Old and retired**, read-only, emptying as dates age out: `/responses`,
-`/roomguests`, `/guests`. Nothing writes them.
+`/roomguests`, `/guests`. Nothing writes them, and since 2 Oct no page asks
+them about a night from 1 Sep on (`RETIRED_FROM`, `nala-shared.js`); nights
+before still do, for the date arrows.
+
+**What each page reads as it opens** is held by `tests/page_reads.json`,
+rule 8 in `CLAUDE.md`: a module keeps to itself, and another page meets it
+only through one small count in the menu.
 
 ### The Mews id, which took most of a day to get right
 

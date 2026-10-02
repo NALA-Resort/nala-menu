@@ -1,0 +1,55 @@
+{
+  "_comment": [
+    "What every page in the menu reads as it opens, and how many requests",
+    "that takes: rule 8 in CLAUDE.md (2 Oct), so a module added to the app",
+    "cannot quietly slow the pages already there. reads_suite opens each page",
+    "as the admin on one small seeded house with the menu's counts switched",
+    "off, and fails a node that is neither on the page's line nor the",
+    "shell's, and a page whose own requests grew past its max; then it",
+    "measures the counts on one page against 'counts'.",
+    "A new page in the menu needs its line here, and the suite fails until it",
+    "has one. A module's count is its node in 'counts' and its requests in",
+    "that max - one small request is the rule. Another module's node turning",
+    "up on a page's line is the thing to stop and ask about: the lines below",
+    "were recorded as the app stood on 2 Oct, and the cross-module reads on",
+    "them were each put there on purpose, the Dashboard's above all (rule 7,",
+    "dashboard_sources.json). A node is the first part of the path:",
+    "/bookings/b1/prearrival is bookings. Rewrite a line from",
+    "python3 tests/reads_suite.py --record, never by guessing."
+  ],
+  "shell": {
+    "_comment": "Read by every page: the login (staff, permissions) and the menu's own announcement (menu).",
+    "nodes": ["menu", "permissions", "staff"]
+  },
+  "counts": {
+    "_comment": "The menu's counts as the admin sees them on Reservations: Spa's (spa and every booking), Chat's (contactnew, asked shallow), Tasks' (contactsettings, then one query per team - six). Asked once as a page opens since 2 Oct, and again on their own timers.",
+    "page": "tally.html",
+    "nodes": ["bookings", "contactnew", "contactsettings", "spa", "tasks"],
+    "max": 10
+  },
+  "pages": {
+    "arrivals-sms.html": {"reads": ["bookings", "phonefix", "presmstemplates", "previnvites", "spa", "stays"], "max": 6},
+    "calendar.html": {"reads": ["bookings", "hk", "spa", "stays"], "max": 4},
+    "cleaners.html": {"reads": ["bookings", "dinner", "hk", "manual", "notify", "opened", "stays"], "max": 10},
+    "dashboard.html": {"reads": ["bookings", "cards", "contactnew", "contactsettings", "cutrun", "dayboard", "dinner", "invites", "manual", "opened", "phonefix", "previnvites", "spa", "spareminders", "stays", "tasks"], "max": 23},
+    "flags.html": {"reads": ["flags"], "max": 1},
+    "front-desk.html": {"reads": ["bookflags", "bookings", "cards", "dietaries", "dinner", "flags", "menutags", "phonefix", "spa", "stays"], "max": 11},
+    "guest-contact.html": {"reads": ["contact", "contactnew", "contactsettings", "invites", "phonefix", "previnvites", "spareminders", "stays", "tasks"], "max": 14},
+    "housekeeping.html": {"reads": ["bookings", "dinner", "hk", "manual", "opened", "stays"], "max": 8},
+    "invitations.html": {"reads": ["bookings", "dinner", "extinvites", "invites", "manual", "opened", "phonefix", "smstemplates", "stays"], "max": 9},
+    "keys.html": {"reads": ["cards", "stays"], "max": 4},
+    "list.html": {"reads": ["bookflags", "bookings", "combined", "dinner", "internal", "manual", "menutags", "opened", "stays"], "max": 13},
+    "menu-print.html": {"reads": [], "max": 0},
+    "pages.html": {"reads": [], "max": 0},
+    "past-menus.html": {"reads": ["menuhistory"], "max": 1},
+    "publish.html": {"reads": ["bookings", "dietaries", "dinner", "manual", "menutags", "opened", "stays"], "max": 7},
+    "registration.html": {"reads": ["bookings", "menutags", "spa", "stays"], "max": 5},
+    "spa-reminders.html": {"reads": ["bookings", "phonefix", "spa", "spareminders", "spasmstemplates", "stays"], "max": 6},
+    "spa.html": {"reads": ["bookings", "phonefix", "spa", "spacontact", "spareminders", "stays"], "max": 6},
+    "staff.html": {"reads": ["contactsettings", "notify", "prearrivalinfo", "spacontact", "spasettings"], "max": 5},
+    "stats.html": {"reads": ["bookings", "dinner", "menuhistory", "responses", "stays"], "max": 13},
+    "tag.html": {"reads": ["dietaries", "menutags"], "max": 2},
+    "tally.html": {"reads": ["bookings", "combined", "dinner", "extinvites", "manual", "opened", "stays"], "max": 8},
+    "tasks.html": {"reads": ["contactsettings", "tasks"], "max": 13}
+  }
+}

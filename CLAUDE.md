@@ -112,6 +112,11 @@ Already done this way — follow these:
   push Worker, `worker/nala-push.js`, 1 Oct, so no phone is buzzed for a
   page its login cannot open).
 
+- `tests/page_reads.json` - what every page in the menu reads as it opens,
+  and how many requests that takes: the login's nodes, the menu's counts,
+  each page's own. `reads_suite` fails a page that reads a node not on its
+  line, by page and node. Added 2 Oct with rule 8.
+
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
 all; they read `nav_canon.json` now. A suite with its own copy can pass
@@ -499,6 +504,39 @@ Date comparisons anywhere: `dkey(parseISO(s))` for a timestamp,
 `new Date(s)` straight into a comparison. And run date suites in more than
 one zone — `TZ=Australia/Brisbane` alongside the default. A date test that
 only runs in UTC is blind to this whole class of bug.
+
+### 8. A module keeps to itself
+
+Ruled 2 Oct, from the owner's worry as modules keep arriving: "I don't want
+this air-conditioning automation to slow up the reservations portion. In
+the same way, I don't want the Guest chat to slow up their reservation
+portion." Measured that day, it already had: Reservations opened with 47
+requests, 20 of them other modules' menu counts, each asked twice, and the
+boards downloaded every booking ever made on every refresh. Fixed the same
+day, it opens with 22.
+
+A module is its own page (one entry in `NAV`, rule 2), its own top-level
+nodes, its own script file for code only its page runs (as Keys'
+`nala-cards.js`), and its own Worker if it talks to anything outside the
+app. Another page meets it only through **one small count** in
+`NAV_ACTIONS`: one request, shallow where it can be, as Chat's is. Anything
+a person must act on now is a push through `PUSH`, not a count on every page.
+
+`tests/page_reads.json` holds it and `reads_suite` checks it: every page in
+the menu, opened with the counts off, fails on a node not on its line or
+requests past its number, and the counts are measured once on Reservations.
+A new page fails until it has a line, written from `reads_suite --record`.
+Another module's node arriving on a page's line is the moment to stop: say
+why beside it, or find the way that does not need it. The lines recorded on
+2 Oct carry the app's existing cross-module reads, each there on purpose -
+the Dashboard's above all (rule 7).
+
+Two things that look like this rule and are not, settled the same day:
+moving module code out of nala-shared.js (most of it is shared on purpose,
+because the Dashboard calls each module's own reader, and three suites read
+it there) - so nothing moves out, but nothing page-only goes in; and a
+second list of open tasks to make Tasks' count one request (two records of
+one state, the trap the form's three states came from).
 
 ## When you break these rules
 
