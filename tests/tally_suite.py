@@ -1229,28 +1229,24 @@ with sync_playwright() as p:
     del stays[today]["11"]
 
     # ── the bubble's colour is one decision ─────────────────────────────
-    # Worst wins: red to act on before cooking, amber to read, grey for
-    # context the kitchen does not act on. Decided in bubbleState and
-    # nowhere else, so it is tested as the function it is.
+    # Worst wins: red to act on before cooking, amber to read, and nothing
+    # else draws one. Decided in bubbleState and nowhere else, so it is
+    # tested as the function it is.
     q=as_role("staff@x"); q.wait_for_timeout(400)
     ck("a menu conflict is red",
-       q.evaluate("()=>bubbleState([], {}, [{dish:'a',diet:'b'}], '')")=="red")
+       q.evaluate("()=>bubbleState([], {}, [{dish:'a',diet:'b'}])")=="red")
     ck("Other with nothing written is red",
-       q.evaluate("()=>bubbleState([DIET_OTHER], {}, [], '')")=="red")
+       q.evaluate("()=>bubbleState([DIET_OTHER], {}, [])")=="red")
     ck("Other explained is not",
-       q.evaluate("()=>bubbleState([DIET_OTHER], {dineDnote:'sesame'}, [], '')")=="amber")
+       q.evaluate("()=>bubbleState([DIET_OTHER], {dineDnote:'sesame'}, [])")=="amber")
     ck("a dietary note is amber",
-       q.evaluate("()=>bubbleState([], {dineDnote:'x'}, [], '')")=="amber")
+       q.evaluate("()=>bubbleState([], {dineDnote:'x'}, [])")=="amber")
     ck("a dinner note is amber",
-       q.evaluate("()=>bubbleState([], {dineNote:'x'}, [], '')")=="amber")
+       q.evaluate("()=>bubbleState([], {dineNote:'x'}, [])")=="amber")
     ck("an earlier night's leavings are amber",
-       q.evaluate("()=>bubbleState([], {prevDiets:['Vegan']}, [], '')")=="amber")
-    ck("a booking note alone is grey",
-       q.evaluate("()=>bubbleState([], {}, [], 'golf buggy please')")=="grey")
-    ck("worst wins over grey",
-       q.evaluate("()=>bubbleState([], {dineNote:'x'}, [], 'golf buggy')")=="amber")
+       q.evaluate("()=>bubbleState([], {prevDiets:['Vegan']}, [])")=="amber")
     ck("nothing at all is no bubble",
-       q.evaluate("()=>bubbleState([], {}, [], '')")=="")
+       q.evaluate("()=>bubbleState([], {}, [])")=="")
     # The overlay settles provenance. Robyn's case, 20 Aug: Other ticked and
     # explained, but the note lived on the reservation only, the stamp runs
     # before the overlay, and the bubble read the stamped field: it called an
@@ -1265,20 +1261,38 @@ with sync_playwright() as p:
        q.evaluate("""()=>{PREARRIVAL_BY_VILLA['99']={diets:[DIET_OTHER],dnote:'garlic'};
          const r=overlayReservationDiets({},'99');
          delete PREARRIVAL_BY_VILLA['99'];
-         return bubbleState(r.diets, r, [], '')==='amber';}"""))
+         return bubbleState(r.diets, r, [])==='amber';}"""))
     ck("and an unexplained Other stays red",
        q.evaluate("""()=>{PREARRIVAL_BY_VILLA['99']={diets:[DIET_OTHER]};
          const r=overlayReservationDiets({},'99');
          delete PREARRIVAL_BY_VILLA['99'];
-         return bubbleState(r.diets, r, [], '')==='red';}"""))
-    # The grey bubble opens the booking note under its name, and only that.
-    q.evaluate("()=>openNotes('Villa 4', {}, [], 'A golf buggy on arrival')")
-    q.wait_for_timeout(200)
-    notes=q.locator("#sheet").inner_text().upper()
-    ck("a grey bubble opens Booking notes",
-       "BOOKING NOTES" in notes and "GOLF BUGGY" in notes)
-    ck("and no kitchen sections it has nothing for",
-       "DIETARY NOTES" not in notes and "DINNER NOTES" not in notes)
+         return bubbleState(r.diets, r, [])==='red';}"""))
+    # A booking note draws no bubble and rides in none (the owner, 3 Oct: a
+    # grey bubble for every booking note flooded the list, and the dietary
+    # bubbles were lost among them). It is read behind the eye, checked with
+    # the booking's notes below. Asked of the drawn rows, since bubbleState
+    # no longer hears of one: villa 3 has nothing for the kitchen, villa 1 a
+    # red bubble of its own. One evaluate, so no poll lands mid-check.
+    got=q.evaluate("""()=>{
+      const note={note:'A golf buggy on arrival'};
+      PREARRIVAL_BY_VILLA['1']=note; PREARRIVAL_BY_VILLA['3']=note; render();
+      const row=n=>[...document.querySelectorAll('#listBookings .row')]
+        .find(r=>(r.querySelector('.rm')||{}).textContent===n);
+      const r1=row('1'), r3=row('3');
+      const out={r3bub:r3.querySelectorAll('.bub').length,
+                 r3slot:r3.querySelectorAll('.bub-slot').length,
+                 r1bub:r1.querySelectorAll('.bub').length};
+      if (out.r1bub) r1.querySelector('.bub').click();
+      out.notes=sheet.textContent.toUpperCase();
+      delete PREARRIVAL_BY_VILLA['1']; delete PREARRIVAL_BY_VILLA['3'];
+      return out;}""")
+    ck("a booking note alone draws no bubble, only the empty slot",
+       got["r3bub"]==0 and got["r3slot"]==1)
+    ck("a kitchen bubble still opens on its own notes",
+       got["r1bub"]==1 and "DINNER NOTES" in got["notes"]
+       and "WINDOW SEAT" in got["notes"])
+    ck("and carries no booking note",
+       "BOOKING NOTES" not in got["notes"] and "GOLF BUGGY" not in got["notes"])
     q.close()
 
     # ── the guest snapshot behind the eye ───────────────────────────────
