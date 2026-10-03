@@ -23,6 +23,17 @@
      villa nobody slept in is left off, as the Sheet leaves it off. Text
      inflation is switched off, which a phone held sideways otherwise does.
 
+     Then: "Yes this is a better direction. Table selection should be on
+     left so easier to match with room number. Biggest design problem is
+     the thin rows. Perhaps two columns would work better. 1-9 in first
+     column". So two columns of rows, 1 to 9 and 10 to 17, every villa in
+     its place, a villa nobody slept in faded in its row: a row is a ninth
+     of the screen high, 68 where it was 41. In each, the villa, then its
+     table right beside it, where the paper's B'fast column sits beside the
+     room; then the guest over their party and the day they leave; then
+     the tags, the group among them. No column titles: each line says what
+     it is. View tables takes the eighteenth place.
+
      A row opens the room's plan for that villa: still to come, a table
      seats them and the pop-up shuts, two taps; seated, another table
      moves them, and Finished, Add a villa and Undo seating are there.
@@ -100,39 +111,27 @@
   /* Fixed, so a press never scrolls the page to the radio it sets. */
   .sr{ position:fixed; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none; }
 
-  /* ── the villas, as the FOH Sheet lists them ───────────────────────
-     One line a villa, in villa order, a column for each fact and the table
-     last: the landscape screen's width doing the work its height could
-     not. A villa nobody slept in is left off, as the Sheet leaves it off.
-     Nothing re-sorts: a finished villa fades where it is. */
+  /* ── the villas, as the FOH Sheet lists them, in two columns ────────
+     1 to 9 down the first, 10 to 17 down the second, every villa in its
+     place: a row is a ninth of the screen high, not a seventeenth. In each
+     row the villa, then its table beside it, where the paper's B'fast
+     column sits beside the room; then the guest over their party and the
+     day they leave; then the tags. The eighteenth place is View tables. */
   .sheet{ position:absolute; left:16px; top:12px; width:1248px; height:617px;
-          display:flex; flex-direction:column; background:var(--surface); border-radius:10px;
-          box-shadow:var(--lift); overflow:hidden; }
-  .thead, .v{ display:grid; grid-template-columns:56px minmax(0,1.45fr) 44px minmax(0,.55fr) minmax(0,1.15fr) minmax(0,1.85fr) 156px; column-gap:16px; padding:0 12px 0 6px; }
-  .thead{ flex:0 0 auto; height:46px; align-items:center; border-bottom:1px solid var(--rule);
-          font-size:13px; color:var(--mid); }
-  .thead > span{ white-space:nowrap; }
-  .thead .h-c{ text-align:center; }
-  /* Rows share the height, none taller than 54: fourteen this morning, and a
-     full house of seventeen still fits, at 34 each. A row whose dietaries
-     need a second line takes it, and the others give up the room: a pill
-     is never cut off, an allergy least of all. */
-  .rows{ flex:1 1 auto; min-height:0; display:grid; grid-auto-rows:minmax(min-content, 54px);
-          align-content:start; }
-  /* Every row starts from the same 30, so they share the height evenly
-     whatever their table cell holds. */
-  .v{ position:relative; align-items:center; border-bottom:1px solid var(--rule); min-width:0;
-      min-height:30px; }
+          display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; }
+  .col{ display:grid; grid-template-rows:repeat(9, minmax(min-content, 1fr)); min-height:0;
+        background:var(--surface); border-radius:10px; box-shadow:var(--lift); overflow:hidden; }
+  .v{ position:relative; display:grid; grid-template-columns:44px 104px minmax(0,1fr) 216px; column-gap:12px; align-items:center;
+      padding:0 12px 0 4px; border-bottom:1px solid var(--rule); min-width:0; min-height:0; }
+  .col > .v:last-child{ border-bottom:0; }
   .c{ min-width:0; }
-  .c-v{ text-align:center; font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .c-g{ display:flex; align-items:baseline; gap:8px; }
+  .c-v{ text-align:center; font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .c-g{ display:flex; flex-direction:column; gap:2px; }
   /* The name is the one field that may trim (STYLEGUIDE, the trim rule). */
-  .gn{ font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-  .gw{ flex:0 0 auto; font-size:13px; color:var(--mid); white-space:nowrap; }
-  .c-p{ font-size:16px; text-align:center; font-variant-numeric:tabular-nums; }
-  .c-l{ font-size:15px; color:var(--mid); white-space:nowrap; }
-  .c-l.today{ color:var(--ink); font-weight:600; }
-  .c-f, .c-d{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 5px; }
+  .gn{ font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gs{ font-size:14px; color:var(--mid); white-space:nowrap; }
+  .gs b{ color:var(--ink); font-weight:600; }
+  .c-x{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 5px; padding:4px 0; }
   .d-s{ font-size:14px; color:var(--mid); line-height:1.35; margin-top:2px; }
   .pills{ display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
   /* A booking flag is a fact, inked plainly (the FOH Sheet's .fpill). */
@@ -145,12 +144,11 @@
   .v:has(> .vs[data-s="seat"]:checked) .dpill{ background:rgba(168,50,30,.12); color:var(--law-red); }
   .v:has(> .vs[data-s="seat"]:checked) .dpill.al{ background:var(--law-red); color:#fff; }
 
-  /* The column the paper left blank: Seat, then the table, as tall as the
-     row lets it be. The whole row is the press, not only this. */
-  .c-t{ align-self:stretch; display:flex; align-items:center; padding:4px 0; }
-  .cell{ width:100%; height:100%; max-height:40px; border-radius:var(--r);
+  /* The column the paper left blank, beside the villa: Seat, then the table.
+     The whole row is the press, not only this. */
+  .cell{ width:100%; height:48px; border-radius:var(--r);
          display:flex; align-items:center; justify-content:center; text-align:center; }
-  .cell > span{ display:none; align-items:baseline; gap:8px; white-space:nowrap; line-height:1.1; }
+  .cell > span{ display:none; flex-direction:column; align-items:center; line-height:1.1; }
   .c-seat{ font-size:16px; font-weight:500; }
   .v:has(> .vs[data-s="none"]:checked) .cell{ background:var(--card); }
   .v:has(> .vs[data-s="none"]:checked) .c-seat{ display:flex; }
@@ -159,13 +157,15 @@
       border:1px solid var(--law-green-b); }
   .v:has(> .vs[data-s="seat"]:checked) .c-at{ display:flex; }
   .v:has(> .vs[data-s="done"]:checked) .c-fin{ display:flex; }
-  .cell .tnum{ font-size:20px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
-  .cell .ti{ font-size:12.5px; color:var(--law-green); font-weight:600; }
+  .cell .tnum{ font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .cell .ti{ font-size:12px; color:var(--law-green); font-weight:600; }
   .c-fin .tnum{ color:var(--mid); }
-  .c-fin .ti{ color:var(--mid); font-weight:400; }
+  .c-fin .ti{ color:var(--mid); font-weight:400; white-space:nowrap; }
   .tnum::after{ content:var(--tn,""); }
-  /* Finished: nothing left to do, the law's sunk grey, in its place. */
+  /* Finished, and a villa nobody slept in: nothing to do, the law's sunk
+     grey, in its place. */
   .v:has(> .vs[data-s="done"]:checked) > .c{ opacity:.5; }
+  .v.vac > .c{ opacity:.45; }
 
   .hit{ position:absolute; inset:0; z-index:1; display:none; border-radius:inherit; }
   .hit:active{ background:rgba(28,28,26,.06); }
@@ -173,13 +173,13 @@
   .v:has(> .vs[data-s="none"]:checked) > .hit.hp,
   .v:has(> .vs[data-s="seat"]:checked) > .hit.hm{ display:block; }
 
-  /* View tables heads the table column: a quiet button, with the count. */
-  .vt{ display:flex; align-items:baseline; justify-content:center; gap:6px; height:34px;
+  /* View tables, in the eighteenth place: a quiet button, with the count. */
+  .vt{ display:flex; align-items:center; justify-content:center; gap:10px; margin:9px 12px;
        background:var(--surface); border:1px solid var(--rule); border-radius:var(--r);
-       align-items:center; white-space:nowrap; }
+       white-space:nowrap; }
   .vt:active{ background:var(--card); }
-  .vt1{ font-size:14px; font-weight:500; color:var(--ink); }
-  .vt2{ font-size:13px; color:var(--mid); }
+  .vt1{ font-size:17px; font-weight:500; color:var(--ink); }
+  .vt2{ font-size:14px; color:var(--mid); }
   .n-free::before{ content:counter(free); }
 
   /* ── the pop-ups ──────────────────────────────────────────────────── */
@@ -1505,16 +1505,13 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
     <div class="idle">Tap a table to see who is there,<br>or to seat a villa at it.</div>
   </div>
 </div>
-<div class="sheet"><div class="thead"><span class="h-c">Villa</span><span>Guest</span><span class="h-c">Pax</span><span>Leaves</span><span>Flags</span><span>Dietaries</span><label class="vt" for="tv"><span class="vt1">View tables</span><span class="vt2"><span class="n-free"></span> free</span></label></div><div class="rows">
+<div class="sheet"><div class="col">
 <div class="v v1 svc">
 <input type="radio" class="sr vs" name="v1" id="v1-0" data-s="none" checked><input type="radio" class="sr vs" name="v1" id="v1-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v1" id="v1-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v1" id="v1-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v1" id="v1-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v1" id="v1-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v1" id="v1-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v1" id="v1-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v1" id="v1-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v1" id="v1-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v1" id="v1-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v1" id="v1-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v1" id="v1-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v1" id="v1-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v1" id="v1-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v1" id="v1-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v1" id="v1-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v1" id="v1-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v1" id="v1-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v1" id="v1-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v1" id="v1-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v1" id="v1-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v1" id="v1-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v1" id="v1-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v1" id="v1-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v1" id="v1-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v1" id="v1-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v1" id="v1-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v1" id="v1-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v1" id="v1-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v1" id="v1-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v1" id="v1-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v1" id="v1-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v1" id="v1-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v1" id="v1-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v1" id="v1-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v1" id="v1-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-1"><input type="radio" class="sr mv" name="sh" id="mv-1"><input type="radio" class="sr shx" name="sh" id="shx-1">
 <span class="c c-v">1</span>
-<span class="c c-g"><span class="gn">James Harrington</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Mon 28</span>
-<span class="c c-f"><span class="fpill">Breakfast included</span></span>
-<span class="c c-d"><span class="dpill al">Nut</span></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">James Harrington</span><span class="gs">2 pax &middot; leaves Mon 28</span></span>
+<span class="c c-x"><span class="fpill">Breakfast included</span><span class="dpill al">Nut</span></span>
 <label class="hit hp" for="pk-1" aria-label="Seat villa 1, James Harrington"></label>
 <label class="hit hm" for="mv-1" aria-label="Villa 1, James Harrington, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 1">
@@ -1541,12 +1538,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v2 clean">
 <input type="radio" class="sr vs" name="v2" id="v2-0" data-s="none" checked><input type="radio" class="sr vs" name="v2" id="v2-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v2" id="v2-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v2" id="v2-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v2" id="v2-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v2" id="v2-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v2" id="v2-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v2" id="v2-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v2" id="v2-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v2" id="v2-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v2" id="v2-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v2" id="v2-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v2" id="v2-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v2" id="v2-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v2" id="v2-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v2" id="v2-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v2" id="v2-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v2" id="v2-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v2" id="v2-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v2" id="v2-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v2" id="v2-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v2" id="v2-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v2" id="v2-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v2" id="v2-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v2" id="v2-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v2" id="v2-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v2" id="v2-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v2" id="v2-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v2" id="v2-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v2" id="v2-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v2" id="v2-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v2" id="v2-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v2" id="v2-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v2" id="v2-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v2" id="v2-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v2" id="v2-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v2" id="v2-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-2"><input type="radio" class="sr mv" name="sh" id="mv-2"><input type="radio" class="sr shx" name="sh" id="shx-2">
 <span class="c c-v">2</span>
-<span class="c c-g"><span class="gn">Nora Quinn</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l today">Today</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Nora Quinn</span><span class="gs">2 pax &middot; <b>leaves today</b></span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-2" aria-label="Seat villa 2, Nora Quinn"></label>
 <label class="hit hm" for="mv-2" aria-label="Villa 2, Nora Quinn, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 2">
@@ -1573,12 +1567,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v3 svc">
 <input type="radio" class="sr vs" name="v3" id="v3-0" data-s="none" checked><input type="radio" class="sr vs" name="v3" id="v3-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v3" id="v3-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v3" id="v3-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v3" id="v3-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v3" id="v3-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v3" id="v3-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v3" id="v3-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v3" id="v3-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v3" id="v3-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v3" id="v3-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v3" id="v3-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v3" id="v3-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v3" id="v3-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v3" id="v3-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v3" id="v3-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v3" id="v3-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v3" id="v3-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v3" id="v3-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v3" id="v3-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v3" id="v3-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v3" id="v3-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v3" id="v3-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v3" id="v3-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v3" id="v3-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v3" id="v3-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v3" id="v3-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v3" id="v3-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v3" id="v3-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v3" id="v3-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v3" id="v3-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v3" id="v3-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v3" id="v3-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v3" id="v3-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v3" id="v3-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v3" id="v3-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v3" id="v3-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-3"><input type="radio" class="sr mv" name="sh" id="mv-3"><input type="radio" class="sr shx" name="sh" id="shx-3">
 <span class="c c-v">3</span>
-<span class="c c-g"><span class="gn">Mark Whitfield</span><span class="gw">with villa 4</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Mon 28</span>
-<span class="c c-f"></span>
-<span class="c c-d"><span class="dpill">Vegetarian</span></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Mark Whitfield</span><span class="gs">2 pax &middot; leaves Mon 28</span></span>
+<span class="c c-x"><span class="fpill">With villa 4</span><span class="dpill">Vegetarian</span></span>
 <label class="hit hp" for="pk-3" aria-label="Seat villa 3, Mark Whitfield"></label>
 <label class="hit hm" for="mv-3" aria-label="Villa 3, Mark Whitfield, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 3">
@@ -1605,12 +1596,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v4 svc">
 <input type="radio" class="sr vs" name="v4" id="v4-0" data-s="none" checked><input type="radio" class="sr vs" name="v4" id="v4-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v4" id="v4-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v4" id="v4-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v4" id="v4-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v4" id="v4-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v4" id="v4-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v4" id="v4-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v4" id="v4-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v4" id="v4-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v4" id="v4-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v4" id="v4-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v4" id="v4-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v4" id="v4-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v4" id="v4-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v4" id="v4-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v4" id="v4-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v4" id="v4-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v4" id="v4-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v4" id="v4-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v4" id="v4-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v4" id="v4-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v4" id="v4-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v4" id="v4-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v4" id="v4-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v4" id="v4-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v4" id="v4-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v4" id="v4-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v4" id="v4-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v4" id="v4-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v4" id="v4-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v4" id="v4-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v4" id="v4-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v4" id="v4-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v4" id="v4-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v4" id="v4-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v4" id="v4-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-4"><input type="radio" class="sr mv" name="sh" id="mv-4"><input type="radio" class="sr shx" name="sh" id="shx-4">
 <span class="c c-v">4</span>
-<span class="c c-g"><span class="gn">Lucy Whitfield</span><span class="gw">with villa 3</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Mon 28</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Lucy Whitfield</span><span class="gs">2 pax &middot; leaves Mon 28</span></span>
+<span class="c c-x"><span class="fpill">With villa 3</span></span>
 <label class="hit hp" for="pk-4" aria-label="Seat villa 4, Lucy Whitfield"></label>
 <label class="hit hm" for="mv-4" aria-label="Villa 4, Lucy Whitfield, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 4">
@@ -1637,12 +1625,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v5 clean">
 <input type="radio" class="sr vs" name="v5" id="v5-0" data-s="none" checked><input type="radio" class="sr vs" name="v5" id="v5-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v5" id="v5-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v5" id="v5-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v5" id="v5-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v5" id="v5-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v5" id="v5-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v5" id="v5-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v5" id="v5-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v5" id="v5-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v5" id="v5-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v5" id="v5-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v5" id="v5-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v5" id="v5-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v5" id="v5-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v5" id="v5-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v5" id="v5-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v5" id="v5-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v5" id="v5-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v5" id="v5-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v5" id="v5-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v5" id="v5-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v5" id="v5-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v5" id="v5-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v5" id="v5-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v5" id="v5-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v5" id="v5-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v5" id="v5-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v5" id="v5-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v5" id="v5-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v5" id="v5-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v5" id="v5-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v5" id="v5-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v5" id="v5-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v5" id="v5-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v5" id="v5-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v5" id="v5-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-5"><input type="radio" class="sr mv" name="sh" id="mv-5"><input type="radio" class="sr shx" name="sh" id="shx-5">
 <span class="c c-v">5</span>
-<span class="c c-g"><span class="gn">Felix Moreau</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l today">Today</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Felix Moreau</span><span class="gs">2 pax &middot; <b>leaves today</b></span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-5" aria-label="Seat villa 5, Felix Moreau"></label>
 <label class="hit hm" for="mv-5" aria-label="Villa 5, Felix Moreau, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 5">
@@ -1669,12 +1654,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v6 svc">
 <input type="radio" class="sr vs" name="v6" id="v6-0" data-s="none"><input type="radio" class="sr vs" name="v6" id="v6-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v6" id="v6-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v6" id="v6-43" data-s="seat" data-t="43" checked><input type="radio" class="sr vs" name="v6" id="v6-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v6" id="v6-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v6" id="v6-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v6" id="v6-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v6" id="v6-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v6" id="v6-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v6" id="v6-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v6" id="v6-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v6" id="v6-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v6" id="v6-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v6" id="v6-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v6" id="v6-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v6" id="v6-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v6" id="v6-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v6" id="v6-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v6" id="v6-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v6" id="v6-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v6" id="v6-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v6" id="v6-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v6" id="v6-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v6" id="v6-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v6" id="v6-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v6" id="v6-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v6" id="v6-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v6" id="v6-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v6" id="v6-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v6" id="v6-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v6" id="v6-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v6" id="v6-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v6" id="v6-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v6" id="v6-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v6" id="v6-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v6" id="v6-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-6"><input type="radio" class="sr mv" name="sh" id="mv-6"><input type="radio" class="sr shx" name="sh" id="shx-6">
 <span class="c c-v">6</span>
-<span class="c c-g"><span class="gn">David Chen</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Sun 27</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">07:48</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">David Chen</span><span class="gs">2 pax &middot; leaves Sun 27</span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-6" aria-label="Seat villa 6, David Chen"></label>
 <label class="hit hm" for="mv-6" aria-label="Villa 6, David Chen, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 6">
@@ -1701,12 +1683,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v7 clean">
 <input type="radio" class="sr vs" name="v7" id="v7-0" data-s="none"><input type="radio" class="sr vs" name="v7" id="v7-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v7" id="v7-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v7" id="v7-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v7" id="v7-44" data-s="seat" data-t="44" checked><input type="radio" class="sr vs" name="v7" id="v7-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v7" id="v7-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v7" id="v7-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v7" id="v7-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v7" id="v7-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v7" id="v7-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v7" id="v7-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v7" id="v7-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v7" id="v7-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v7" id="v7-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v7" id="v7-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v7" id="v7-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v7" id="v7-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v7" id="v7-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v7" id="v7-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v7" id="v7-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v7" id="v7-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v7" id="v7-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v7" id="v7-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v7" id="v7-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v7" id="v7-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v7" id="v7-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v7" id="v7-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v7" id="v7-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v7" id="v7-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v7" id="v7-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v7" id="v7-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v7" id="v7-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v7" id="v7-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v7" id="v7-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v7" id="v7-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v7" id="v7-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-7"><input type="radio" class="sr mv" name="sh" id="mv-7"><input type="radio" class="sr shx" name="sh" id="shx-7">
 <span class="c c-v">7</span>
-<span class="c c-g"><span class="gn">Ines Duarte</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l today">Today</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">08:06</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Ines Duarte</span><span class="gs">2 pax &middot; <b>leaves today</b></span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-7" aria-label="Seat villa 7, Ines Duarte"></label>
 <label class="hit hm" for="mv-7" aria-label="Villa 7, Ines Duarte, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 7">
@@ -1733,12 +1712,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v8 svc">
 <input type="radio" class="sr vs" name="v8" id="v8-0" data-s="none"><input type="radio" class="sr vs" name="v8" id="v8-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v8" id="v8-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v8" id="v8-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v8" id="v8-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v8" id="v8-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v8" id="v8-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v8" id="v8-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v8" id="v8-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v8" id="v8-61" data-s="seat" data-t="61" checked><input type="radio" class="sr vs" name="v8" id="v8-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v8" id="v8-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v8" id="v8-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v8" id="v8-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v8" id="v8-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v8" id="v8-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v8" id="v8-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v8" id="v8-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v8" id="v8-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v8" id="v8-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v8" id="v8-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v8" id="v8-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v8" id="v8-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v8" id="v8-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v8" id="v8-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v8" id="v8-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v8" id="v8-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v8" id="v8-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v8" id="v8-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v8" id="v8-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v8" id="v8-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v8" id="v8-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v8" id="v8-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v8" id="v8-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v8" id="v8-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v8" id="v8-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v8" id="v8-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-8"><input type="radio" class="sr mv" name="sh" id="mv-8"><input type="radio" class="sr shx" name="sh" id="shx-8">
 <span class="c c-v">8</span>
-<span class="c c-g"><span class="gn">Tom Ashby</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Tue 29</span>
-<span class="c c-f"><span class="fpill">Breakfast included</span></span>
-<span class="c c-d"><span class="dpill">Dairy free</span></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">08:02</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Tom Ashby</span><span class="gs">2 pax &middot; leaves Tue 29</span></span>
+<span class="c c-x"><span class="fpill">Breakfast included</span><span class="dpill">Dairy free</span></span>
 <label class="hit hp" for="pk-8" aria-label="Seat villa 8, Tom Ashby"></label>
 <label class="hit hm" for="mv-8" aria-label="Villa 8, Tom Ashby, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 8">
@@ -1761,16 +1737,13 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
   </div>
 </div>
 <div class="toast" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><span class="tl1">Villa 8 at table <span class="tnum"></span></span><span class="tl2">Possibly available on Cleans</span></span></div>
-</div>
+</div><div class="v vac"><span class="c c-v">9</span><span class="c c-t"></span><span class="c c-g"><span class="gs">Empty last night</span></span><span class="c c-x"></span></div></div><div class="col">
 <div class="v v10 clean">
 <input type="radio" class="sr vs" name="v10" id="v10-0" data-s="none" checked><input type="radio" class="sr vs" name="v10" id="v10-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v10" id="v10-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v10" id="v10-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v10" id="v10-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v10" id="v10-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v10" id="v10-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v10" id="v10-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v10" id="v10-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v10" id="v10-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v10" id="v10-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v10" id="v10-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v10" id="v10-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v10" id="v10-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v10" id="v10-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v10" id="v10-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v10" id="v10-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v10" id="v10-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v10" id="v10-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v10" id="v10-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v10" id="v10-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v10" id="v10-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v10" id="v10-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v10" id="v10-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v10" id="v10-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v10" id="v10-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v10" id="v10-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v10" id="v10-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v10" id="v10-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v10" id="v10-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v10" id="v10-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v10" id="v10-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v10" id="v10-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v10" id="v10-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v10" id="v10-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v10" id="v10-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v10" id="v10-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-10"><input type="radio" class="sr mv" name="sh" id="mv-10"><input type="radio" class="sr shx" name="sh" id="shx-10">
 <span class="c c-v">10</span>
-<span class="c c-g"><span class="gn">Karl Weber</span></span>
-<span class="c c-p">1</span>
-<span class="c c-l today">Today</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Karl Weber</span><span class="gs">1 pax &middot; <b>leaves today</b></span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-10" aria-label="Seat villa 10, Karl Weber"></label>
 <label class="hit hm" for="mv-10" aria-label="Villa 10, Karl Weber, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 10">
@@ -1797,12 +1770,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v11 svc">
 <input type="radio" class="sr vs" name="v11" id="v11-0" data-s="none" checked><input type="radio" class="sr vs" name="v11" id="v11-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v11" id="v11-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v11" id="v11-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v11" id="v11-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v11" id="v11-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v11" id="v11-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v11" id="v11-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v11" id="v11-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v11" id="v11-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v11" id="v11-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v11" id="v11-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v11" id="v11-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v11" id="v11-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v11" id="v11-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v11" id="v11-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v11" id="v11-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v11" id="v11-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v11" id="v11-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v11" id="v11-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v11" id="v11-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v11" id="v11-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v11" id="v11-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v11" id="v11-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v11" id="v11-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v11" id="v11-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v11" id="v11-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v11" id="v11-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v11" id="v11-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v11" id="v11-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v11" id="v11-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v11" id="v11-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v11" id="v11-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v11" id="v11-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v11" id="v11-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v11" id="v11-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v11" id="v11-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-11"><input type="radio" class="sr mv" name="sh" id="mv-11"><input type="radio" class="sr shx" name="sh" id="shx-11">
 <span class="c c-v">11</span>
-<span class="c c-g"><span class="gn">Claire Donnelly</span></span>
-<span class="c c-p">3</span>
-<span class="c c-l">Sun 27</span>
-<span class="c c-f"><span class="fpill">Breakfast included</span></span>
-<span class="c c-d"><span class="dpill">Gluten free</span></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Claire Donnelly</span><span class="gs">3 pax &middot; leaves Sun 27</span></span>
+<span class="c c-x"><span class="fpill">Breakfast included</span><span class="dpill">Gluten free</span></span>
 <label class="hit hp" for="pk-11" aria-label="Seat villa 11, Claire Donnelly"></label>
 <label class="hit hm" for="mv-11" aria-label="Villa 11, Claire Donnelly, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 11">
@@ -1829,12 +1799,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v12 clean">
 <input type="radio" class="sr vs" name="v12" id="v12-0" data-s="none"><input type="radio" class="sr vs" name="v12" id="v12-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v12" id="v12-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v12" id="v12-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v12" id="v12-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v12" id="v12-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v12" id="v12-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v12" id="v12-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v12" id="v12-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v12" id="v12-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v12" id="v12-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v12" id="v12-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v12" id="v12-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v12" id="v12-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v12" id="v12-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v12" id="v12-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v12" id="v12-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v12" id="v12-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v12" id="v12-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v12" id="v12-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v12" id="v12-d42" data-s="done" data-t="42" checked><input type="radio" class="sr vs" name="v12" id="v12-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v12" id="v12-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v12" id="v12-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v12" id="v12-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v12" id="v12-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v12" id="v12-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v12" id="v12-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v12" id="v12-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v12" id="v12-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v12" id="v12-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v12" id="v12-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v12" id="v12-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v12" id="v12-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v12" id="v12-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v12" id="v12-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v12" id="v12-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-12"><input type="radio" class="sr mv" name="sh" id="mv-12"><input type="radio" class="sr shx" name="sh" id="shx-12">
 <span class="c c-v">12</span>
-<span class="c c-g"><span class="gn">Lena Novak</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l today">Today</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished 08:05</span></span></span></span>
+<span class="c c-g"><span class="gn">Lena Novak</span><span class="gs">2 pax &middot; <b>leaves today</b></span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-12" aria-label="Seat villa 12, Lena Novak"></label>
 <label class="hit hm" for="mv-12" aria-label="Villa 12, Lena Novak, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 12">
@@ -1861,12 +1828,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v13 svc">
 <input type="radio" class="sr vs" name="v13" id="v13-0" data-s="none" checked><input type="radio" class="sr vs" name="v13" id="v13-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v13" id="v13-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v13" id="v13-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v13" id="v13-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v13" id="v13-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v13" id="v13-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v13" id="v13-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v13" id="v13-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v13" id="v13-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v13" id="v13-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v13" id="v13-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v13" id="v13-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v13" id="v13-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v13" id="v13-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v13" id="v13-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v13" id="v13-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v13" id="v13-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v13" id="v13-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v13" id="v13-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v13" id="v13-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v13" id="v13-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v13" id="v13-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v13" id="v13-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v13" id="v13-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v13" id="v13-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v13" id="v13-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v13" id="v13-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v13" id="v13-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v13" id="v13-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v13" id="v13-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v13" id="v13-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v13" id="v13-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v13" id="v13-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v13" id="v13-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v13" id="v13-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v13" id="v13-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-13"><input type="radio" class="sr mv" name="sh" id="mv-13"><input type="radio" class="sr shx" name="sh" id="shx-13">
 <span class="c c-v">13</span>
-<span class="c c-g"><span class="gn">Nina Brandt</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Tue 29</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Nina Brandt</span><span class="gs">2 pax &middot; leaves Tue 29</span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-13" aria-label="Seat villa 13, Nina Brandt"></label>
 <label class="hit hm" for="mv-13" aria-label="Villa 13, Nina Brandt, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 13">
@@ -1889,16 +1853,13 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
   </div>
 </div>
 <div class="toast" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><span class="tl1">Villa 13 at table <span class="tnum"></span></span><span class="tl2">Possibly available on Cleans</span></span></div>
-</div>
+</div><div class="v vac"><span class="c c-v">14</span><span class="c c-t"></span><span class="c c-g"><span class="gs">Empty last night</span></span><span class="c c-x"></span></div>
 <div class="v v15 svc">
 <input type="radio" class="sr vs" name="v15" id="v15-0" data-s="none" checked><input type="radio" class="sr vs" name="v15" id="v15-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v15" id="v15-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v15" id="v15-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v15" id="v15-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v15" id="v15-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v15" id="v15-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v15" id="v15-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v15" id="v15-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v15" id="v15-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v15" id="v15-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v15" id="v15-51" data-s="seat" data-t="51"><input type="radio" class="sr vs" name="v15" id="v15-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v15" id="v15-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v15" id="v15-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v15" id="v15-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v15" id="v15-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v15" id="v15-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v15" id="v15-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v15" id="v15-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v15" id="v15-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v15" id="v15-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v15" id="v15-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v15" id="v15-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v15" id="v15-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v15" id="v15-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v15" id="v15-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v15" id="v15-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v15" id="v15-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v15" id="v15-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v15" id="v15-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v15" id="v15-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v15" id="v15-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v15" id="v15-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v15" id="v15-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v15" id="v15-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v15" id="v15-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-15"><input type="radio" class="sr mv" name="sh" id="mv-15"><input type="radio" class="sr shx" name="sh" id="shx-15">
 <span class="c c-v">15</span>
-<span class="c c-g"><span class="gn">Hana Sato</span></span>
-<span class="c c-p">1</span>
-<span class="c c-l">Mon 28</span>
-<span class="c c-f"><span class="fpill">VIP</span></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">just now</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Hana Sato</span><span class="gs">1 pax &middot; leaves Mon 28</span></span>
+<span class="c c-x"><span class="fpill">VIP</span></span>
 <label class="hit hp" for="pk-15" aria-label="Seat villa 15, Hana Sato"></label>
 <label class="hit hm" for="mv-15" aria-label="Villa 15, Hana Sato, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 15">
@@ -1925,12 +1886,9 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <div class="v v16 svc">
 <input type="radio" class="sr vs" name="v16" id="v16-0" data-s="none"><input type="radio" class="sr vs" name="v16" id="v16-41" data-s="seat" data-t="41"><input type="radio" class="sr vs" name="v16" id="v16-42" data-s="seat" data-t="42"><input type="radio" class="sr vs" name="v16" id="v16-43" data-s="seat" data-t="43"><input type="radio" class="sr vs" name="v16" id="v16-44" data-s="seat" data-t="44"><input type="radio" class="sr vs" name="v16" id="v16-45" data-s="seat" data-t="45"><input type="radio" class="sr vs" name="v16" id="v16-46" data-s="seat" data-t="46"><input type="radio" class="sr vs" name="v16" id="v16-47" data-s="seat" data-t="47"><input type="radio" class="sr vs" name="v16" id="v16-48" data-s="seat" data-t="48"><input type="radio" class="sr vs" name="v16" id="v16-61" data-s="seat" data-t="61"><input type="radio" class="sr vs" name="v16" id="v16-62" data-s="seat" data-t="62"><input type="radio" class="sr vs" name="v16" id="v16-51" data-s="seat" data-t="51" checked><input type="radio" class="sr vs" name="v16" id="v16-52" data-s="seat" data-t="52"><input type="radio" class="sr vs" name="v16" id="v16-53" data-s="seat" data-t="53"><input type="radio" class="sr vs" name="v16" id="v16-54" data-s="seat" data-t="54"><input type="radio" class="sr vs" name="v16" id="v16-55" data-s="seat" data-t="55"><input type="radio" class="sr vs" name="v16" id="v16-56" data-s="seat" data-t="56"><input type="radio" class="sr vs" name="v16" id="v16-57" data-s="seat" data-t="57"><input type="radio" class="sr vs" name="v16" id="v16-58" data-s="seat" data-t="58"><input type="radio" class="sr vs" name="v16" id="v16-d41" data-s="done" data-t="41"><input type="radio" class="sr vs" name="v16" id="v16-d42" data-s="done" data-t="42"><input type="radio" class="sr vs" name="v16" id="v16-d43" data-s="done" data-t="43"><input type="radio" class="sr vs" name="v16" id="v16-d44" data-s="done" data-t="44"><input type="radio" class="sr vs" name="v16" id="v16-d45" data-s="done" data-t="45"><input type="radio" class="sr vs" name="v16" id="v16-d46" data-s="done" data-t="46"><input type="radio" class="sr vs" name="v16" id="v16-d47" data-s="done" data-t="47"><input type="radio" class="sr vs" name="v16" id="v16-d48" data-s="done" data-t="48"><input type="radio" class="sr vs" name="v16" id="v16-d61" data-s="done" data-t="61"><input type="radio" class="sr vs" name="v16" id="v16-d62" data-s="done" data-t="62"><input type="radio" class="sr vs" name="v16" id="v16-d51" data-s="done" data-t="51"><input type="radio" class="sr vs" name="v16" id="v16-d52" data-s="done" data-t="52"><input type="radio" class="sr vs" name="v16" id="v16-d53" data-s="done" data-t="53"><input type="radio" class="sr vs" name="v16" id="v16-d54" data-s="done" data-t="54"><input type="radio" class="sr vs" name="v16" id="v16-d55" data-s="done" data-t="55"><input type="radio" class="sr vs" name="v16" id="v16-d56" data-s="done" data-t="56"><input type="radio" class="sr vs" name="v16" id="v16-d57" data-s="done" data-t="57"><input type="radio" class="sr vs" name="v16" id="v16-d58" data-s="done" data-t="58"><input type="radio" class="sr pk" name="sh" id="pk-16"><input type="radio" class="sr mv" name="sh" id="mv-16"><input type="radio" class="sr shx" name="sh" id="shx-16">
 <span class="c c-v">16</span>
-<span class="c c-g"><span class="gn">Marco Bianchi</span></span>
-<span class="c c-p">2</span>
-<span class="c c-l">Mon 28</span>
-<span class="c c-f"></span>
-<span class="c c-d"></span>
 <span class="c c-t"><span class="cell"><span class="c-seat">Seat</span><span class="c-at"><span class="tnum"></span><span class="ti">07:55</span></span><span class="c-fin"><span class="tnum"></span><span class="ti">Finished just now</span></span></span></span>
+<span class="c c-g"><span class="gn">Marco Bianchi</span><span class="gs">2 pax &middot; leaves Mon 28</span></span>
+<span class="c c-x"></span>
 <label class="hit hp" for="pk-16" aria-label="Seat villa 16, Marco Bianchi"></label>
 <label class="hit hm" for="mv-16" aria-label="Villa 16, Marco Bianchi, seated"></label>
 <div class="ov vd" role="dialog" aria-label="Villa 16">
@@ -1953,7 +1911,7 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
   </div>
 </div>
 <div class="toast" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><span class="tl1">Villa 16 at table <span class="tnum"></span></span><span class="tl2">Possibly available on Cleans</span></span></div>
-</div></div></div>
+</div><div class="v vac"><span class="c c-v">17</span><span class="c c-t"></span><span class="c c-g"><span class="gs">Empty last night</span></span><span class="c c-x"></span></div><label class="vt" for="tv"><span class="vt1">View tables</span><span class="vt2"><span class="n-free"></span> free</span></label></div></div>
 </section>
 <section class="cl">
 <div class="daterow"><span class="dnav today">Today</span><span class="dnav">&#8249;</span><span class="date">Sat 26th Sep</span><span class="dnav">&#8250;</span></div>
@@ -1966,16 +1924,17 @@ body:has(.v16 > .vs:is([data-s="seat"],[data-s="done"]):checked) .ct.c16 .s-av{d
 <p class="cap">The front desk tablet held sideways, 1280 by 720: Sat 26th Sep at 08:12, with the demo guests. The earlier shape, the tables always on the right, is mock-breakfast.html. On a phone it is drawn smaller; turn the phone sideways for a bigger one.</p>
 <h2>How it works</h2>
 <ul>
-<li>One screen, nothing to scroll: the villas as the FOH Sheet lists them, one line each, a column for each fact, the table last.</li>
+<li>One screen, nothing to scroll: the villas as the FOH Sheet lists them, in two columns, 1 to 9 and 10 to 17, each row a ninth of the screen high.</li>
+<li>Each row: the villa, its table right beside it, the guest over their party and the day they leave, then the tags: the group, the flags, the dietaries.</li>
 <li>Tap a villa&rsquo;s line: the room&rsquo;s tables pop up. Tap a table and they are seated; the pop-up shuts. Two taps.</li>
 <li>Tap a seated villa: the same pop-up, their table marked. Another table moves them; <b>Finished</b>, <b>Add a villa to table 44</b> and <b>Undo seating</b> are there too.</li>
-<li><b>View tables</b>, at the head of the table column, shows the room: tap a free table to seat a villa at it, or a taken one to see who is there, finish them, or add another. It says how many are free.</li>
+<li><b>View tables</b>, in the eighteenth place under villa 17, shows the room: tap a free table to seat a villa at it, or a taken one to see who is there, finish them, or add another. It says how many are free.</li>
 <li>Seating a villa that stays on stamps <b>Possibly available</b> on Cleans at the time they sat down; the broom on the bar shows the board.</li>
 </ul>
 <h2>Calls I made</h2>
 <ul>
-<li>The facts go across, not down: a card ran out of height for a flag beside a dietary on your phone. Every column keeps a fifth more room than its widest word needs, and fourteen villas this morning or a full house of seventeen still fit.</li>
-<li>Villas nobody slept in are left off, as the FOH Sheet leaves them off. Nothing re-sorts: a finished villa fades where it is.</li>
+<li>Every villa keeps its row, so villa 12 is always in the same place; a villa nobody slept in fades in its row, and nothing re-sorts.</li>
+<li>Checked with text drawn a seventh wider, as your phone drew it, and with a full house of seventeen: nothing spills. A row whose tags need a third line takes it, and the rest give up a pixel.</li>
 <li>The free tables&rsquo; count on the View tables button: the one number left on the screen, and it costs no height.</li>
 <li>A villa checking out is a clean, decided by Departed (STYLEGUIDE, Services only): seating 2, 5, 7, 10 or 12 marks nothing on Cleans.</li>
 <li>Finished frees the table and leaves the Cleans mark to age on its own clock. An allergy is grey until they sit down, red once they do.</li>
