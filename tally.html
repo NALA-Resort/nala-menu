@@ -1013,8 +1013,9 @@ function possibleOf(n){
    red: act before cooking tonight. amber: kitchen content to read.
    Nothing else draws one. The booking note gave a grey bubble of its own
    until 3 Oct, when the owner found the list flooded with them and the
-   dietary bubbles lost among them: it is read from the booking's details
-   behind the eye now. See NOTES-AUDIT.md, the bubble. */
+   dietary bubbles lost among them: it draws none now, and rides in a
+   bubble the kitchen's notes have drawn (openNotes). See NOTES-AUDIT.md,
+   the bubble. */
 function bubbleState(personDiets, g, hits){
   if (hits.length) return 'red';
   if (personDiets.indexOf(DIET_OTHER) > -1 && !g.dineDnote) return 'red';
@@ -1023,7 +1024,7 @@ function bubbleState(personDiets, g, hits){
   return '';
 }
 
-function openNotes(title, g, hits){
+function openNotes(title, g, hits, bookNote){
   var h = '<div class="pop-who">' + title + '</div>';
   var prev = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
 
@@ -1047,6 +1048,14 @@ function openNotes(title, g, hits){
   if (g.dineNote) {
     h += '<div class="pop-h">Dinner notes</div>' +
          '<div class="pop-t">\u201C' + g.dineNote + '\u201D</div>';
+  }
+  /* The guest's context for the whole stay, off the reservation. It rides
+     in a bubble the kitchen's notes drew and never draws one of its own
+     (the owner, 3 Oct: "I just want the bubble removed if it was only for
+     a booking note"). Alone, it is read behind the eye. */
+  if (bookNote) {
+    h += '<div class="pop-h">Booking notes</div>' +
+         '<div class="pop-t">\u201C' + esc(bookNote) + '\u201D</div>';
   }
 
   if (prev) {
@@ -1347,6 +1356,8 @@ function render(){
        the moment they confirm. */
     var hits = r.maybe ? [] : menuConflicts(MENU, personDiets);
     var bubState = bubbleState(personDiets, g, hits);
+    var pre = r.room ? (PREARRIVAL_BY_VILLA[String(r.room)] || null) : null;
+    var bookNote = (pre && pre.note) ? String(pre.note) : '';
 
     var row = document.createElement('div');
     row.className = 'row' + (r.maybe ? ' maybe' : '') + (hits.length ? ' conflict' : '');
@@ -1369,9 +1380,9 @@ function render(){
         (dinnerTimeLabel(g.time) ? dinnerTimeLabel(g.time)+' · ' : '')+
         (g.pax||1)+' pax') +'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
-    if (bub) bub.onclick = (function(tt, gg, hh){
-      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };
-    })(title, g, hits);
+    if (bub) bub.onclick = (function(tt, gg, hh, bn){
+      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh, bn); };
+    })(title, g, hits, bookNote);
     /* The whole row opens the booking - the pencil went on 8 Sep, giving
        its width back to the name. The notes bubble above stops the tap
        reaching here, so it stays its own control. */

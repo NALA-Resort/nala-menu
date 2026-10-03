@@ -357,9 +357,9 @@ note**, which must reach the kitchen because Other means read the note.
 
 - **Booking notes** come OFF the reservations board row and the printed
   list's comment column. The chef does not need the guest's private context
-  on a dinner row. They remain readable from the board through the snapshot
-  panel, under their own heading. (Through the bubble too, until 3 Oct: see
-  the bubble, below.)
+  on a dinner row. They remain readable from the board through the bubble and
+  the snapshot panel, under their own heading: the bubble only when the
+  kitchen's notes have drawn one (3 Oct, see the bubble, below).
 - **Arrival notes** appear on the arrivals views only, beside the time.
 - **Dietary notes** travel exactly as dietaries do: person, reservation,
   every screen.
@@ -378,8 +378,10 @@ around it. The colour carries the meaning, worst state wins:
 **Grey is gone** (the owner, 3 Oct). A booking note gave a row a grey bubble
 of its own, and many bookings carry one, so the list filled with bubbles and
 the dietary ones were lost among them. The bubble is the kitchen's now: a
-booking note draws none, and the popover has no Booking notes section. The
-note is read from the booking's details behind the eye, under its name.
+booking note draws none of its own, and rides in one the kitchen's notes have
+drawn, under its name ("I just want the bubble removed if it was only for a
+booking note"). A booking note alone is read from the booking's details
+behind the eye.
 
 Red stays what it is everywhere else in the app: something is wrong. A normal
 allergy, properly recorded, is amber. The popover it opens keeps its sections,

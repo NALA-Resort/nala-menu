@@ -1267,12 +1267,14 @@ with sync_playwright() as p:
          const r=overlayReservationDiets({},'99');
          delete PREARRIVAL_BY_VILLA['99'];
          return bubbleState(r.diets, r, [])==='red';}"""))
-    # A booking note draws no bubble and rides in none (the owner, 3 Oct: a
-    # grey bubble for every booking note flooded the list, and the dietary
-    # bubbles were lost among them). It is read behind the eye, checked with
-    # the booking's notes below. Asked of the drawn rows, since bubbleState
-    # no longer hears of one: villa 3 has nothing for the kitchen, villa 1 a
-    # red bubble of its own. One evaluate, so no poll lands mid-check.
+    # A booking note draws no bubble of its own (the owner, 3 Oct: a grey
+    # bubble for every booking note flooded the list, and the dietary
+    # bubbles were lost among them), and rides in one the kitchen's notes
+    # drew ("I just want the bubble removed if it was only for a booking
+    # note"). Alone it is read behind the eye, checked with the booking's
+    # notes below. Asked of the drawn rows, since bubbleState no longer
+    # hears of one: villa 3 has nothing for the kitchen, villa 1 a red
+    # bubble of its own. One evaluate, so no poll lands mid-check.
     got=q.evaluate("""()=>{
       const note={note:'A golf buggy on arrival'};
       PREARRIVAL_BY_VILLA['1']=note; PREARRIVAL_BY_VILLA['3']=note; render();
@@ -1291,8 +1293,8 @@ with sync_playwright() as p:
     ck("a kitchen bubble still opens on its own notes",
        got["r1bub"]==1 and "DINNER NOTES" in got["notes"]
        and "WINDOW SEAT" in got["notes"])
-    ck("and carries no booking note",
-       "BOOKING NOTES" not in got["notes"] and "GOLF BUGGY" not in got["notes"])
+    ck("and carries the booking note too, under its name",
+       "BOOKING NOTES" in got["notes"] and "GOLF BUGGY" in got["notes"])
     q.close()
 
     # ── the guest snapshot behind the eye ───────────────────────────────
